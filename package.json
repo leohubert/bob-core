@@ -1,6 +1,6 @@
 {
   "name": "bob-core",
-  "version": "0.3.4",
+  "version": "0.4.0",
   "description": "BOB Core",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -9,7 +9,8 @@
   ],
   "scripts": {
     "start": "node -r @swc-node/register ./tests/main.ts",
-    "build": "tsc"
+    "build": "tsc",
+    "prepare": "npm run build"
   },
   "author": "Léo Hubert",
   "license": "ISC",
