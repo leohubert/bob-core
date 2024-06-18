@@ -11,7 +11,7 @@
     "start": "ts-node ./tests/main.ts",
     "build": "tsc"
   },
-  "author": "",
+  "author": "Léo Hubert",
   "license": "ISC",
   "devDependencies": {
     "@types/lodash": "^4.17.5",
