@@ -1,5 +1,5 @@
 import path from "path";
-import {Cli} from "../src/Cli";
+import {Cli} from "../src";
 
 async function main() {
     const cli = new Cli()

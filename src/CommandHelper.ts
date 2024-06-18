@@ -2,48 +2,78 @@ import {Command} from "./Command";
 import chalk from "chalk";
 import {max} from "lodash";
 import {generateSpace} from "./lib/string";
+import {ArgSignature} from "./Parser";
 
 export class CommandHelper {
-    public help() {
-        const command: Command = this as any
 
+    get defaultOptions(): ArgSignature[] {
+        return [
+            {
+                name: 'help',
+                optional: true,
+                help: chalk`Display help for the given command. When no command is given display help for the {green list} command`,
+                alias: ['h']
+            }
+        ]
+    }
+
+    public help(this: Command): number {
         const log = console.log
 
-        const signatures = command.signatures()
+        const availableArguments = Object.values(this.parser.argumentsSignatures())
+        const availableOptions = [...Object.values(this.parser.optionsSignatures()), ...this.defaultOptions]
+            .map((signature) => ({
+                ...signature,
+                optionWithAlias: `--${signature.name}${signature.alias?.map(a => `, -${a}`).join('') ?? ''}`
+            }) as ArgSignature & { optionWithAlias: string })
 
-        const availableArguments = Object.entries(signatures).filter(([_, signature]) => !signature.isOption)
-        const availableOptions = Object.entries(signatures).filter(([_, signature]) => signature.isOption)
-
-        const requiredArguments = availableArguments.filter(([_, signature]) => !signature.optional)
+        const requiredArguments = availableArguments.filter((signature) => !signature.optional)
 
         log(chalk`{yellow Description}:`)
-        log(chalk`  ${command.description}\n`)
+        log(chalk`  ${this.description}\n`)
 
         log(chalk`{yellow Usage}:`)
-        log(chalk`  ${command.command} ${requiredArguments.length > 0 ? requiredArguments.map(([arg]) => `<${arg}>`).join(' ') : '\b'} [options]`)
+        log(chalk`  ${this.command} ${requiredArguments.length > 0 ? requiredArguments.map((signature) => `<${signature.name}>`).join(' ') : '\b'} [options]`)
 
-        const maxOptionLength = max(availableOptions.map(([option]) => option.length)) ?? 0
-        const maxArgumentLength = max(availableArguments.map(([arg]) => arg.length)) ?? 0
+        const maxOptionLength: number = max(availableOptions.map((signature) => signature.optionWithAlias.length)) ?? 0
+        const maxArgumentLength: number = max(availableArguments.map((arg) => arg.name.length)) ?? 0
         const maxLength = maxArgumentLength > maxOptionLength ? maxArgumentLength : maxOptionLength
 
         if (availableArguments.length > 0) {
-            log(chalk`{yellow Arguments}:`)
+            log(chalk`\n{yellow Arguments}:`)
 
-            for (const [argument, signature] of availableArguments) {
-                const spaces = generateSpace(maxLength - argument.length)
+            for (const  signature of availableArguments) {
+                const spaces = generateSpace(maxLength - signature.name.length)
 
-                log(chalk`  {green ${argument}} ${spaces} ${signature.help ?? '\b'} ${signature.optional ? chalk`{gray (optional)}` : ''}`)
+                log(chalk`  {green ${signature.name}} ${spaces} ${signature.help ?? '\b'} ${signature.defaultValue !== undefined && signature.optional ? chalk`{yellow [default:${signature.defaultValue}]}` : ''}`)
             }
-            log(chalk``)
         }
 
         if (availableOptions.length > 0) {
-            log(chalk`{yellow Options}:`)
+            log(chalk`\n{yellow Options}:`)
 
-            for (const [option, signature] of availableOptions) {
-                const spaces = generateSpace(maxLength - option.length)
+            for (const signature of availableOptions) {
+                const spaces = generateSpace(maxLength - signature.optionWithAlias.length)
 
-                log(chalk`  {green ${option}} ${spaces} ${signature.help ?? '\b'} `)
+
+
+                log(chalk`  {green ${signature.optionWithAlias}} ${spaces} ${signature.help ?? '\b'}  ${signature.defaultValue !== undefined && signature.optional ? chalk`{yellow [default:${signature.defaultValue}]}` : ''}`)
+            }
+        }
+
+        if (this.commandsExamples.length > 0) {
+            log(chalk`\n{yellow Examples}:`)
+            let  binaryName = process.argv[0].split('/').pop()
+            if (binaryName === 'node') {
+                binaryName += ' ' + process.argv[1].split('/').pop()
+            }
+
+            for (const [index, example] of this.commandsExamples.entries()) {
+                if (index > 0) {
+                    log('')
+                }
+                log(`  ${example.description}\n`)
+                log(chalk`    {green ${binaryName} ${example.command}}`)
             }
         }
 

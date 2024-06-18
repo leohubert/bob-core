@@ -1,12 +1,13 @@
 import minimist from 'minimist'
+import {MissingRequiredArgumentValue} from "./errors/MissingRequiredArgumentValue";
 
-export type ParamSignature = {
+export type ArgSignature = {
     name: string
     optional: boolean
-    alias?: string
+    alias?: string[]
     help?: string
     defaultValue?: string | boolean | null
-    isOption: boolean
+    isOption?: boolean
 }
 
 export class Parser {
@@ -14,7 +15,8 @@ export class Parser {
     public command: string
     private arguments: { [argument: string]: any } = {}
     private options: Record<string, any> = {}
-    private argumentsSignature: { [argument: string]: ParamSignature } = {}
+    private argumentsSignature: { [argument: string]: ArgSignature } = {}
+    private optionsSignature: { [option: string]: ArgSignature } = {}
 
     public option(name: string): any {
         return this.options[name]
@@ -24,11 +26,15 @@ export class Parser {
         return this.arguments[name]
     }
 
-    public signatures() {
+    public argumentsSignatures() {
         return this.argumentsSignature
     }
 
-    constructor(signature: string, ...args: any[]) {
+    public optionsSignatures() {
+        return this.optionsSignature
+    }
+
+    constructor(protected readonly signature: string, protected readonly helperDefinitions: { [key: string]: string }, ...args: any[]) {
         const [command, ...params] = signature.split(/\{(.*?)\}/g).map(param => param.trim()).filter(Boolean)
 
         const { _: paramValues, ...optionValues } = minimist(args)
@@ -45,17 +51,24 @@ export class Parser {
                 const optionValue = optionValues[param.name]
 
                 this.options[param.name] = optionValue ?? param.defaultValue ?? null
+                this.optionsSignature[param.name] = param
+
+                for (const alias of param.alias ?? []) {
+                    if (optionValues[alias]) {
+                        this.options[param.name] = optionValues[alias]
+                        this.optionsSignature[param.name] = param
+                    }
+                }
             } else {
                 const paramValue = paramValues.shift()
 
                 this.arguments[param.name] = paramValue ?? param.defaultValue ?? null
+                this.argumentsSignature[param.name] = param
             }
-
-            this.argumentsSignature[param.name] = param
         }
     }
 
-    private parseParamSignature(argument: string): ParamSignature {
+    private parseParamSignature(argument: string): ArgSignature {
         let cleanedArgs = argument
         let isOptional = false
         if (argument.endsWith('?')) {
@@ -63,7 +76,7 @@ export class Parser {
             isOptional = true
         }
 
-        const arg: ParamSignature = {
+        const arg: ArgSignature = {
             name: cleanedArgs,
             optional: isOptional,
             help: undefined,
@@ -96,9 +109,19 @@ export class Parser {
             }
         }
 
+        if (arg.name.includes('|')) {
+            const [name, ...alias] = arg.name.split('|')
+            arg.name = name.trim()
+            arg.alias = alias.map(a => a.trim())
+        }
+
         if (arg.name.startsWith('--')) {
             arg.isOption = true
             arg.name = arg.name.slice(2)
+        }
+
+        if (this.helperDefinitions[arg.name]) {
+            arg.help = this.helperDefinitions[arg.name]
         }
 
         return arg
@@ -107,12 +130,10 @@ export class Parser {
     public validate() {
         // validate arguments
         for (const [argument, value] of Object.entries(this.arguments)) {
-            const signature = this.argumentsSignature[argument]
+            const argSignature = this.argumentsSignature[argument]
 
-            if (!value && !signature.optional) {
-                const argumentHelp = signature.help ?? 'no help available'
-
-                throw new Error(`Argument ${argument} is required. (help: ${argumentHelp})`)
+            if (!value && !argSignature.optional) {
+                throw new MissingRequiredArgumentValue(argSignature)
             }
         }
     }

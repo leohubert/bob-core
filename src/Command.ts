@@ -1,11 +1,20 @@
 import {CommandHelper} from "./CommandHelper";
 import {Parser} from "./Parser";
 
+export type CommandExample = {
+    description: string;
+    command: string;
+}
+
 export abstract class Command extends CommandHelper {
     abstract signature: string;
     abstract description: string;
 
-    private parser!: Parser;
+    protected helperDefinitions: { [key: string]: string } = {};
+
+    protected commandsExamples: CommandExample[] = [];
+
+    protected parser!: Parser;
 
     get command(): string {
         return this.signature.split(' ')[0];
@@ -14,10 +23,10 @@ export abstract class Command extends CommandHelper {
     protected abstract handle(): Promise<void|number>;
 
     public async run(...args: any[]): Promise<number> {
-        this.parser = new Parser(this.signature, ...args);
+        this.parser = new Parser(this.signature, this.helperDefinitions, ...args);
 
         if (args.includes('--help') || args.includes('-h')) {
-            return this.help()
+            return this.help.bind(this)();
         }
 
         this.parser.validate();
@@ -33,7 +42,4 @@ export abstract class Command extends CommandHelper {
         return this.parser.argument(key) ?? defaultValue;
     }
 
-    public signatures() {
-        return this.parser.signatures()
-    }
 }
