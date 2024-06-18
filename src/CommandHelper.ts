@@ -45,7 +45,7 @@ export class CommandHelper {
             for (const  signature of availableArguments) {
                 const spaces = generateSpace(maxLength - signature.name.length)
 
-                log(chalk`  {green ${signature.name}} ${spaces} ${signature.help ?? '\b'} ${signature.defaultValue !== undefined && signature.optional ? chalk`{yellow [default:${signature.defaultValue}]}` : ''}`)
+                log(chalk`  {green ${signature.name}} ${spaces} ${signature.help ?? '\b'} ${signature.defaultValue !== undefined && signature.optional ? chalk`{yellow [default: ${signature.defaultValue}]}` : ''}`)
             }
         }
 
@@ -57,7 +57,7 @@ export class CommandHelper {
 
 
 
-                log(chalk`  {green ${signature.optionWithAlias}} ${spaces} ${signature.help ?? '\b'}  ${signature.defaultValue !== undefined && signature.optional ? chalk`{yellow [default:${signature.defaultValue}]}` : ''}`)
+                log(chalk`  {green ${signature.optionWithAlias}} ${spaces} ${signature.help ?? '\b'}  ${signature.defaultValue !== undefined && signature.optional ? chalk`{yellow [default: ${signature.defaultValue}]}` : ''}`)
             }
         }
 
