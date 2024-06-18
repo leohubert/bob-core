@@ -1,7 +1,7 @@
 {
-  "name": "bob",
+  "name": "bob-core",
   "version": "0.1.0",
-  "description": "BOB Cli",
+  "description": "BOB Core",
   "main": "index.js",
   "scripts": {
     "start": "ts-node ./tests/main.ts"
