@@ -1,12 +1,8 @@
-import {Command} from "../../src/Command";
+import {Command} from "../../src";
 import {BadParameter} from "../../src/errors/BadParameter";
+import {BobTestContext} from "../main";
 
-export type TestCommandArgs = {
-    user: string;
-    option?: string;
-}
-
-export default class TestCommand extends Command {
+export default class TestCommand extends Command<BobTestContext> {
     signature = 'test {user} {test: test description?} {--option|o|b} {--flag=} { --flag2 = 2}';
     description = 'test description'
 
@@ -36,6 +32,8 @@ export default class TestCommand extends Command {
                 reason: 'yayo is not allowed'
             })
         }
+
+        console.log('ctx', await this.ctx.bambooClient.getProjects())
 
         console.log('test command', this.argument('user'), this.argument('test'))
 

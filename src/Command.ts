@@ -6,9 +6,11 @@ export type CommandExample = {
     command: string;
 }
 
-export abstract class Command extends CommandHelper {
+export abstract class Command<C = undefined> extends CommandHelper {
     abstract signature: string;
     abstract description: string;
+
+    protected ctx!: C;
 
     protected helperDefinitions: { [key: string]: string } = {};
 
@@ -17,16 +19,20 @@ export abstract class Command extends CommandHelper {
     protected parser!: Parser;
 
     get command(): string {
+        if (this.parser) {
+            return this.parser.command;
+        }
         return this.signature.split(' ')[0];
     }
 
     protected abstract handle(): Promise<void|number>;
 
-    public async run(...args: any[]): Promise<number> {
+    public async run(ctx: C, ...args: any[]): Promise<number> {
+        this.ctx = ctx;
         this.parser = new Parser(this.signature, this.helperDefinitions, ...args);
 
         if (args.includes('--help') || args.includes('-h')) {
-            return this.help.bind(this)();
+            return this.help.call(this)
         }
 
         this.parser.validate();

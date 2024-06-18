@@ -1,8 +1,6 @@
 import path from "path";
 import { Command } from "./Command";
 import * as fs from "node:fs";
-import * as SS from "string-similarity";
-import chalk from "chalk";
 import {CommandNotFoundError} from "./errors/CommandNotFoundError";
 
 export class CommandRegistry {
@@ -58,14 +56,14 @@ export class CommandRegistry {
         }
     }
 
-    async runCommand(command: string, ...args: any[]) {
+    async runCommand(ctx: any, command: string, ...args: any[]) {
         const commandToRun: Command = this.commands[command];
 
         if (!this.commands[command]) {
             throw new CommandNotFoundError(command, this.getAvailableCommands());
         }
 
-        return await commandToRun.run(...args);
+        return await commandToRun.run(ctx, ...args);
     }
 
     private async* listCommandsFiles(

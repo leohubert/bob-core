@@ -1,8 +1,28 @@
 import path from "path";
 import {Cli} from "../src";
 
+export type BobTestContext = {
+    bambooClient: {
+        getProjects: () => Promise<any>
+    }
+
+}
+
 async function main() {
-    const cli = new Cli()
+    const cli = new Cli<BobTestContext>({
+        bambooClient: {
+            getProjects: async () => {
+                return [
+                    {
+                        name: 'Project 1'
+                    },
+                    {
+                        name: 'Project 2'
+                    }
+                ]
+            }
+        }
+    })
 
     await cli.loadCommandsPath(path.resolve(__dirname, './commands'))
 

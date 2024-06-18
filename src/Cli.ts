@@ -3,10 +3,11 @@ import {Command} from "./Command";
 import HelpCommand from "./commands/HelpCommand";
 import {ExceptionHandler} from "./ExceptionHandler";
 
-export class Cli {
+export class Cli<C> {
 
     public readonly commandRegistry: CommandRegistry;
     private readonly exceptionHandler: ExceptionHandler
+    private readonly ctx?: C;
 
     get CommandRegistryClass() {
         return CommandRegistry;
@@ -20,7 +21,8 @@ export class Cli {
         return ExceptionHandler;
     }
 
-    constructor() {
+    constructor(ctx?: C) {
+        this.ctx = ctx;
         this.commandRegistry = new this.CommandRegistryClass();
         this.exceptionHandler = new this.ExceptionHandlerClass();
         this.registerCommand(new this.HelpCommandClass(this.commandRegistry));
@@ -35,7 +37,7 @@ export class Cli {
     }
 
     async runCommand(command: string, ...args: any[]) {
-        return await this.commandRegistry.runCommand(command, ...args)
+        return await this.commandRegistry.runCommand(this.ctx, command, ...args)
             .catch(this.exceptionHandler.handle);
     }
 }

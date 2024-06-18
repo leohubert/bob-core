@@ -17,7 +17,7 @@ export class CommandHelper {
         ]
     }
 
-    public help(this: Command): number {
+    public help(this: Command<any>): number {
         const log = console.log
 
         const availableArguments = Object.values(this.parser.argumentsSignatures())
