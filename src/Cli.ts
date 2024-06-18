@@ -28,6 +28,6 @@ export class Cli {
     }
 
     async runCommand(command: string, ...args: any[]) {
-        await this.commandRegistry.runCommand(command, ...args);
+        return await this.commandRegistry.runCommand(command, ...args);
     }
 }

@@ -1,6 +1,8 @@
 import path from "path";
 import { Command } from "./Command";
 import * as fs from "node:fs";
+import * as SS from "string-similarity";
+import chalk from "chalk";
 
 export class CommandRegistry {
     private readonly commands: Record<string, Command> = {};
@@ -36,11 +38,11 @@ export class CommandRegistry {
             let CommandClass: { new(): Command };
 
             try {
-                CommandClass = (await require(file)).default as {
+                CommandClass = (await import(file)).default as {
                     new(): Command;
                 };
             } catch (e) {
-                // Ignore files that are not commands
+                console.error(`Failed to load command ${file}. ${e}`);
                 continue;
             }
 
@@ -58,7 +60,7 @@ export class CommandRegistry {
     async runCommand(command: string, ...args: any[]) {
         const commandToRun: Command = this.commands[command];
         if (!this.commands[command]) {
-            throw new Error(`Command ${command} not found.`);
+            return this.commandNotFound(command);
         }
 
         return await commandToRun.run(...args);
@@ -79,5 +81,28 @@ export class CommandRegistry {
                 yield direntPath;
             }
         }
+    }
+
+    private commandNotFound(command: string) {
+        const log = console.log
+
+        const similarCommands = this.getCommands().filter(
+            cmd =>
+                cmd.command //
+                    .split(':')
+                    .filter(part => SS.compareTwoStrings(part, command) > 0.3).length,
+        )
+
+        if (similarCommands.length) {
+            log(chalk`  {white.bgRed  ERROR } Command "${command}" is not defined, Did you mean one of these?`)
+
+            for (const cmd of similarCommands) {
+                log(chalk`  {gray ⇂ ${cmd.command}}`)
+            }
+        } else {
+            log(chalk`  {white.bgRed  ERROR } Command "${command}" is not defined.`)
+        }
+
+        return 1
     }
 }

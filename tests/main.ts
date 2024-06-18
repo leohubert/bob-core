@@ -8,10 +8,10 @@ async function main() {
 
     const commandToRun = process.argv.at(2) ?? 'help'
 
-    await cli.runCommand(commandToRun, ...process.argv.slice(3))
+    return await cli.runCommand(commandToRun, ...process.argv.slice(3))
 }
 
 main()
-    .then()
+    .then(process.exit)
     .catch(console.error)
 

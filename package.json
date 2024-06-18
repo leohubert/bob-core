@@ -1,6 +1,6 @@
 {
   "name": "bob-core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "BOB Core",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -8,21 +8,23 @@
     "/dist"
   ],
   "scripts": {
-    "start": "ts-node ./tests/main.ts",
+    "start": "node -r @swc-node/register ./tests/main.ts",
     "build": "tsc"
   },
   "author": "Léo Hubert",
   "license": "ISC",
   "devDependencies": {
+    "@swc-node/register": "^1.9.2",
     "@types/lodash": "^4.17.5",
     "@types/minimist": "^1.2.5",
     "@types/node": "^20.14.5",
-    "ts-node": "^10.9.2",
+    "@types/string-similarity": "^4.0.2",
     "typescript": "^5.4.5"
   },
   "dependencies": {
     "chalk": "^4.1.2",
     "lodash": "^4.17.21",
-    "minimist": "^1.2.8"
+    "minimist": "^1.2.8",
+    "string-similarity": "^4.0.4"
   }
 }

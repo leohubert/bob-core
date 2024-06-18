@@ -22,7 +22,7 @@ export abstract class Command extends CommandHelper {
 
         this.parser.validate();
 
-        return await this.handle() ?? 0;
+        return (await this.handle()) ?? 0;
     }
 
     protected option(key: string, defaultValue: any = null): string | null {
