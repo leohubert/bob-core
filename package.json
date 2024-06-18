@@ -1,5 +1,5 @@
 {
-  "name": "bob",
+  "name": "bob-core",
   "version": "0.1.0",
   "description": "BOB Core",
   "main": "dist/index.js",
