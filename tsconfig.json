@@ -3,6 +3,7 @@
     "lib": [
       "es2023"
     ],
+    "declaration": true,
     "module": "node16",
     "target": "es2022",
     "strict": true,

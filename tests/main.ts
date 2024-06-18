@@ -1,6 +1,5 @@
 import path from "path";
 import {Cli} from "../src/Cli";
-import HelpCommand from "../src/commands/HelpCommand";
 
 async function main() {
     const cli = new Cli()
