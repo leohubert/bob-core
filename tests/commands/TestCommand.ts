@@ -8,9 +8,10 @@ export default class TestCommand extends Command<BobTestContext> {
 
     helperDefinitions = {
         user: 'user description',
-        option: 'option description',
-        flag: 'flag description',
-        flag2: 'flag2 description'
+        arr: 'arr description',
+        '--option': 'option description',
+        '--flag': 'flag description',
+        '--flag2': 'flag2 description'
     }
 
     commandsExamples = [

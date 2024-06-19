@@ -128,6 +128,7 @@ export class Parser {
             }
         } else {
             if (arg.name.startsWith('--')) {
+                arg.optional = true
                 arg.defaultValue = false
                 arg.type = 'boolean'
             }
@@ -149,9 +150,7 @@ export class Parser {
             arg.type = 'array'
         }
 
-        if (this.helperDefinitions[arg.name]) {
-            arg.help = this.helperDefinitions[arg.name]
-        }
+        arg.help = arg.help ?? this.helperDefinitions[arg.name] ?? this.helperDefinitions[`--${arg.name}`]
 
         return arg
     }
