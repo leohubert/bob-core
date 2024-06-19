@@ -40,10 +40,16 @@ export abstract class Command<C = undefined> extends CommandHelper {
         return (await this.handle()) ?? 0;
     }
 
-    protected option<T = string | number | boolean | string[] | number[]>(key: string, defaultValue: T | null = null): T | null {
+    protected option<T = string | number | boolean | string[] | number[]>(key: string): T | null
+    protected option<T = string | number | boolean | string[] | number[]>(key: string, defaultValue: T): T
+    protected option<T = string | number | boolean | string[] | number[]>(key: string, defaultValue: null ): T | null
+    protected option(key: string, defaultValue: any = null): any {
         return this.parser.option(key) ?? defaultValue;
     }
 
+    protected argument<T = string | number | boolean | string[] | number[]>(key: string): T | null
+    protected argument<T = string | number | boolean | string[] | number[]>(key: string, defaultValue: T): T
+    protected argument<T = string | number | boolean | string[] | number[]>(key: string, defaultValue: null): T | null
     protected argument<T = string | number | boolean | string[] | number[]>(key: string, defaultValue: T | null = null): T | null {
         return this.parser.argument(key) ?? defaultValue;
     }
