@@ -3,7 +3,7 @@ import {BadParameter} from "../../src/errors/BadParameter";
 import {BobTestContext} from "../main";
 
 export default class TestCommand extends Command<BobTestContext> {
-    signature = 'test {user} {test: test description?} {--option|o|b} {--flag=} {--arr=*} { --flag2 = 2}';
+    signature = 'test {user} {test: test description?} {test2*?} {--option|o|b} {--flag=} {--arr=*} { --flag2 = 2}';
     description = 'test description'
 
     helperDefinitions = {
@@ -37,6 +37,8 @@ export default class TestCommand extends Command<BobTestContext> {
         console.log('ctx', await this.ctx.bambooClient.getProjects())
 
         console.log('test command', this.argument('user'), this.argument('test'))
+
+        console.log('variadic', this.argument('test2'))
 
         console.log('option', this.option('option'))
 

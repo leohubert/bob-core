@@ -44,7 +44,7 @@ export abstract class Command<C = undefined> extends CommandHelper {
         return this.parser.option(key) ?? defaultValue;
     }
 
-    protected argument(key: string, defaultValue?: any): string | null {
+    protected argument(key: string, defaultValue: any = null): string | Array<string> | null {
         return this.parser.argument(key) ?? defaultValue;
     }
 

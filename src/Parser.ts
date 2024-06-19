@@ -4,10 +4,11 @@ import {MissingRequiredArgumentValue} from "./errors/MissingRequiredArgumentValu
 export type ArgSignature = {
     name: string
     type: string
-    optional: boolean
+    optional?: boolean
+    variadic?: boolean
     alias?: string[]
     help?: string
-    defaultValue?: string | boolean | Array<any> | null
+    defaultValue?: string | boolean | Array<string> | null
     isOption?: boolean
 }
 
@@ -36,6 +37,9 @@ export class Parser {
         }
 
         if (signature.type === 'array') {
+            if (!this.options[name]) {
+                return []
+            }
             return Array.isArray(this.options[name]) ? this.options[name] : [this.options[name]]
         }
 
@@ -80,9 +84,18 @@ export class Parser {
                     }
                 }
             } else {
-                const paramValue = paramValues.shift()
 
-                this.arguments[param.name] = paramValue ?? param.defaultValue ?? null
+                if (param.variadic) {
+                    const paramValue = paramValues.splice(0, paramValues.length)
+
+                    this.arguments[param.name] = paramValue ?? []
+                } else {
+                    const paramValue = paramValues.shift()
+
+                    this.arguments[param.name] = paramValue ?? param.defaultValue ?? null
+                }
+
+
                 this.argumentsSignature[param.name] = param
             }
         }
@@ -91,17 +104,25 @@ export class Parser {
     private parseParamSignature(argument: string): ArgSignature {
         let cleanedArgs = argument
         let isOptional = false
-        if (argument.endsWith('?')) {
+        let isVariadic = false
+
+        if (cleanedArgs.endsWith('?')) {
             cleanedArgs = cleanedArgs.slice(0, -1)
             isOptional = true
+        }
+
+        if (cleanedArgs.endsWith('*'))  {
+            cleanedArgs = cleanedArgs.slice(0, -1)
+            isVariadic = true
         }
 
         const arg: ArgSignature = {
             name: cleanedArgs,
             optional: isOptional,
-            type: 'string',
+            type: isVariadic ? 'array' : 'string',
             help: undefined,
-            defaultValue: null,
+            defaultValue: isVariadic ? [] : null,
+            variadic: isVariadic,
             isOption: false
         }
 
@@ -161,6 +182,10 @@ export class Parser {
             const argSignature = this.argumentsSignature[argument]
 
             if (!value && !argSignature.optional) {
+                throw new MissingRequiredArgumentValue(argSignature)
+            }
+
+            if (!value?.length && argSignature.variadic && !argSignature.optional) {
                 throw new MissingRequiredArgumentValue(argSignature)
             }
         }

@@ -46,7 +46,19 @@ export class CommandHelper {
             for (const  signature of availableArguments) {
                 const spaces = generateSpace(maxLength - signature.name.length)
 
-                log(chalk`  {green ${signature.name}} ${spaces} ${signature.help ?? '\b'} ${signature.defaultValue !== undefined && signature.optional ? chalk`{yellow [default: ${signature.defaultValue}]}` : ''}`)
+                let message = chalk`  {green ${signature.name}} ${spaces} ${signature.help ?? '\b'}`
+
+                if (signature.defaultValue !== undefined && signature.optional) {
+                    const defaultValue = signature.type === 'array' ? JSON.stringify(signature.defaultValue) : signature.defaultValue
+
+                    message += chalk` {yellow [default: ${defaultValue}]}`
+                }
+
+                if (signature.variadic) {
+                    message += chalk` {white (variadic)}`
+                }
+
+                log(message)
             }
         }
 
@@ -64,8 +76,8 @@ export class CommandHelper {
                 }
 
                 if (signature.defaultValue !== undefined && signature.optional) {
-                    const value = signature.type === 'array' ? JSON.stringify(signature.defaultValue) : signature.defaultValue
-                    message += chalk` {yellow [default: ${value}]}`
+                    const defaultValue = signature.type === 'array' ? JSON.stringify(signature.defaultValue) : signature.defaultValue
+                    message += chalk` {yellow [default: ${defaultValue}]}`
                 }
 
                 log(message)
