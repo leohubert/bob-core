@@ -38,9 +38,9 @@ export default class TestCommand extends Command<BobTestContext> {
 
         console.log('test command', this.argument('user'), this.argument('test'))
 
-        console.log('variadic', this.argument('test2'))
+        console.log('variadic', this.argumentArray('test2'))
 
-        console.log('option', this.option('option'))
+        console.log('option', this.optionBoolean('option'))
 
         console.log('flag', this.option('flag'))
 

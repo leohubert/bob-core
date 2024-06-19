@@ -40,18 +40,37 @@ export abstract class Command<C = undefined> extends CommandHelper {
         return (await this.handle()) ?? 0;
     }
 
-    protected option<T = string | number | boolean | string[] | number[]>(key: string): T | null
-    protected option<T = string | number | boolean | string[] | number[]>(key: string, defaultValue: T): T
-    protected option<T = string | number | boolean | string[] | number[]>(key: string, defaultValue: null ): T | null
-    protected option(key: string, defaultValue: any = null): any {
+
+    protected option(key: string, defaultValue: any | null = null): any | null {
         return this.parser.option(key) ?? defaultValue;
     }
 
-    protected argument<T = string | number | boolean | string[] | number[]>(key: string): T | null
-    protected argument<T = string | number | boolean | string[] | number[]>(key: string, defaultValue: T): T
-    protected argument<T = string | number | boolean | string[] | number[]>(key: string, defaultValue: null): T | null
-    protected argument<T = string | number | boolean | string[] | number[]>(key: string, defaultValue: T | null = null): T | null {
+    protected optionBoolean(key: string, defaultValue: boolean = false): boolean  {
+        return this.parser.option(key) ?? defaultValue;
+    }
+
+    protected optionArray(key: string, defaultValue: string[] = []): string[] {
+        return this.parser.option(key) ?? defaultValue;
+    }
+
+    protected optionNumber(key: string, defaultValue: number | null = null): number | null {
+        return this.parser.option(key) ? parseInt(this.parser.option(key) as string) : defaultValue;
+    }
+
+
+    protected argument(key: string, defaultValue: any | null = null): any | null {
         return this.parser.argument(key) ?? defaultValue;
     }
 
+    protected argumentArray(key: string, defaultValue: string[] = []): string[] {
+        return this.parser.argument(key) ?? defaultValue;
+    }
+
+    protected argumentBoolean(key: string, defaultValue: boolean = false): boolean {
+        return this.parser.argument(key) ?? defaultValue;
+    }
+
+    protected argumentNumber(key: string, defaultValue: number | null = null): number | null {
+        return this.parser.argument(key) ? parseInt(this.parser.argument(key) as string) : defaultValue;
+    }
 }
