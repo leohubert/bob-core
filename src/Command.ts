@@ -1,5 +1,5 @@
 import {CommandHelper} from "./CommandHelper";
-import {Parser} from "./Parser";
+import {CommandParser} from "./CommandParser";
 
 export type CommandExample = {
     description: string;
@@ -16,7 +16,7 @@ export abstract class Command<C = undefined> extends CommandHelper {
 
     protected commandsExamples: CommandExample[] = [];
 
-    protected parser!: Parser;
+    protected parser!: CommandParser;
 
     get command(): string {
         if (this.parser) {
@@ -29,7 +29,7 @@ export abstract class Command<C = undefined> extends CommandHelper {
 
     public async run(ctx: C, ...args: any[]): Promise<number> {
         this.ctx = ctx;
-        this.parser = new Parser(this.signature, this.helperDefinitions, ...args);
+        this.parser = new CommandParser(this.signature, this.helperDefinitions, ...args);
 
         if (args.includes('--help') || args.includes('-h')) {
             return this.help.call(this)
@@ -40,11 +40,11 @@ export abstract class Command<C = undefined> extends CommandHelper {
         return (await this.handle()) ?? 0;
     }
 
-    protected option(key: string, defaultValue: any = null): string | null {
+    protected option<T = string | number | boolean | string[] | number[]>(key: string, defaultValue: T | null = null): T | null {
         return this.parser.option(key) ?? defaultValue;
     }
 
-    protected argument(key: string, defaultValue: any = null): string | Array<string> | null {
+    protected argument<T = string | number | boolean | string[] | number[]>(key: string, defaultValue: T | null = null): T | null {
         return this.parser.argument(key) ?? defaultValue;
     }
 

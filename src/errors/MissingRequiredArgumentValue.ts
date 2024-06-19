@@ -1,6 +1,6 @@
 import {BobError} from "./BobError";
 import chalk from "chalk";
-import {ArgSignature} from "../Parser";
+import {ArgSignature} from "../CommandParser";
 
 export class MissingRequiredArgumentValue extends BobError {
     constructor(public readonly paramSignature: ArgSignature) {

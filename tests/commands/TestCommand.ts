@@ -26,7 +26,7 @@ export default class TestCommand extends Command<BobTestContext> {
     ]
 
     protected async handle(): Promise<void> {
-        const user = this.argument('user')
+        let user = this.argument('user')
         if (user === 'yayo') {
             throw new BadParameter({
                 param: 'user',

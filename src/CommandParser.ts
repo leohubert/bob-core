@@ -12,7 +12,7 @@ export type ArgSignature = {
     isOption?: boolean
 }
 
-export class Parser {
+export class CommandParser {
 
     public command: string
     private arguments: { [argument: string]: any } = {}

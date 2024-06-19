@@ -2,7 +2,7 @@ import {Command} from "./Command";
 import chalk from "chalk";
 import {max} from "lodash";
 import {generateSpace} from "./lib/string";
-import {ArgSignature} from "./Parser";
+import {ArgSignature} from "./CommandParser";
 
 export class CommandHelper {
 
