@@ -3,10 +3,11 @@ import {MissingRequiredArgumentValue} from "./errors/MissingRequiredArgumentValu
 
 export type ArgSignature = {
     name: string
+    type: string
     optional: boolean
     alias?: string[]
     help?: string
-    defaultValue?: string | boolean | null
+    defaultValue?: string | boolean | Array<any> | null
     isOption?: boolean
 }
 
@@ -19,6 +20,25 @@ export class Parser {
     private optionsSignature: { [option: string]: ArgSignature } = {}
 
     public option(name: string): any {
+        if (!this.optionsSignature[name]) {
+            throw new Error(`Option ${name} not found`)
+        }
+
+        const signature = this.optionsSignature[name]
+
+        if (signature.type === 'boolean') {
+            if (this.options[name] === 'true' || this.options[name] === '1') {
+                return true
+            } else if (this.options[name] === 'false' || this.options[name] === '0') {
+                return false
+            }
+            return Boolean(this.options[name])
+        }
+
+        if (signature.type === 'array') {
+            return Array.isArray(this.options[name]) ? this.options[name] : [this.options[name]]
+        }
+
         return this.options[name]
     }
 
@@ -79,6 +99,7 @@ export class Parser {
         const arg: ArgSignature = {
             name: cleanedArgs,
             optional: isOptional,
+            type: 'string',
             help: undefined,
             defaultValue: null,
             isOption: false
@@ -100,12 +121,15 @@ export class Parser {
                 arg.defaultValue = null
             } else if (arg.defaultValue === 'true') {
                 arg.defaultValue = true
+                arg.type = 'boolean'
             } else if (arg.defaultValue === 'false') {
                 arg.defaultValue = false
+                arg.type = 'boolean'
             }
         } else {
             if (arg.name.startsWith('--')) {
                 arg.defaultValue = false
+                arg.type = 'boolean'
             }
         }
 
@@ -118,6 +142,11 @@ export class Parser {
         if (arg.name.startsWith('--')) {
             arg.isOption = true
             arg.name = arg.name.slice(2)
+        }
+
+        if (arg.defaultValue === '*') {
+            arg.defaultValue = []
+            arg.type = 'array'
         }
 
         if (this.helperDefinitions[arg.name]) {

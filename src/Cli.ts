@@ -28,6 +28,10 @@ export class Cli<C> {
         this.registerCommand(new this.HelpCommandClass(this.commandRegistry));
     }
 
+    setCommandResolver(resolver: (path: string) => Promise<Command>) {
+        this.commandRegistry.setCommandResolver(resolver);
+    }
+
     async loadCommandsPath(commandsPath: string) {
         await this.commandRegistry.loadCommandsPath(commandsPath);
     }

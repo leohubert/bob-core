@@ -3,11 +3,13 @@ import { Command } from "./Command";
 import * as fs from "node:fs";
 import {CommandNotFoundError} from "./errors/CommandNotFoundError";
 
+export type CommandResolver = (path: string) => Promise<Command>;
+
 export class CommandRegistry {
     private readonly commands: Record<string, Command> = {};
 
     get commandSuffix() {
-        return "Command.ts";
+        return "Command";
     }
 
     constructor() {}
@@ -18,6 +20,24 @@ export class CommandRegistry {
 
     getCommands(): Command[] {
         return Object.values(this.commands)
+    }
+
+
+    private commandResolver: CommandResolver = async (path: string) => {
+        const CommandClass = (await import(path)).default
+
+        let command: Command
+        if (CommandClass?.default) {
+            command = new CommandClass.default()
+        } else {
+            command = new CommandClass()
+        }
+
+        return command;
+    }
+
+    setCommandResolver(resolver: (path: string) => Promise<Command>) {
+        this.commandResolver = resolver;
     }
 
     registerCommand(command: Command, force: boolean = false) {
@@ -34,24 +54,13 @@ export class CommandRegistry {
 
     async loadCommandsPath(commandsPath: string) {
         for await (const file of this.listCommandsFiles(commandsPath)) {
-            let CommandClass: { new(): Command };
-
             try {
-                CommandClass = (await import(file)).default as {
-                    new(): Command;
-                };
-            } catch (e) {
-                console.error(`Failed to load command ${file}. ${e}`);
-                continue;
-            }
-
-            try {
-                const command = new CommandClass();
+                const command = await this.commandResolver(file);
 
                 this.registerCommand(command)
 
             } catch (e) {
-                throw new Error(`Command ${file} failed to launch.`);
+                throw new Error(`Command ${file} failed to load. ${e}`)
             }
         }
     }
@@ -75,7 +84,7 @@ export class CommandRegistry {
             if (dirent.isDirectory()) {
                 yield* this.listCommandsFiles(path.resolve(basePath, dirent.name));
             } else {
-                if (!direntPath.endsWith(this.commandSuffix)) {
+                if (!direntPath.endsWith(`${this.commandSuffix}.ts`) && !direntPath.endsWith(`${this.commandSuffix}.js`)) {
                     continue
                 }
                 yield direntPath;

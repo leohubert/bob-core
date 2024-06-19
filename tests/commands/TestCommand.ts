@@ -3,7 +3,7 @@ import {BadParameter} from "../../src/errors/BadParameter";
 import {BobTestContext} from "../main";
 
 export default class TestCommand extends Command<BobTestContext> {
-    signature = 'test {user} {test: test description?} {--option|o|b} {--flag=} { --flag2 = 2}';
+    signature = 'test {user} {test: test description?} {--option|o|b} {--flag=} {--arr=*} { --flag2 = 2}';
     description = 'test description'
 
     helperDefinitions = {
@@ -40,6 +40,8 @@ export default class TestCommand extends Command<BobTestContext> {
         console.log('option', this.option('option'))
 
         console.log('flag', this.option('flag'))
+
+        console.log('arr', this.option('arr'))
 
         console.log('flag2', this.option('flag2'))
     }

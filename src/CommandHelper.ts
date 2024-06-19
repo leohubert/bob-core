@@ -11,6 +11,7 @@ export class CommandHelper {
             {
                 name: 'help',
                 optional: true,
+                type: 'boolean',
                 help: chalk`Display help for the given command. When no command is given display help for the {green list} command`,
                 alias: ['h']
             }
@@ -56,8 +57,18 @@ export class CommandHelper {
                 const spaces = generateSpace(maxLength - signature.optionWithAlias.length)
 
 
+                let message = chalk`{green ${signature.optionWithAlias}} ${spaces} ${signature.help ?? '\b'}`
 
-                log(chalk`  {green ${signature.optionWithAlias}} ${spaces} ${signature.help ?? '\b'}  ${signature.defaultValue !== undefined && signature.optional ? chalk`{yellow [default: ${signature.defaultValue}]}` : ''}`)
+                if (signature.type) {
+                    message += chalk` {white (${signature.type})}`
+                }
+
+                if (signature.defaultValue !== undefined && signature.optional) {
+                    const value = signature.type === 'array' ? JSON.stringify(signature.defaultValue) : signature.defaultValue
+                    message += chalk` {yellow [default: ${value}]}`
+                }
+
+                log(message)
             }
         }
 
