@@ -34,6 +34,9 @@ export default class TestCommand extends Command<BobTestContext> {
             })
         }
 
+        const options = this.option('option')
+        console.log('options', options)
+
         console.log('ctx', await this.ctx.bambooClient.getProjects())
 
         console.log('test command', this.argument('user'), this.argument('test'))

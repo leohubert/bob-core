@@ -46,8 +46,16 @@ export class CommandParser {
         return this.options[name]
     }
 
+    public setOption(name: string, value: any) {
+        this.options[name] = value
+    }
+
     public argument(name: string): any {
         return this.arguments[name]
+    }
+
+    public setArgument(name: string, value: any) {
+        this.arguments[name] = value
     }
 
     public argumentsSignatures() {

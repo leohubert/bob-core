@@ -40,8 +40,17 @@ export abstract class Command<C = undefined> extends CommandHelper {
         return (await this.handle()) ?? 0;
     }
 
+    protected setOption(name: string, value: any) {
+        this.parser.setOption(name, value);
+    }
 
-    protected option<T = string>(key: string, defaultValue: T | null = null): T | null {
+    protected setArgument(name: string, value: any) {
+        this.parser.setArgument(name, value);
+    }
+
+    protected option<T = string>(key: string): T | null
+    protected option<T = string>(key: string, defaultValue: T): NoInfer<T>
+    protected option<T = string>(key: string, defaultValue: T | null = null): NoInfer<T> | null {
         return this.parser.option(key) ?? defaultValue;
     }
 
@@ -49,25 +58,44 @@ export abstract class Command<C = undefined> extends CommandHelper {
         return this.parser.option(key) ?? defaultValue;
     }
 
-    protected optionArray(key: string, defaultValue: string[] = []): string[] {
-        const values = this.parser.option(key) as Array<string>
-        if (values?.length) {
+    protected optionArray<T = string>(key: string, defaultValue: Array<T> = []): Array<NoInfer<T>> {
+        const values = this.parser.option(key) as Array<T>
+        if (!Array.isArray(values)) {
+            throw new Error(`Option ${key} is not an array`);
+        }
+        if (values.length) {
             return values;
         }
         return defaultValue;
     }
 
+    protected optionNumber(key: string): number | null
+    protected optionNumber(key: string, defaultValue: number): number
     protected optionNumber(key: string, defaultValue: number | null = null): number | null {
-        return this.parser.option(key) ? parseInt(this.parser.option(key) as string) : defaultValue;
+        const value = this.parser.option(key);
+        if (!value) {
+            return defaultValue;
+        }
+        if (typeof value === 'number') {
+            return value;
+        }
+
+        return parseInt(value);
     }
 
 
-    protected argument(key: string, defaultValue: any | null = null): any | null {
+    protected argument<T = string>(key: string): T | null
+    protected argument<T = string>(key: string, defaultValue: T): NoInfer<T>
+    protected argument<T = string>(key: string, defaultValue: T | null = null): NoInfer<T> | null {
         return this.parser.argument(key) ?? defaultValue;
     }
 
-    protected argumentArray(key: string, defaultValue: string[] = []): string[] {
-        const values = this.parser.argument(key) as Array<string>
+    protected argumentArray<T = string>(key: string, defaultValue: Array<any> = []): Array<T> {
+        const values = this.parser.argument(key) as Array<T>
+        if (!Array.isArray(values)) {
+            throw new Error(`Argument ${key} is not an array`);
+        }
+
         if (values?.length) {
             return values;
         }
@@ -79,6 +107,14 @@ export abstract class Command<C = undefined> extends CommandHelper {
     }
 
     protected argumentNumber(key: string, defaultValue: number | null = null): number | null {
-        return this.parser.argument(key) ? parseInt(this.parser.argument(key) as string) : defaultValue;
+        const value = this.parser.argument(key);
+        if (!value) {
+            return defaultValue;
+        }
+        if (typeof value === 'number') {
+            return value;
+        }
+
+        return parseInt(value);
     }
 }
