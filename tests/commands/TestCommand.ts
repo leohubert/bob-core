@@ -21,7 +21,7 @@ export default class TestCommand extends Command<BobTestContext> {
         },
         {
             description: 'Example 2',
-            command: 'test bite --flag=2'
+            command: 'test anothervalue --flag=2'
         }
     ]
 

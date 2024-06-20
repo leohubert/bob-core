@@ -30,6 +30,28 @@ import { Command } from 'bob-core';
 export default class MyCommand extends Command {
   public name = 'my-command {arg1} {--option1}';
   public description = 'This is my command';
+  
+  /**
+   * Define the arguments and options help
+   *
+   * Optional
+   */
+  helpDefinition = {
+      arg1: 'This is the first argument',
+      '--option1': 'This is the first option'
+  }
+
+  /**
+   * Provide examples of how to use the command
+   *
+   * Optional
+   */
+  commandsExamples = [
+      {
+            command: 'my-command value1 --option1',
+            description: 'This is an example'
+      }
+  ]
 
   public async handle() {
     console.log('Hello World');
@@ -38,6 +60,72 @@ export default class MyCommand extends Command {
   }
 }
 ```
+
+## Cli Help
+
+The CLI provides a help command that displays all available commands and their descriptions.
+
+```bash
+node cli.js help
+```
+
+## Commands
+
+```bash
+Bob CLI x.x.x 💪
+
+Usage:
+  command [options] [arguments]
+
+Available commands:
+
+help         Show help
+test         test description
+sub:
+  sub        sub command description
+  sub:sub    sub:sub command description
+
+```
+
+## Command help
+
+You can also display the help of a specific command.
+
+```bash
+node cli.js test -h
+```
+
+```bash
+Description:
+  test description
+
+Usage:
+  test <user> [options]
+
+Arguments:
+  user                  user description
+  test                  test description [default: null]
+  test2                 [default: []] (variadic)
+
+Options:
+--option, -o, -b      option description (boolean) [default: false]
+--flag                flag description (string) [default: null]
+--arr                 arr description (array) [default: null]
+--flag2               flag2 description (string) [default: 2]
+--help, -h            Display help for the given command. When no command is given display help for the list command (boolean)
+
+Examples:
+  Example description 1
+
+    node cli.js test yayo --option
+
+  Example description 2
+
+    node cli.js test anothervalue --flag=2
+```
+
+Depending on the command, the help will display the command signature, description, arguments, options and examples. 
+
 
 ## Commands signature
 
