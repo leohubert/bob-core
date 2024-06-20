@@ -114,14 +114,14 @@ Options:
   --flag2               flag2 description (string) [default: 2]
   --help, -h            Display help for the given command. When no command is given display help for the list command (boolean)
 
-  Examples:
-    Example description 1
+Examples:
+  Example description 1
 
-      node cli.js test yayo --option
+    node cli.js test yayo --option
 
-    Example description 2
+  Example description 2
 
-      node cli.js test anothervalue --flag=2
+    node cli.js test anothervalue --flag=2
 ```
 
 Depending on the command, the help will display the command signature, description, arguments, options and examples. 
