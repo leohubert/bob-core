@@ -41,7 +41,7 @@ export abstract class Command<C = undefined> extends CommandHelper {
     }
 
 
-    protected option(key: string, defaultValue: any | null = null): any | null {
+    protected option<T = string>(key: string, defaultValue: T | null = null): T | null {
         return this.parser.option(key) ?? defaultValue;
     }
 
@@ -50,7 +50,11 @@ export abstract class Command<C = undefined> extends CommandHelper {
     }
 
     protected optionArray(key: string, defaultValue: string[] = []): string[] {
-        return this.parser.option(key) ?? defaultValue;
+        const values = this.parser.option(key) as Array<string>
+        if (values?.length) {
+            return values;
+        }
+        return defaultValue;
     }
 
     protected optionNumber(key: string, defaultValue: number | null = null): number | null {
@@ -63,7 +67,11 @@ export abstract class Command<C = undefined> extends CommandHelper {
     }
 
     protected argumentArray(key: string, defaultValue: string[] = []): string[] {
-        return this.parser.argument(key) ?? defaultValue;
+        const values = this.parser.argument(key) as Array<string>
+        if (values?.length) {
+            return values;
+        }
+        return defaultValue;
     }
 
     protected argumentBoolean(key: string, defaultValue: boolean = false): boolean {
