@@ -3,7 +3,7 @@ import {BadParameter} from "../../src/errors/BadParameter";
 import {BobTestContext} from "../main";
 
 export default class TestCommand extends Command<BobTestContext> {
-    signature = 'test {user} {test: test description?} {test2*?} {--option|o|b} {--flag=} {--arr=*} { --flag2 = 2}';
+    signature = 'test {user} {test?: test description} {test2*?} {--option|o|b} {--flag=} {--arr=*} { --flag2 = 2}';
     description = 'test description'
 
     helperDefinitions = {

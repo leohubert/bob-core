@@ -1,5 +1,8 @@
 import minimist from 'minimist'
 import {MissingRequiredArgumentValue} from "./errors/MissingRequiredArgumentValue";
+import {MissingSignatureOption} from "./errors/MissingSignatureOption";
+import {MissingSignatureArgument} from "./errors/MissingSignatureArgument";
+import {InvalidOption} from "./errors/InvalidOption";
 
 export type ArgSignature = {
     name: string
@@ -18,119 +21,167 @@ export class CommandParser {
     private arguments: { [argument: string]: any } = {}
     private options: Record<string, any> = {}
     private argumentsSignature: { [argument: string]: ArgSignature } = {}
-    private optionsSignature: { [option: string]: ArgSignature } = {}
+    private optionSignatures: { [option: string]: ArgSignature } = {}
+    private optionAliases: { [alias: string]: string } = {}
 
     public option(name: string): any {
-        if (!this.optionsSignature[name]) {
-            throw new Error(`Option ${name} not found`)
+        if (!this.optionSignatures[name]) {
+            throw new MissingSignatureOption(name, Object.values(this.optionSignatures))
         }
-
-        const signature = this.optionsSignature[name]
-
-        if (signature.type === 'boolean') {
-            if (this.options[name] === 'true' || this.options[name] === '1') {
-                return true
-            } else if (this.options[name] === 'false' || this.options[name] === '0') {
-                return false
-            }
-            return Boolean(this.options[name])
-        }
-
-        if (signature.type === 'array') {
-            if (!this.options[name]) {
-                return []
-            }
-            return Array.isArray(this.options[name]) ? this.options[name] : [this.options[name]]
-        }
-
         return this.options[name]
     }
 
     public setOption(name: string, value: any) {
+        if (!this.optionSignatures[name]) {
+            throw new MissingSignatureOption(name, Object.values(this.optionSignatures))
+        }
         this.options[name] = value
     }
 
+    public optionHelp(name: string): string | undefined {
+        const optionSignature = this.optionSignatures[name]
+        if (!optionSignature) {
+            throw new MissingSignatureOption(name, Object.values(this.optionSignatures))
+        }
+        return this.optionSignatures[name].help
+    }
+
     public argument(name: string): any {
+        if (!this.argumentsSignature[name]) {
+            throw new MissingSignatureArgument(name, Object.values(this.argumentsSignature))
+        }
         return this.arguments[name]
     }
 
     public setArgument(name: string, value: any) {
+        if (!this.argumentsSignature[name]) {
+            throw new MissingSignatureArgument(name, Object.values(this.argumentsSignature))
+        }
         this.arguments[name] = value
     }
 
-    public argumentsSignatures() {
+    public argumentHelp(name: string): string | undefined {
+        const argumentSignature = this.argumentsSignature[name]
+        if (!argumentSignature) {
+            throw new MissingSignatureArgument(name, Object.values(this.argumentsSignature))
+        }
+        return this.argumentsSignature[name].help
+    }
+
+    public getArgumentSignatures() {
         return this.argumentsSignature
     }
 
-    public optionsSignatures() {
-        return this.optionsSignature
+    public getOptionSignatures() {
+        return this.optionSignatures
     }
 
-    constructor(protected readonly signature: string, protected readonly helperDefinitions: { [key: string]: string }, ...args: any[]) {
-        const [command, ...params] = signature.split(/\{(.*?)\}/g).map(param => param.trim()).filter(Boolean)
+    constructor(
+        protected readonly signature: string,
+        protected readonly helperDefinitions: { [key: string]: string },
+        protected readonly defaultOptions: ArgSignature[] = [],
+        ...args: any[]) {
+        const [command, ...signatureParams] = signature.split(/\{(.*?)\}/g).map(param => param.trim()).filter(Boolean)
 
         const { _: paramValues, ...optionValues } = minimist(args)
 
+        if (defaultOptions.length) {
+            for (const option of defaultOptions) {
+                this.optionSignatures[option.name] = option
+                this.options[option.name] = option.defaultValue
+                if (option.alias) {
+                    for (const alias of option.alias) {
+                        this.optionAliases[alias] = option.name
+                    }
+                }
+            }
+        }
+
         this.command = command
-        this.parseSignature(params, optionValues, paramValues)
+        this.parseSignature(signatureParams)
+        this.parseArguments(paramValues)
+        this.parseOptions(optionValues)
     }
 
-    private parseSignature(params: string[], optionValues: any, paramValues: any[]) {
+    private getParamValue(value: any, signature: ArgSignature) {
+        if (signature.type === 'boolean') {
+            if (value === 'true' || value === '1') {
+                return true
+            } else if (value === 'false' || value === '0') {
+                return false
+            }
+            return Boolean(value)
+        }
+
+        if (signature.type === 'array') {
+            if (!value) {
+                return []
+            }
+            return Array.isArray(value) ? value : [value]
+        }
+
+        return value ?? signature.defaultValue
+    }
+
+    private parseArguments(paramValues: string[]) {
+        for (const [argument, value] of Object.entries(this.arguments)) {
+            const argSignature = this.argumentsSignature[argument]
+
+            if (argSignature.variadic) {
+                this.arguments[argument] = paramValues
+            } else {
+                const paramValue = paramValues.shift()
+
+                this.arguments[argument] = this.getParamValue(paramValue, argSignature)
+            }
+        }
+    }
+
+    private parseOptions(optionValues: Record<string, any>) {
+        for (const [option, value] of Object.entries(optionValues)) {
+            const optionAlias = this.optionAliases[option]
+            const optionSignature = this.optionSignatures[option] ?? this.optionSignatures[optionAlias]
+
+            if (!optionSignature) {
+                throw new InvalidOption(option, Object.values(this.optionSignatures))
+            }
+
+            this.options[option] = this.getParamValue(value, optionSignature)
+
+            for (const alias of optionSignature.alias ?? []) {
+                if (optionValues[alias]) {
+                    this.options[optionSignature.name] = optionValues[alias]
+                }
+            }
+        }
+    }
+
+    private parseSignature(params: string[]) {
         for (const paramSignature of params) {
             const param = this.parseParamSignature(paramSignature)
 
             if (param.isOption) {
-                const optionValue = optionValues[param.name]
-
-                this.options[param.name] = optionValue ?? param.defaultValue ?? null
-                this.optionsSignature[param.name] = param
+                this.options[param.name] = param.defaultValue ?? null
+                this.optionSignatures[param.name] = param
 
                 for (const alias of param.alias ?? []) {
-                    if (optionValues[alias]) {
-                        this.options[param.name] = optionValues[alias]
-                        this.optionsSignature[param.name] = param
-                    }
+                    this.optionAliases[alias] = param.name
                 }
             } else {
-
-                if (param.variadic) {
-                    const paramValue = paramValues.splice(0, paramValues.length)
-
-                    this.arguments[param.name] = paramValue ?? []
-                } else {
-                    const paramValue = paramValues.shift()
-
-                    this.arguments[param.name] = paramValue ?? param.defaultValue ?? null
-                }
-
-
+                this.arguments[param.name] = param.defaultValue ?? null
                 this.argumentsSignature[param.name] = param
             }
         }
     }
 
     private parseParamSignature(argument: string): ArgSignature {
-        let cleanedArgs = argument
-        let isOptional = false
-        let isVariadic = false
-
-        if (cleanedArgs.endsWith('?')) {
-            cleanedArgs = cleanedArgs.slice(0, -1)
-            isOptional = true
-        }
-
-        if (cleanedArgs.endsWith('*'))  {
-            cleanedArgs = cleanedArgs.slice(0, -1)
-            isVariadic = true
-        }
-
         const arg: ArgSignature = {
-            name: cleanedArgs,
-            optional: isOptional,
-            type: isVariadic ? 'array' : 'string',
+            name: argument,
+            optional: false,
+            type: 'string',
             help: undefined,
-            defaultValue: isVariadic ? [] : null,
-            variadic: isVariadic,
+            defaultValue: null,
+            variadic: false,
             isOption: false
         }
 
@@ -179,6 +230,18 @@ export class CommandParser {
             arg.type = 'array'
         }
 
+        if (arg.name.endsWith('?')) {
+            arg.optional = true
+            arg.name = arg.name.slice(0, -1)
+        }
+
+        if (arg.name.endsWith('*')) {
+            arg.type = 'array'
+            arg.variadic = true
+            arg.defaultValue = []
+            arg.name = arg.name.slice(0, -1)
+        }
+
         arg.help = arg.help ?? this.helperDefinitions[arg.name] ?? this.helperDefinitions[`--${arg.name}`]
 
         return arg
@@ -198,5 +261,4 @@ export class CommandParser {
             }
         }
     }
-
 }

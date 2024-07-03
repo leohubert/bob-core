@@ -1,5 +1,6 @@
 import {CommandHelper} from "./CommandHelper";
-import {CommandParser} from "./CommandParser";
+import {ArgSignature, CommandParser} from "./CommandParser";
+import chalk from "chalk";
 
 export type CommandExample = {
     description: string;
@@ -18,6 +19,24 @@ export abstract class Command<C = undefined> extends CommandHelper {
 
     protected parser!: CommandParser;
 
+    protected abstract handle(): Promise<void|number>;
+
+    private get CommandParserClass(): typeof CommandParser {
+        return CommandParser;
+    }
+
+    protected get defaultOptions(): ArgSignature[] {
+        return [
+            {
+                name: 'help',
+                optional: true,
+                type: 'boolean',
+                help: chalk`Display help for the given command. When no command is given display help for the {green list} command`,
+                alias: ['h']
+            }
+        ]
+    }
+
     get command(): string {
         if (this.parser) {
             return this.parser.command;
@@ -25,11 +44,9 @@ export abstract class Command<C = undefined> extends CommandHelper {
         return this.signature.split(' ')[0];
     }
 
-    protected abstract handle(): Promise<void|number>;
-
     public async run(ctx: C, ...args: any[]): Promise<number> {
         this.ctx = ctx;
-        this.parser = new CommandParser(this.signature, this.helperDefinitions, ...args);
+        this.parser = new this.CommandParserClass(this.signature, this.helperDefinitions, this.defaultOptions, ...args);
 
         if (args.includes('--help') || args.includes('-h')) {
             return this.help.call(this)

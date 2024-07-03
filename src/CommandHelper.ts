@@ -6,23 +6,11 @@ import {ArgSignature} from "./CommandParser";
 
 export class CommandHelper {
 
-    get defaultOptions(): ArgSignature[] {
-        return [
-            {
-                name: 'help',
-                optional: true,
-                type: 'boolean',
-                help: chalk`Display help for the given command. When no command is given display help for the {green list} command`,
-                alias: ['h']
-            }
-        ]
-    }
-
     public help(this: Command<any>): number {
         const log = console.log
 
-        const availableArguments = Object.values(this.parser.argumentsSignatures())
-        const availableOptions = [...Object.values(this.parser.optionsSignatures()), ...this.defaultOptions]
+        const availableArguments = Object.values(this.parser.getArgumentSignatures())
+        const availableOptions = Object.values(this.parser.getOptionSignatures())
             .map((signature) => ({
                 ...signature,
                 optionWithAlias: `--${signature.name}${signature.alias?.map(a => `, -${a}`).join('') ?? ''}`

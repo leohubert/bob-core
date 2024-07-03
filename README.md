@@ -17,7 +17,7 @@ import { CLI } from 'bob-core';
 
 const cli = new CLI();
 
-await cli.loadCommandsPath('./commands');
+await cli.withCommands('./commands');
 
 cli.run('commandName', 'arg1', 'arg2', 'arg3');
 ```
