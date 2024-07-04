@@ -23,6 +23,6 @@ export class InvalidOption extends BobError {
             log('')
         }
 
-        log(chalk`  {white.bgRed  ERROR } Option "{yellow ${this.option}}" is not recognized.`)
+        log(chalk`  {white.bgRed  ERROR } Option {bold.yellow ${this.option}} is not recognized.`)
     }
 }

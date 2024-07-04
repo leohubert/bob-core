@@ -14,7 +14,6 @@ export class MissingSignatureOption extends BobError {
             log(chalk`{yellow Available options}:`)
             for (const option of this.optionsSignature) {
                 const type = option.type ? chalk`{white (${option.type})}` : ''
-
                 const spaces = ' '.repeat(20 - option.name.length)
 
                 log(chalk`  {green ${option.name}} ${spaces} ${option.help ?? '\b'} ${type}`)
@@ -22,6 +21,6 @@ export class MissingSignatureOption extends BobError {
             log('')
         }
 
-        log(chalk`  {white.bgRed  ERROR } Option "{yellow ${this.option}}" is missing in the signature.`)
+        log(chalk`  {white.bgRed  ERROR } Option {bold.yellow ${this.option}} is missing in the signature.`)
     }
 }

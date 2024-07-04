@@ -21,7 +21,7 @@ export class BadParameter extends BobError {
     pretty(): void {
         const log = console.log
 
-        log(chalk`  {white.bgRed  ERROR } Argument "${this.param.param}" value is invalid. `)
+        log(chalk`  {white.bgRed  ERROR } Argument {bold.yellow ${this.param.param}} value is invalid. `)
 
         if (this.param.value || this.param.reason) {
             log('')

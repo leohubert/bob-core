@@ -21,6 +21,6 @@ export class MissingSignatureArgument extends BobError {
             log('')
         }
 
-        log(chalk`  {white.bgRed  ERROR } Argument "{yellow ${this.argument}}" is missing in the signature.`)
+        log(chalk`  {white.bgRed  ERROR } Argument {bold.yellow ${this.argument}} is missing in the signature.`)
     }
 }

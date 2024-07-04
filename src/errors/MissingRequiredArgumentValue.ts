@@ -10,9 +10,10 @@ export class MissingRequiredArgumentValue extends BobError {
     pretty(): void {
         const log = console.log
 
-        log(chalk`  {white.bgRed  ERROR } Argument "${this.paramSignature.name}" is required.`)
         if (this.paramSignature.help) {
-            log(chalk`\n  {yellow Help}: ${this.paramSignature.help}`)
+            log(chalk`{yellow Help}: ${this.paramSignature.help}\n`)
         }
+
+        log(chalk`  {white.bgRed  ERROR } Argument {bold.yellow ${this.paramSignature.name}} is required.`)
     }
 }
