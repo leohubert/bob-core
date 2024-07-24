@@ -7,7 +7,7 @@ export type CommandExample = {
     command: string;
 }
 
-export abstract class Command<C = undefined> extends CommandHelper {
+export abstract class Command<C = any> extends CommandHelper {
     abstract signature: string;
     abstract description: string;
 

@@ -1,18 +1,14 @@
 import path from "path";
-import {Cli, Command} from "../src";
-
-export type BobTestContext = {
-    bambooClient: {
-        getProjects: () => Promise<any>
-    }
-
-}
+import {Cli} from "../src";
+import {Command, CommandContext} from "./command";
 
 class TestTestCommand extends Command {
     signature = 'test:test'
     description = 'test test'
 
-    protected handle(): Promise<number | void> {
+    protected async handle(): Promise<number | void> {
+        const res = await this.ctx.bambooClient.getProjects()
+        console.log(res)
         throw new Error("Method not implemented.");
     }
 }
@@ -27,7 +23,7 @@ class TestOtherTestCommand extends Command {
 }
 
 async function main() {
-    const cli = new Cli<BobTestContext>({
+    const cli = new Cli<CommandContext>({
         bambooClient: {
             getProjects: async () => {
                 return [
@@ -60,5 +56,8 @@ async function main() {
 
 main()
     .then(process.exit)
-    .catch(console.error)
+    .catch(err => {
+        console.error(err)
+        process.exit(1)
+    })
 

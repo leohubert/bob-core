@@ -1,4 +1,4 @@
-import {Command} from "../../../../src/Command";
+import {Command} from "../../../../src";
 
 export default class SubSubCommand extends Command {
     signature = 'sub:sub';

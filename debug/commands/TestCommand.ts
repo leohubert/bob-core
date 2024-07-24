@@ -1,8 +1,8 @@
 import {Command} from "../../src";
 import {BadParameter} from "../../src/errors/BadParameter";
-import {BobTestContext} from "../main";
+import {CommandContext} from "../command";
 
-export default class TestCommand extends Command<BobTestContext> {
+export default class TestCommand extends Command<CommandContext> {
     signature = 'test {user} {test?: test description} {test2*?} {--option|o|b} {--flag=} {--arr=*} { --flag2 = 2}';
     description = 'test description'
 
