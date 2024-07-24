@@ -2,7 +2,6 @@ import { CommandRegistry } from "./CommandRegistry";
 import {Command} from "./Command";
 import HelpCommand from "./commands/HelpCommand";
 import {ExceptionHandler} from "./ExceptionHandler";
-import Constructor = jest.Constructor;
 
 export class Cli<C> {
 
@@ -32,11 +31,11 @@ export class Cli<C> {
         this.registerCommand(this.helpCommand);
     }
 
-    setCommandResolver(resolver: (path: string) => Promise<Command>) {
+    setCommandResolver(resolver: (path: string) => Promise<Command<C>>) {
         this.commandRegistry.setCommandResolver(resolver);
     }
 
-    async withCommands(...commands: Array<Command | { new (): Command } | string>) {
+    async withCommands(...commands: Array<Command<C> | { new (): Command<C> } | string>) {
         for (const command of commands) {
             if (typeof command === 'string') {
                 await this.commandRegistry.loadCommandsPath(command);
@@ -59,7 +58,7 @@ export class Cli<C> {
         return await this.runCommand(this.helpCommand.command)
     }
 
-    protected registerCommand(command: Command) {
+    protected registerCommand(command: Command<C>) {
         this.commandRegistry.registerCommand(command)
     }
 }
