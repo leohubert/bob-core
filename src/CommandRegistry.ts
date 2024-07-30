@@ -2,6 +2,9 @@ import path from "path";
 import { Command } from "./Command";
 import * as fs from "node:fs";
 import {CommandNotFoundError} from "./errors/CommandNotFoundError";
+import * as SS from "string-similarity";
+import chalk from "chalk";
+import {type} from "node:os";
 
 export type CommandResolver = (path: string) => Promise<Command>;
 
@@ -65,14 +68,52 @@ export class CommandRegistry {
         }
     }
 
-    async runCommand(ctx: any, command: string, ...args: any[]) {
-        const commandToRun: Command = this.commands[command];
+    async runCommand(ctx: any, command: string|Command, ...args: any[]): Promise<number> {
+        const commandToRun: Command = typeof command === 'string' ? this.commands[command] : command;
+        const commandSignature = typeof command === 'string' ? command : commandToRun.command;
 
-        if (!this.commands[command]) {
-            throw new CommandNotFoundError(command, this.getAvailableCommands());
+        if (!commandToRun) {
+            const suggestedCommand = await this.suggestCommand(commandSignature);
+            if (suggestedCommand) {
+                return await this.runCommand(ctx, suggestedCommand, ...args);
+            }
+            return 1;
         }
 
         return await commandToRun.run(ctx, ...args);
+    }
+
+    private async suggestCommand(command: string): Promise<string | null> {
+        const availableCommands = this.getAvailableCommands()
+        const similarCommands = SS.findBestMatch(command, availableCommands).ratings.filter(r => r.rating > 0.2).map(r => r.target);
+
+
+        if (similarCommands.length === 1) {
+            const commandToAsk = similarCommands[0];
+            const runCommand = await this.askRunSimilarCommand(command, commandToAsk);
+            if (runCommand) {
+                return commandToAsk;
+            } else {
+                return null;
+            }
+        }
+
+        throw new CommandNotFoundError(command, similarCommands);
+    }
+
+    private async askRunSimilarCommand(command: string, commandToAsk: string): Promise<boolean> {
+        const readline = require('readline').createInterface({
+            input: process.stdin,
+            output: process.stdout
+        });
+
+        console.log(chalk`  {bgRed  ERROR } Command {yellow ${command}} not found.\n`)
+        return new Promise((resolve) => {
+            readline.question(chalk`{green Do you want to run {yellow ${commandToAsk}} instead?} {white (yes/no)} [{yellow no}]\n > `, (answer: string) => {
+                resolve(answer === 'yes' || answer === 'y');
+                readline.close();
+            });
+        });
     }
 
     private async* listCommandsFiles(

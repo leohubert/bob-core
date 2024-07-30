@@ -28,7 +28,6 @@ export class Cli<C> {
         this.commandRegistry = new this.CommandRegistryClass();
         this.exceptionHandler = new this.ExceptionHandlerClass();
         this.helpCommand = new this.HelpCommandClass(this.commandRegistry);
-        this.registerCommand(this.helpCommand);
     }
 
     setCommandResolver(resolver: (path: string) => Promise<Command<C>>) {
@@ -49,13 +48,17 @@ export class Cli<C> {
         }
     }
 
-    async runCommand(command: string, ...args: any[]) {
+    async runCommand(command: string|Command, ...args: any[]): Promise<number> {
+        if (!command) {
+            return await this.runHelpCommand()
+        }
+
         return await this.commandRegistry.runCommand(this.ctx, command, ...args)
             .catch(this.exceptionHandler.handle);
     }
 
-    async runHelpCommand() {
-        return await this.runCommand(this.helpCommand.command)
+    async runHelpCommand(): Promise<number> {
+        return await this.runCommand(this.helpCommand)
     }
 
     protected registerCommand(command: Command<C>) {

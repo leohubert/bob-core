@@ -3,7 +3,7 @@ import {Cli} from "../src";
 import {Command, CommandContext} from "./command";
 
 class TestTestCommand extends Command {
-    signature = 'test:test'
+    signature = 'scout:sync-index-settings'
     description = 'test test'
 
     protected async handle(): Promise<number | void> {
