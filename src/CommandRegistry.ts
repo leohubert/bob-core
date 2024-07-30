@@ -4,7 +4,6 @@ import * as fs from "node:fs";
 import {CommandNotFoundError} from "./errors/CommandNotFoundError";
 import * as SS from "string-similarity";
 import chalk from "chalk";
-import {type} from "node:os";
 
 export type CommandResolver = (path: string) => Promise<Command>;
 
@@ -85,11 +84,11 @@ export class CommandRegistry {
 
     private async suggestCommand(command: string): Promise<string | null> {
         const availableCommands = this.getAvailableCommands()
-        const similarCommands = SS.findBestMatch(command, availableCommands).ratings.filter(r => r.rating > 0.3).map(r => r.target);
+        const {bestMatch, bestMatchIndex, ratings} = SS.findBestMatch(command, availableCommands)
+        const similarCommands = ratings.filter(r => r.rating > 0.3).map(r => r.target);
 
-
-        if (similarCommands.length === 1) {
-            const commandToAsk = similarCommands[0];
+        if ((bestMatch.rating > 0 && similarCommands.length <= 1) || (bestMatch.rating > 0.7 && similarCommands.length > 1)) {
+            const commandToAsk = availableCommands[bestMatchIndex];
             const runCommand = await this.askRunSimilarCommand(command, commandToAsk);
             if (runCommand) {
                 return commandToAsk;
