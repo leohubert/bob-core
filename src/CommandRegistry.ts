@@ -85,7 +85,7 @@ export class CommandRegistry {
 
     private async suggestCommand(command: string): Promise<string | null> {
         const availableCommands = this.getAvailableCommands()
-        const similarCommands = SS.findBestMatch(command, availableCommands).ratings.filter(r => r.rating > 0.2).map(r => r.target);
+        const similarCommands = SS.findBestMatch(command, availableCommands).ratings.filter(r => r.rating > 0.3).map(r => r.target);
 
 
         if (similarCommands.length === 1) {
