@@ -1,5 +1,5 @@
 import {Command} from "../../src";
-import {BadParameter} from "../../src/errors/BadParameter";
+import {BadCommandParameter} from "../../src/errors/BadCommandParameter";
 import {CommandContext} from "../command";
 
 export default class TestCommand extends Command<CommandContext> {
@@ -28,7 +28,7 @@ export default class TestCommand extends Command<CommandContext> {
     protected async handle(): Promise<void> {
         let user = this.argument('user')
         if (user === 'yayo') {
-            throw new BadParameter({
+            throw new BadCommandParameter({
                 param: 'user',
                 reason: 'yayo is not allowed'
             })
