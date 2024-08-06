@@ -1,14 +1,14 @@
 import {BobError} from "./BobError";
 import chalk from "chalk";
 
-export type BadParameterProps = {
+export type OptionProps = {
     option: string
     value?: string
     reason?: string
 }
 
 export class BadCommandOption extends BobError {
-    constructor(public readonly param: BadParameterProps) {
+    constructor(public readonly param: OptionProps) {
         let message = `Option "${param.option}" value is invalid.`
         if (param.reason) {
             message += ` Reason: ${param.reason}`
