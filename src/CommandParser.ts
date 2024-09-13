@@ -84,23 +84,11 @@ export class CommandParser {
         const [command, ...signatureParams] = signature.split(/\{(.*?)\}/g).map(param => param.trim()).filter(Boolean)
 
         const { _: paramValues, ...optionValues } = minimist(args)
-
-        if (defaultOptions.length) {
-            for (const option of defaultOptions) {
-                this.optionSignatures[option.name] = option
-                this.options[option.name] = option.defaultValue
-                if (option.alias) {
-                    for (const alias of option.alias) {
-                        this.optionAliases[alias] = option.name
-                    }
-                }
-            }
-        }
-
         this.command = command
         this.parseSignature(signatureParams)
-        this.parseArguments(paramValues)
-        this.parseOptions(optionValues)
+        this.parseDefaultOptions()
+        this.handleArguments(paramValues)
+        this.handleOptions(optionValues)
     }
 
     private getParamValue(value: any, signature: ArgSignature) {
@@ -123,7 +111,7 @@ export class CommandParser {
         return value ?? signature.defaultValue
     }
 
-    private parseArguments(paramValues: string[]) {
+    private handleArguments(paramValues: string[]) {
         for (const [argument, value] of Object.entries(this.arguments)) {
             const argSignature = this.argumentsSignature[argument]
 
@@ -137,7 +125,7 @@ export class CommandParser {
         }
     }
 
-    private parseOptions(optionValues: Record<string, any>) {
+    private handleOptions(optionValues: Record<string, any>) {
         for (const [option, value] of Object.entries(optionValues)) {
             const optionAlias = this.optionAliases[option]
             const optionSignature = this.optionSignatures[option] ?? this.optionSignatures[optionAlias]
@@ -170,6 +158,20 @@ export class CommandParser {
             } else {
                 this.arguments[param.name] = param.defaultValue ?? null
                 this.argumentsSignature[param.name] = param
+            }
+        }
+    }
+
+    private parseDefaultOptions() {
+        if (this.defaultOptions.length) {
+            for (const option of this.defaultOptions) {
+                this.optionSignatures[option.name] = option
+                this.options[option.name] = option.defaultValue
+                if (option.alias) {
+                    for (const alias of option.alias) {
+                        this.optionAliases[alias] = option.name
+                    }
+                }
             }
         }
     }
