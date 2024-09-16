@@ -2,7 +2,7 @@
 
 ## Introduction
 
-BOB (Bash Operation Buddy) Core is a library that provides a set of functions to create your own CLI in TypeScript.
+BOB (Bash Operation Buddy) Core is a library that provides a set of functions to create your own CLI in TypeScript easily.
 
 ## Usage
 
