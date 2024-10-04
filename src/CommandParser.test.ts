@@ -204,5 +204,10 @@ describe('CommandParser', () => {
             commandParser = parseCommand('test', ['-t=value'], {}, [new TestCommandOptions()]);
             expect(commandParser.option('testOption')).toBe('value');
         })
+
+        it('should parse default command option help', () => {
+            commandParser = parseCommand('test', [], {}, [new TestCommandOptions()]);
+            expect(commandParser.optionHelp('testOption')).toBe('Test option');
+        })
     });
 });
