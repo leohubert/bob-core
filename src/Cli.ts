@@ -3,6 +3,12 @@ import {Command} from "./Command";
 import HelpCommand from "./commands/HelpCommand";
 import {ExceptionHandler} from "./ExceptionHandler";
 
+export type CliOptions<C> = {
+    ctx?: C;
+    name?: string;
+    version?: string;
+}
+
 export class Cli<C> {
 
     public readonly commandRegistry: CommandRegistry;
@@ -23,11 +29,15 @@ export class Cli<C> {
         return ExceptionHandler;
     }
 
-    constructor(ctx?: C) {
-        this.ctx = ctx;
+    constructor(opts: CliOptions<C> = {}) {
+        this.ctx = opts.ctx;
         this.commandRegistry = new this.CommandRegistryClass();
         this.exceptionHandler = new this.ExceptionHandlerClass();
-        this.helpCommand = new this.HelpCommandClass(this.commandRegistry);
+        this.helpCommand = new this.HelpCommandClass({
+            cliName: opts.name,
+            cliVersion: opts.version,
+            commandRegistry: this.commandRegistry
+        });
     }
 
     setCommandResolver(resolver: (path: string) => Promise<Command<C>>) {

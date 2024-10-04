@@ -1,13 +1,14 @@
-import {CommandHelper} from "./CommandHelper";
 import {ArgSignature, CommandParser} from "./CommandParser";
 import chalk from "chalk";
+import {HelpOption} from "./options/HelpOption";
+import {CommandOption} from "./contracts/CommandOption";
 
 export type CommandExample = {
     description: string;
     command: string;
 }
 
-export abstract class Command<C = any> extends CommandHelper {
+export abstract class Command<C = any> {
     abstract signature: string;
     abstract description: string;
 
@@ -25,16 +26,8 @@ export abstract class Command<C = any> extends CommandHelper {
         return CommandParser;
     }
 
-    protected get defaultOptions(): ArgSignature[] {
-        return [
-            {
-                name: 'help',
-                optional: true,
-                type: 'boolean',
-                help: chalk`Display help for the given command. When no command is given display help for the {green list} command`,
-                alias: ['h']
-            }
-        ]
+    protected defaultOptions(): CommandOption<Command<C>>[] {
+        return [new HelpOption]
     }
 
     get command(): string {
@@ -46,10 +39,16 @@ export abstract class Command<C = any> extends CommandHelper {
 
     public async run(ctx: C, ...args: any[]): Promise<number> {
         this.ctx = ctx;
-        this.parser = new this.CommandParserClass(this.signature, this.helperDefinitions, this.defaultOptions, ...args);
+        const defaultOptions = this.defaultOptions();
+        this.parser = new this.CommandParserClass(this.signature, this.helperDefinitions, defaultOptions, ...args);
 
-        if (args.includes('--help') || args.includes('-h')) {
-            return this.help.call(this)
+        for (const option of defaultOptions) {
+            if (this.parser.option(option.option)) {
+                const code = await option.handler.call(this)
+                if (code && code !== 0) {
+                    return code;
+                }
+            }
         }
 
         this.parser.validate();

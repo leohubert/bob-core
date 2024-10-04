@@ -1,4 +1,4 @@
-import path from "path";
+import * as path from "path";
 import {Cli} from "../src";
 import {Command, CommandContext} from "./command";
 
@@ -23,7 +23,10 @@ class TestOtherTestCommand extends Command {
 }
 
 async function main() {
-    const cli = new Cli<CommandContext>({
+    const ctx: CommandContext = {
+        logger: {
+            verbose: false
+        },
         bambooClient: {
             getProjects: async () => {
                 return [
@@ -36,6 +39,12 @@ async function main() {
                 ]
             }
         }
+    }
+
+    const cli = new Cli<CommandContext>({
+        ctx,
+        name: 'Test CLI',
+        version: '0.0.1',
     })
 
     await cli.withCommands(
