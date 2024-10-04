@@ -3,7 +3,7 @@ export interface CommandOption<C> {
     option: string
     alias?: string[]
 
-    defaultValue: any
+    defaultValue: string | boolean | Array<string> | null
 
     description?: string
 

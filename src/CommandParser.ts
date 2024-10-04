@@ -12,7 +12,7 @@ export type ArgSignature = {
     variadic?: boolean
     alias?: string[]
     help?: string
-    defaultValue?: string | boolean | Array<string> | null
+    defaultValue: string | boolean | Array<string> | null
     isOption?: boolean
 }
 
@@ -168,12 +168,12 @@ export class CommandParser {
             for (const option of this.defaultCommandOptions) {
                 this.optionSignatures[option.option] = {
                     name: option.option,
-                    type: typeof option.defaultValue,
+                    type: option.defaultValue == null ? 'string' : typeof option.defaultValue,
                     optional: true,
                     alias: option.alias,
                     variadic: false,
                     help: option.description,
-                    defaultValue: option.defaultValue,
+                    defaultValue: option.defaultValue ?? null,
                     isOption: true
                 }
                 this.options[option.option] = option.defaultValue

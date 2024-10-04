@@ -8,7 +8,7 @@ class TestCommandOptions implements CommandOption<Command>{
     option = 'testOption';
     description = 'Test option';
 
-    defaultValue = 'default';
+    defaultValue: string|null = 'default';
 
     alias = ['t'];
 
@@ -208,6 +208,13 @@ describe('CommandParser', () => {
         it('should parse default command option help', () => {
             commandParser = parseCommand('test', [], {}, [new TestCommandOptions()]);
             expect(commandParser.optionHelp('testOption')).toBe('Test option');
+        })
+
+        it('should handle null default value', () => {
+            const option = new TestCommandOptions();
+            option.defaultValue = null
+            commandParser = parseCommand('test', ['--testOption=value'], {}, [option]);
+            expect(commandParser.option('testOption')).toBe('value');
         })
     });
 });
