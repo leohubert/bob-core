@@ -7,7 +7,7 @@ export class LoggerVerboseOption implements CommandOption<Command> {
 
     defaultValue = true
 
-    description = 'Increase the verbosity of the logger'
+    description = 'Enable verbose logging'
 
     public async handler(this: Command): Promise<void> {
         console.log('Setting logger verbose to true')
