@@ -4,20 +4,29 @@ import chalk from "chalk";
 import {max, orderBy} from "lodash";
 import {generateSpace} from "../lib/string";
 
+export type HelpCommandOptions = {
+    commandRegistry: CommandRegistry
+    cliName?: string
+    cliVersion?: string
+}
+
 export default class HelpCommand extends Command {
     signature = 'help'
     description = 'Show help'
 
-    constructor(private commandRegistry: CommandRegistry) {
+    constructor(private opts: HelpCommandOptions) {
         super();
     }
 
     protected async handle(): Promise<void> {
-        const commands = this.commandRegistry.getCommands()
+        const commands = this.opts.commandRegistry.getCommands()
 
-        const version = require('../../package.json').version
+        const cliName = this.opts.cliName ?? 'Bob CLI'
+        const version = this.opts.cliVersion ?? '0.0.0'
 
-        console.log(chalk`Bob CLI {green ${version}} 💪
+        const coreVersion = require('../../package.json').version
+
+        console.log(chalk`${cliName} {green ${version}} (core: {yellow ${coreVersion}})
 
 {yellow Usage}:
   command [options] [arguments]

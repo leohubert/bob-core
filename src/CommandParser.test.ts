@@ -1,12 +1,27 @@
 import { CommandParser } from './CommandParser';
 import {MissingRequiredArgumentValue} from "./errors/MissingRequiredArgumentValue";
+import {CommandOption} from "./contracts/CommandOption";
+import {Command} from "./Command";
 
+
+class TestCommandOptions implements CommandOption<Command>{
+    option = 'testOption';
+    description = 'Test option';
+
+    defaultValue: string|null = 'default';
+
+    alias = ['t'];
+
+    async handler() {
+        return 0;
+    }
+}
 
 describe('CommandParser', () => {
     let commandParser: CommandParser;
 
-    const parseCommand = (signature: string, args: string[], helperDefinition: Record<string, string> = {}) => {
-        return new CommandParser(signature, helperDefinition, [], ...args);
+    const parseCommand = (signature: string, args: string[], helperDefinition: Record<string, string> = {}, defaultCommandOptions: CommandOption<any>[] = []) => {
+        return new CommandParser(signature, helperDefinition, defaultCommandOptions , ...args);
     }
 
     it('should parse signature without arguments & options', () => {
@@ -70,7 +85,6 @@ describe('CommandParser', () => {
             expect(() => commandParser.validate()).toThrowError(MissingRequiredArgumentValue);
         })
     })
-
 
     describe('Options', () => {
 
@@ -173,4 +187,34 @@ describe('CommandParser', () => {
         })
 
     })
+
+    describe('DefaultCommandOptions', () => {
+
+        it('should parse default command options', () => {
+            commandParser = parseCommand('test', [], {}, [new TestCommandOptions()]);
+            expect(commandParser.option('testOption')).toBe('default');
+        })
+
+        it('should parse default command options with provided value', () => {
+            commandParser = parseCommand('test', ['--testOption=value'], {}, [new TestCommandOptions()]);
+            expect(commandParser.option('testOption')).toBe('value');
+        })
+
+        it('should parse default command options with provided value with alias', () => {
+            commandParser = parseCommand('test', ['-t=value'], {}, [new TestCommandOptions()]);
+            expect(commandParser.option('testOption')).toBe('value');
+        })
+
+        it('should parse default command option help', () => {
+            commandParser = parseCommand('test', [], {}, [new TestCommandOptions()]);
+            expect(commandParser.optionHelp('testOption')).toBe('Test option');
+        })
+
+        it('should handle null default value', () => {
+            const option = new TestCommandOptions();
+            option.defaultValue = null
+            commandParser = parseCommand('test', ['--testOption=value'], {}, [option]);
+            expect(commandParser.option('testOption')).toBe('value');
+        })
+    });
 });

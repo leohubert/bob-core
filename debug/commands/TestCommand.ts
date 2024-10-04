@@ -1,8 +1,8 @@
-import {Command} from "../../src";
-import {BadCommandParameter} from "../../src/errors/BadCommandParameter";
-import {CommandContext} from "../command";
 
-export default class TestCommand extends Command<CommandContext> {
+import {BadCommandParameter} from "../../src";
+import {Command} from "../command";
+
+export default class TestCommand extends Command {
     signature = 'test {user} {test?: test description} {test2*?} {--option|o|b} {--flag=} {--arr=*} { --flag2 = 2}';
     description = 'test description'
 
@@ -50,5 +50,7 @@ export default class TestCommand extends Command<CommandContext> {
         console.log('arr', this.option('arr'))
 
         console.log('flag2', this.option('flag2'))
+
+        console.log('logger verbose is', this.ctx.logger.verbose)
     }
 }

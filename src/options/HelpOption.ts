@@ -1,12 +1,20 @@
-import {Command} from "./Command";
+import {Command} from "../Command";
 import chalk from "chalk";
 import {max} from "lodash";
-import {generateSpace} from "./lib/string";
-import {ArgSignature} from "./CommandParser";
+import {generateSpace} from "../lib/string";
+import {ArgSignature} from "../CommandParser";
+import {CommandOption} from "../contracts/CommandOption";
 
-export class CommandHelper {
+export class HelpOption implements CommandOption<Command> {
 
-    public help(this: Command<any>): number {
+    option = 'help'
+    alias = ['h']
+
+    defaultValue = false
+
+    description = chalk`Display help for the given command. When no command is given display help for the {green list} command`
+
+    public async handler(this: Command): Promise<number|void> {
         const log = console.log
 
         const availableArguments = Object.values(this.parser.getArgumentSignatures())
@@ -87,7 +95,6 @@ export class CommandHelper {
                 log(chalk`    {green ${binaryName} ${example.command}}`)
             }
         }
-
 
         return -1;
     }

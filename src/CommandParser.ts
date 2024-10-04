@@ -3,6 +3,7 @@ import {MissingRequiredArgumentValue} from "./errors/MissingRequiredArgumentValu
 import {MissingSignatureOption} from "./errors/MissingSignatureOption";
 import {MissingSignatureArgument} from "./errors/MissingSignatureArgument";
 import {InvalidOption} from "./errors/InvalidOption";
+import {CommandOption} from "./contracts/CommandOption";
 
 export type ArgSignature = {
     name: string
@@ -11,7 +12,7 @@ export type ArgSignature = {
     variadic?: boolean
     alias?: string[]
     help?: string
-    defaultValue?: string | boolean | Array<string> | null
+    defaultValue: string | boolean | Array<string> | null
     isOption?: boolean
 }
 
@@ -23,6 +24,21 @@ export class CommandParser {
     private argumentsSignature: { [argument: string]: ArgSignature } = {}
     private optionSignatures: { [option: string]: ArgSignature } = {}
     private optionAliases: { [alias: string]: string } = {}
+
+    constructor(
+        protected readonly signature: string,
+        protected readonly helperDefinitions: { [key: string]: string },
+        protected readonly defaultCommandOptions: CommandOption<any>[],
+        ...args: any[]) {
+        const [command, ...signatureParams] = signature.split(/\{(.*?)\}/g).map(param => param.trim()).filter(Boolean)
+
+        const { _: paramValues, ...optionValues } = minimist(args)
+        this.command = command
+        this.parseSignature(signatureParams)
+        this.parseDefaultOptions()
+        this.handleArguments(paramValues)
+        this.handleOptions(optionValues)
+    }
 
     public option(name: string): any {
         if (!this.optionSignatures[name]) {
@@ -74,21 +90,6 @@ export class CommandParser {
 
     public getOptionSignatures() {
         return this.optionSignatures
-    }
-
-    constructor(
-        protected readonly signature: string,
-        protected readonly helperDefinitions: { [key: string]: string },
-        protected readonly defaultOptions: ArgSignature[] = [],
-        ...args: any[]) {
-        const [command, ...signatureParams] = signature.split(/\{(.*?)\}/g).map(param => param.trim()).filter(Boolean)
-
-        const { _: paramValues, ...optionValues } = minimist(args)
-        this.command = command
-        this.parseSignature(signatureParams)
-        this.parseDefaultOptions()
-        this.handleArguments(paramValues)
-        this.handleOptions(optionValues)
     }
 
     private getParamValue(value: any, signature: ArgSignature) {
@@ -163,13 +164,22 @@ export class CommandParser {
     }
 
     private parseDefaultOptions() {
-        if (this.defaultOptions.length) {
-            for (const option of this.defaultOptions) {
-                this.optionSignatures[option.name] = option
-                this.options[option.name] = option.defaultValue
+        if (this.defaultCommandOptions.length) {
+            for (const option of this.defaultCommandOptions) {
+                this.optionSignatures[option.option] = {
+                    name: option.option,
+                    type: option.defaultValue == null ? 'string' : typeof option.defaultValue,
+                    optional: true,
+                    alias: option.alias,
+                    variadic: false,
+                    help: option.description,
+                    defaultValue: option.defaultValue ?? null,
+                    isOption: true
+                }
+                this.options[option.option] = option.defaultValue
                 if (option.alias) {
                     for (const alias of option.alias) {
-                        this.optionAliases[alias] = option.name
+                        this.optionAliases[alias] = option.option
                     }
                 }
             }
