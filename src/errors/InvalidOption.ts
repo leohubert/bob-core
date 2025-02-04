@@ -1,6 +1,7 @@
-import {BobError} from "./BobError";
 import chalk from "chalk";
-import {ArgSignature} from "../CommandParser";
+
+import {BobError} from "@/src/errors/BobError.js";
+import {ArgSignature} from "@/src/CommandParser.js";
 
 export class InvalidOption extends BobError {
     constructor(private option: string, private optionsSignature: ArgSignature[]) {

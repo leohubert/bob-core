@@ -1,7 +1,6 @@
-import {ArgSignature, CommandParser} from "./CommandParser";
-import chalk from "chalk";
-import {HelpOption} from "./options/HelpOption";
-import {CommandOption} from "./contracts/CommandOption";
+import {CommandParser} from "@/src/CommandParser.js";
+import {HelpOption} from "@/src/options/index.js";
+import {CommandOption} from "@/src/contracts/index.js";
 
 export type CommandExample = {
     description: string;

@@ -1,9 +1,10 @@
 import minimist from 'minimist'
-import {MissingRequiredArgumentValue} from "./errors/MissingRequiredArgumentValue";
-import {MissingSignatureOption} from "./errors/MissingSignatureOption";
-import {MissingSignatureArgument} from "./errors/MissingSignatureArgument";
-import {InvalidOption} from "./errors/InvalidOption";
-import {CommandOption} from "./contracts/CommandOption";
+
+import {MissingRequiredArgumentValue} from "@/src/errors/MissingRequiredArgumentValue.js";
+import {MissingSignatureOption} from "@/src/errors/MissingSignatureOption.js";
+import {MissingSignatureArgument} from "@/src/errors/MissingSignatureArgument.js";
+import {InvalidOption} from "@/src/errors/InvalidOption.js";
+import {CommandOption} from "@/src/contracts/index.js";
 
 export type ArgSignature = {
     name: string

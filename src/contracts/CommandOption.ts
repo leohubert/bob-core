@@ -1,4 +1,3 @@
-
 export interface CommandOption<C> {
     option: string
     alias?: string[]

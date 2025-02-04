@@ -1,3 +1,3 @@
-export * from './BobError'
-export * from './BadCommandParameter'
-export * from './BadCommandOption'
+export * from './BobError.js'
+export * from './BadCommandParameter.js'
+export * from './BadCommandOption.js'

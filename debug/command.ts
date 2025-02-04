@@ -1,6 +1,5 @@
-import {Command as BaseCommand} from "../src";
-import {CommandOption} from "../src/contracts/CommandOption";
-import {LoggerVerboseOption} from "./options/LoggerVerboseOption";
+import {CommandOption, Command as BaseCommand} from "@/src/index.js";
+import {LoggerVerboseOption} from "./options/LoggerVerboseOption.js";
 
 export type CommandContext = {
     bambooClient: {

@@ -1,9 +1,10 @@
-import {Command} from "../Command";
 import chalk from "chalk";
 import {max} from "lodash";
-import {generateSpace} from "../lib/string";
-import {ArgSignature} from "../CommandParser";
-import {CommandOption} from "../contracts/CommandOption";
+
+import {Command} from "@/src/Command.js";
+import {generateSpace} from "@/src/lib/string.js";
+import {ArgSignature} from "@/src/CommandParser.js";
+import {CommandOption} from "@/src/contracts/index.js";
 
 export class HelpOption implements CommandOption<Command> {
 

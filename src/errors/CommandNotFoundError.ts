@@ -1,5 +1,6 @@
-import {BobError} from "./BobError";
 import chalk from "chalk";
+
+import {BobError} from "@/src/errors/BobError.js";
 
 export class CommandNotFoundError extends BobError {
     constructor(public readonly command: string, public readonly similarCommands: string[]) {

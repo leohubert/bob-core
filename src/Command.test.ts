@@ -1,5 +1,5 @@
-import { Command } from './Command';
-import {MissingRequiredArgumentValue} from "./errors/MissingRequiredArgumentValue";
+import { Command } from '@/src/Command.js';
+import {MissingRequiredArgumentValue} from "@/src/errors/MissingRequiredArgumentValue.js";
 
 class MockCommand extends Command {
     signature = 'mockCommand {argument} {--option}';

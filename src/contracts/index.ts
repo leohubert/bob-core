@@ -1,1 +1,1 @@
-export * from './CommandOption';
+export * from './CommandOption.js';

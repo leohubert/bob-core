@@ -1,7 +1,7 @@
-import { CommandParser } from './CommandParser';
-import {MissingRequiredArgumentValue} from "./errors/MissingRequiredArgumentValue";
-import {CommandOption} from "./contracts/CommandOption";
-import {Command} from "./Command";
+import { CommandParser } from '@/src/CommandParser.js';
+import {MissingRequiredArgumentValue} from "@/src/errors/MissingRequiredArgumentValue.js";
+import {CommandOption} from "@/src/contracts/index.js";
+import {Command} from "@/src/Command.js";
 
 
 class TestCommandOptions implements CommandOption<Command>{

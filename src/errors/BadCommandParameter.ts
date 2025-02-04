@@ -1,5 +1,6 @@
-import {BobError} from "./BobError";
 import chalk from "chalk";
+
+import {BobError} from "@/src/errors/BobError.js";
 
 export type ParameterProps = {
     param: string

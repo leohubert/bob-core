@@ -1,9 +1,10 @@
-import path from "path";
-import { Command } from "./Command";
 import * as fs from "node:fs";
-import {CommandNotFoundError} from "./errors/CommandNotFoundError";
+import path from "path";
 import * as SS from "string-similarity";
 import chalk from "chalk";
+
+import { Command } from "@/src/Command.js";
+import {CommandNotFoundError} from "@/src/errors/CommandNotFoundError.js";
 
 export type CommandResolver = (path: string) => Promise<Command>;
 

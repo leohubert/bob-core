@@ -1,1 +1,1 @@
-export * from './HelpOption';
+export * from './HelpOption.js';

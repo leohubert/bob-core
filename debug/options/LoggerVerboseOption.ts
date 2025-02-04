@@ -1,5 +1,5 @@
 import {Command} from "../command";
-import {CommandOption} from "../../src/contracts/CommandOption";
+import {CommandOption} from "../../src";
 
 export class LoggerVerboseOption implements CommandOption<Command> {
     option = 'verbose'

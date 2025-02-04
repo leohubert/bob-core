@@ -1,7 +1,7 @@
-import { CommandRegistry } from "./CommandRegistry";
-import {Command} from "./Command";
-import HelpCommand from "./commands/HelpCommand";
-import {ExceptionHandler} from "./ExceptionHandler";
+import { CommandRegistry } from "@/src/CommandRegistry.js";
+import {Command} from "@/src/Command.js";
+import HelpCommand from "@/src/commands/HelpCommand.js";
+import {ExceptionHandler} from "@/src/ExceptionHandler.js";
 
 export type CliOptions<C> = {
     ctx?: C;

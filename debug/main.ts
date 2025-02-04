@@ -1,6 +1,6 @@
 import * as path from "path";
-import {Cli} from "../src";
-import {Command, CommandContext} from "./command";
+import {Cli} from "@/src/index.js";
+import {Command, CommandContext} from "./command.js";
 
 class TestTestCommand extends Command {
     signature = 'scout:sync-index-settings'

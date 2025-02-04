@@ -1,8 +1,9 @@
-import {Command} from "../Command";
-import {CommandRegistry} from "../CommandRegistry";
 import chalk from "chalk";
 import {max, orderBy} from "lodash";
-import {generateSpace} from "../lib/string";
+
+import {Command} from "@/src/Command.js";
+import {CommandRegistry} from "@/src/CommandRegistry.js";
+import {generateSpace} from "@/src/lib/string.js";
 
 export type HelpCommandOptions = {
     commandRegistry: CommandRegistry
