@@ -22,6 +22,6 @@ export class MissingSignatureOption extends BobError {
             log('')
         }
 
-        log(chalk`  {white.bgRed  ERROR } Option {bold.yellow ${this.option}} is missing in the signature.`)
+        log(chalk`{white.bgRed  ERROR } Option {bold.yellow ${this.option}} is missing in the signature.`)
     }
 }

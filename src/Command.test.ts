@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach } from 'vitest';
 import { Command } from '@/src/Command.js';
 import {MissingRequiredArgumentValue} from "@/src/errors/MissingRequiredArgumentValue.js";
 

@@ -1,6 +1,17 @@
 import {CommandParser} from "@/src/CommandParser.js";
 import {HelpOption} from "@/src/options/index.js";
 import {CommandOption} from "@/src/contracts/index.js";
+import prompts from "prompts"
+import confirm = prompts.prompts.confirm;
+import {CommandIO} from "@/src/CommandIO.js";
+
+export type SelectOption = {
+	title: string;
+	value?: any;
+	disabled?: boolean | undefined;
+	selected?: boolean | undefined;
+	description?: string | undefined;
+}
 
 export type CommandExample = {
     description: string;
@@ -18,12 +29,18 @@ export abstract class Command<C = any> {
     protected commandsExamples: CommandExample[] = [];
 
     protected parser!: CommandParser;
+	protected io!: CommandIO;
+
 
     protected abstract handle(): Promise<void|number>;
 
-    private get CommandParserClass(): typeof CommandParser {
+    protected get CommandParserClass(): typeof CommandParser {
         return CommandParser;
     }
+
+	protected get CommandIOClass(): typeof CommandIO {
+		return CommandIO;
+	}
 
     protected defaultOptions(): CommandOption<Command<C>>[] {
         return [new HelpOption]
@@ -39,7 +56,8 @@ export abstract class Command<C = any> {
     public async run(ctx: C, ...args: any[]): Promise<number> {
         this.ctx = ctx;
         const defaultOptions = this.defaultOptions();
-        this.parser = new this.CommandParserClass(this.signature, this.helperDefinitions, defaultOptions, ...args);
+		this.io = new this.CommandIOClass();
+        this.parser = new this.CommandParserClass(this.io, this.signature, this.helperDefinitions, defaultOptions, ...args);
 
         for (const option of defaultOptions) {
             if (this.parser.option(option.option)) {
@@ -50,7 +68,7 @@ export abstract class Command<C = any> {
             }
         }
 
-        this.parser.validate();
+        await this.parser.validate();
 
         return (await this.handle()) ?? 0;
     }
@@ -132,4 +150,24 @@ export abstract class Command<C = any> {
 
         return parseInt(value);
     }
+
+	/**
+	 * Prompt utils
+	 */
+
+	async askForConfirmation(...opts: Parameters<typeof this.io.askForConfirmation>): ReturnType<typeof this.io.askForConfirmation> {
+		return this.io.askForConfirmation(...opts);
+	}
+
+	async askForInput(...opts: Parameters<typeof this.io.askForInput>): ReturnType<typeof this.io.askForInput> {
+		return this.io.askForInput(...opts);
+	}
+
+	async askForSelect(...opts: Parameters<typeof this.io.askForSelect>): ReturnType<typeof this.io.askForSelect> {
+		return this.io.askForSelect(...opts);
+	}
+
+	newLoader(...opts: Parameters<typeof this.io.newLoader>): ReturnType<typeof this.io.newLoader> {
+		return this.io.newLoader(...opts);
+	}
 }

@@ -1,7 +1,11 @@
+import {describe, it, expect, beforeEach, vi} from 'vitest';
 import { CommandParser } from '@/src/CommandParser.js';
 import {MissingRequiredArgumentValue} from "@/src/errors/MissingRequiredArgumentValue.js";
 import {CommandOption} from "@/src/contracts/index.js";
 import {Command} from "@/src/Command.js";
+import {CommandIO} from "@/src/CommandIO.js";
+import {MaybeMockedDeep} from "@vitest/spy";
+import {before} from "node:test";
 
 
 class TestCommandOptions implements CommandOption<Command>{
@@ -19,10 +23,19 @@ class TestCommandOptions implements CommandOption<Command>{
 
 describe('CommandParser', () => {
     let commandParser: CommandParser;
+	let commandIO: MaybeMockedDeep<CommandIO>;
+	let parseCommand: (signature: string, args: string[], helperDefinition?: Record<string, string>, defaultCommandOptions?: CommandOption<any>[]) => CommandParser;
 
-    const parseCommand = (signature: string, args: string[], helperDefinition: Record<string, string> = {}, defaultCommandOptions: CommandOption<any>[] = []) => {
-        return new CommandParser(signature, helperDefinition, defaultCommandOptions , ...args);
-    }
+	before(() => {
+		commandIO = vi.mockObject(new CommandIO())
+		parseCommand = (signature: string, args: string[], helperDefinition: Record<string, string> = {}, defaultCommandOptions: CommandOption<any>[] = []) => {
+			return new CommandParser(commandIO, signature, helperDefinition, defaultCommandOptions , ...args);
+		}
+	})
+
+	beforeEach(() => {
+		vi.resetAllMocks();
+	})
 
     it('should parse signature without arguments & options', () => {
         commandParser = parseCommand('test', []);
@@ -75,14 +88,33 @@ describe('CommandParser', () => {
             expect(() => commandParser.setArgument('arg2', 'newValue')).toThrowError(Error);
         })
 
-        it('calling validate method should throw error when argument is missing', () => {
+	    it('should ask for input when argument is missing and CommandIO is provided', async () => {
+			commandIO.askForInput.mockResolvedValue('inputValue');
+
+		    commandParser = parseCommand('test {arg1}', []);
+
+			await commandParser.validate()
+
+		    expect(commandParser.argument('arg1')).toBe('inputValue');
+	    })
+
+	    it('should throw error when argument is missing and CommandIO returns null', async () => {
+		    commandIO.askForInput.mockResolvedValue(null);
+
+		    commandParser = parseCommand('test {arg1}', []);
+
+		    await expect(commandParser.validate()).rejects.toThrowError(MissingRequiredArgumentValue);
+	    })
+
+        it('calling validate method should throw error when argument is missing', async () => {
             commandParser = parseCommand('test {arg1}', []);
-            expect(() => commandParser.validate()).toThrowError(MissingRequiredArgumentValue);
+	        await expect(commandParser.validate()).rejects.toThrowError(MissingRequiredArgumentValue);
         })
 
-        it('calling validate should throw with variadic argument is missing', () => {
+        it('calling validate should throw with variadic argument is missing', async () => {
             commandParser = parseCommand('test {arg1*}', []);
-            expect(() => commandParser.validate()).toThrowError(MissingRequiredArgumentValue);
+
+            await expect(commandParser.validate()).rejects.toThrowError(MissingRequiredArgumentValue);
         })
     })
 

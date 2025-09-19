@@ -27,12 +27,22 @@ export default class TestCommand extends Command {
 
     protected async handle(): Promise<void> {
         let user = this.argument('user')
+	    console.log('user', user)
         if (user === 'yayo') {
             throw new BadCommandParameter({
                 param: 'user',
                 reason: 'yayo is not allowed'
             })
         }
+
+		const test = await this.askForConfirmation('Are you sure?')
+
+	    if (!test) {
+			console.log('aborted')
+			return;
+	    }
+
+		const loader = this.newLoader('Loading...')
 
         const options = this.option('option')
         console.log('options', options)
@@ -52,5 +62,12 @@ export default class TestCommand extends Command {
         console.log('flag2', this.option('flag2'))
 
         console.log('logger verbose is', this.ctx.logger.verbose)
+
+	    await sleep(2000)
+	    loader.stop()
     }
+}
+
+async function sleep(ms: number) {
+	return new Promise(resolve => setTimeout(resolve, ms));
 }

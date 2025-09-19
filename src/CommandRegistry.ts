@@ -5,17 +5,25 @@ import chalk from "chalk";
 
 import { Command } from "@/src/Command.js";
 import {CommandNotFoundError} from "@/src/errors/CommandNotFoundError.js";
+import {CommandIO} from "@/src/CommandIO.js";
 
 export type CommandResolver = (path: string) => Promise<Command>;
 
 export class CommandRegistry {
     private readonly commands: Record<string, Command> = {};
+	protected readonly io!: CommandIO;
 
     get commandSuffix() {
         return "Command";
     }
 
-    constructor() {}
+	protected get CommandIOClass(): typeof CommandIO {
+		return CommandIO;
+	}
+
+    constructor() {
+		this.io = new this.CommandIOClass();
+    }
 
     getAvailableCommands(): string[] {
         return Object.keys(this.commands)
@@ -73,7 +81,7 @@ export class CommandRegistry {
         const commandSignature = typeof command === 'string' ? command : commandToRun.command;
 
         if (!commandToRun) {
-            const suggestedCommand = await this.suggestCommand(commandSignature);
+			const suggestedCommand = await this.suggestCommand(commandSignature);
             if (suggestedCommand) {
                 return await this.runCommand(ctx, suggestedCommand, ...args);
             }
@@ -98,22 +106,25 @@ export class CommandRegistry {
             }
         }
 
-        throw new CommandNotFoundError(command, similarCommands);
+		if (similarCommands.length) {
+			console.log(chalk`{bgRed  ERROR } Command {yellow ${command}} not found.\n`)
+
+			const commandToRun = await this.io.askForSelect(
+				chalk`{green Did you mean to run one of these commands instead?}`,
+				similarCommands,
+			);
+			if (commandToRun) {
+				return commandToRun;
+			}
+		}
+
+        throw new CommandNotFoundError(command);
     }
 
     private async askRunSimilarCommand(command: string, commandToAsk: string): Promise<boolean> {
-        const readline = require('readline').createInterface({
-            input: process.stdin,
-            output: process.stdout
-        });
+	    console.log(chalk`{bgRed  ERROR } Command {yellow ${command}} not found.\n`)
 
-        console.log(chalk`  {bgRed  ERROR } Command {yellow ${command}} not found.\n`)
-        return new Promise((resolve) => {
-            readline.question(chalk`{green Do you want to run {yellow ${commandToAsk}} instead?} {white (yes/no)} [{yellow no}]\n > `, (answer: string) => {
-                resolve(answer === 'yes' || answer === 'y');
-                readline.close();
-            });
-        });
+	    return this.io.askForConfirmation(chalk`{green Do you want to run {yellow ${commandToAsk}} instead?} `);
     }
 
     private async* listCommandsFiles(

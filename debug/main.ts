@@ -13,8 +13,9 @@ class TestTestCommand extends Command {
     }
 }
 
+
 class TestOtherTestCommand extends Command {
-    signature = 'test:other'
+    signature = 'scout:test-index-settings'
     description = 'other test'
 
     protected handle(): Promise<number | void> {
