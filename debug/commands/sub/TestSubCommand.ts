@@ -1,7 +1,7 @@
 import {Command} from "../../command.js";
 
 export default  class SubCommand extends Command {
-    signature = 'sub';
+    signature = 'test:sub';
     description = 'sub command description'
 
     protected handle(): Promise<void> {

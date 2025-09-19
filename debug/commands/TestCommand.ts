@@ -1,6 +1,6 @@
 
-import {BadCommandParameter} from "../../src";
-import {Command} from "../command";
+import {BadCommandParameter} from "@/src/errors/index.js";
+import {Command} from "../command.js";
 
 export default class TestCommand extends Command {
     signature = 'test {user} {test?: test description} {test2*?} {--option|o|b} {--flag=} {--arr=*} { --flag2 = 2}';

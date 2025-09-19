@@ -1,5 +1,5 @@
-import {Command} from "../command";
-import {CommandOption} from "../../src";
+import {Command} from "../command.js";
+import {CommandOption} from "../../src/index.js";
 
 export class LoggerVerboseOption implements CommandOption<Command> {
     option = 'verbose'
