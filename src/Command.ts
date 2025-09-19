@@ -1,17 +1,7 @@
 import {CommandParser} from "@/src/CommandParser.js";
 import {HelpOption} from "@/src/options/index.js";
 import {CommandOption} from "@/src/contracts/index.js";
-import prompts from "prompts"
-import confirm = prompts.prompts.confirm;
 import {CommandIO} from "@/src/CommandIO.js";
-
-export type SelectOption = {
-	title: string;
-	value?: any;
-	disabled?: boolean | undefined;
-	selected?: boolean | undefined;
-	description?: string | undefined;
-}
 
 export type CommandExample = {
     description: string;

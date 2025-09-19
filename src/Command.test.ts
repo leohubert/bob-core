@@ -1,12 +1,17 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import {describe, it, expect, beforeEach, vi} from 'vitest';
 import { Command } from '@/src/Command.js';
 import {MissingRequiredArgumentValue} from "@/src/errors/MissingRequiredArgumentValue.js";
+import {CommandIO} from "@/src/CommandIO.js";
 
 class MockCommand extends Command {
     signature = 'mockCommand {argument} {--option}';
     description = 'This is a mock command for testing';
 
-    protected handle() {
+	protected get CommandIOClass(): typeof CommandIO {
+		return vi.mockObject(CommandIO);
+	}
+
+	protected handle() {
         const opts = this.option('option');
         const arg = this.argument('argument');
 
