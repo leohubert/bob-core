@@ -24,6 +24,8 @@ export abstract class Command<C = any> {
 
     protected abstract handle(): Promise<void|number>;
 
+	protected preHandle?(): Promise<void|number>;
+
     protected get CommandParserClass(): typeof CommandParser {
         return CommandParser;
     }
@@ -59,6 +61,11 @@ export abstract class Command<C = any> {
         }
 
         await this.parser.validate();
+
+		const preHandleResult = this.preHandle ? await this.preHandle() : null;
+		if (preHandleResult && preHandleResult !== 0) {
+			return preHandleResult;
+		}
 
         return (await this.handle()) ?? 0;
     }

@@ -1,6 +1,7 @@
 import {defineConfig} from 'vite'
 import {resolve} from 'path'
 import dts from 'vite-plugin-dts'
+import {writeFileSync, mkdirSync} from 'fs'
 
 export default defineConfig({
 	plugins: [
@@ -8,29 +9,34 @@ export default defineConfig({
 			include: ['src/**/*'],
 			exclude: ['src/**/*.test.ts'],
 			outDir: 'dist/types'
-		})
+		}),
+		{
+			name: 'create-cjs-package-json',
+			writeBundle() {
+				mkdirSync('dist/cjs', { recursive: true })
+				writeFileSync('dist/cjs/package.json', JSON.stringify({ type: 'commonjs' }, null, 2))
+			}
+		}
 	],
 	build: {
 		lib: {
 			entry: resolve(__dirname, 'src/index.ts'),
 			name: 'BobCore',
-			formats: ['es', 'cjs'],
-			fileName: (format) => `bob-core.${format === 'es' ? 'js' : 'cjs'}`
 		},
-		outDir: 'dist',
 		rollupOptions: {
 			external: ['chalk', 'minimist', 'prompts', 'string-similarity', 'node:fs', 'path', 'fs'],
-			output: {
-				globals: {
-					'chalk': 'chalk',
-					'minimist': 'minimist',
-					'prompts': 'prompts',
-					'string-similarity': 'stringSimilarity',
-					'node:fs': 'fs',
-					'path': 'path',
-					'fs': 'fs'
+			output: [
+				{
+					format: 'es',
+					dir: 'dist/esm',
+					entryFileNames: 'bob-core.js',
+				},
+				{
+					format: 'cjs',
+					dir: 'dist/cjs',
+					entryFileNames: 'bob-core.cjs',
 				}
-			}
+			]
 		}
 	},
 	resolve: {
