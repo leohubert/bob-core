@@ -8,10 +8,17 @@ export default defineConfig({
 		dts({
 			include: ['src/**/*'],
 			exclude: ['src/**/*.test.ts'],
-			outDir: 'dist/types'
+			outDir: 'dist/cjs',
+			insertTypesEntry: true
+		}),
+		dts({
+			include: ['src/**/*'],
+			exclude: ['src/**/*.test.ts'],
+			outDir: 'dist/esm',
+			insertTypesEntry: true
 		}),
 		{
-			name: 'create-cjs-package-json',
+			name: 'create-package-json',
 			writeBundle() {
 				mkdirSync('dist/cjs', { recursive: true })
 				writeFileSync('dist/cjs/package.json', JSON.stringify({ type: 'commonjs' }, null, 2))
@@ -29,12 +36,12 @@ export default defineConfig({
 				{
 					format: 'es',
 					dir: 'dist/esm',
-					entryFileNames: 'bob-core.js',
+					entryFileNames: 'index.js',
 				},
 				{
 					format: 'cjs',
 					dir: 'dist/cjs',
-					entryFileNames: 'bob-core.cjs',
+					entryFileNames: 'index.js',
 				}
 			]
 		}
