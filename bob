@@ -1,3 +1,3 @@
 #!/bin/bash
 
-node -r @swc-node/register ./debug/main.ts $@
+node --import @swc-node/register/esm-register ./debug/main.ts $@

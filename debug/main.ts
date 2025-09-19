@@ -48,7 +48,7 @@ async function main() {
     })
 
     await cli.withCommands(
-        path.resolve(__dirname, './commands'),
+        path.resolve(import.meta.dirname, './commands'),
         TestTestCommand,
         new TestOtherTestCommand(),
     )

@@ -1,5 +1,4 @@
 import chalk from "chalk";
-import {max, orderBy} from "lodash";
 
 import {Command} from "@/src/Command.js";
 import {CommandRegistry} from "@/src/CommandRegistry.js";
@@ -25,7 +24,7 @@ export default class HelpCommand extends Command {
         const cliName = this.opts.cliName ?? 'Bob CLI'
         const version = this.opts.cliVersion ?? '0.0.0'
 
-        const coreVersion = require('../../package.json').version
+        const coreVersion = (await import('../../package.json'))?.default?.version ?? '0.0.0'
 
         console.log(chalk`${cliName} {green ${version}} (core: {yellow ${coreVersion}})
 
@@ -35,7 +34,7 @@ export default class HelpCommand extends Command {
 {yellow Available commands}:
 `)
 
-        const maxCommandLength = max(commands.map(command => command.command.length)) ?? 0
+        const maxCommandLength = Math.max(...commands.map(command => command.command.length)) ?? 0
         const commandByGroups: { [key: string]: Command[] } = {}
 
         for (const command of commands) {
@@ -48,11 +47,9 @@ export default class HelpCommand extends Command {
             commandByGroups[commandGroup].push(command)
         }
 
-        const sortedCommandsByGroups = orderBy(
-            orderBy(Object.entries(commandByGroups), [([group]) => group.toLowerCase()], ['asc']),
-            [([_, commands]) => commands.length],
-            ['asc'],
-        )
+        const sortedCommandsByGroups = Object.entries(commandByGroups)
+            .sort(([groupA], [groupB]) => groupA.toLowerCase().localeCompare(groupB.toLowerCase()))
+            .sort(([, commandsA], [, commandsB]) => commandsA.length - commandsB.length)
 
         for (const [group, groupCommands] of sortedCommandsByGroups) {
             const isGrouped = groupCommands.length > 1
@@ -61,7 +58,7 @@ export default class HelpCommand extends Command {
                 console.log(chalk`{yellow ${group}}:`)
             }
 
-            const sortedGroupCommands = orderBy(groupCommands, [command => command.command.toLowerCase()], ['asc'])
+            const sortedGroupCommands = groupCommands.sort((a, b) => a.command.toLowerCase().localeCompare(b.command.toLowerCase()))
 
             for (const command of sortedGroupCommands) {
                 let spaces = generateSpace(maxCommandLength - command.command.length)

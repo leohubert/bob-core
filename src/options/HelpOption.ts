@@ -1,5 +1,4 @@
 import chalk from "chalk";
-import {max} from "lodash";
 
 import {Command} from "@/src/Command.js";
 import {generateSpace} from "@/src/lib/string.js";
@@ -33,8 +32,8 @@ export class HelpOption implements CommandOption<Command> {
         log(chalk`{yellow Usage}:`)
         log(chalk`  ${this.command} ${requiredArguments.length > 0 ? requiredArguments.map((signature) => `<${signature.name}>`).join(' ') : '\b'} [options]`)
 
-        const maxOptionLength: number = max(availableOptions.map((signature) => signature.optionWithAlias.length)) ?? 0
-        const maxArgumentLength: number = max(availableArguments.map((arg) => arg.name.length)) ?? 0
+        const maxOptionLength: number = Math.max(...availableOptions.map((signature) => signature.optionWithAlias.length)) ?? 0
+        const maxArgumentLength: number = Math.max(...availableArguments.map((arg) => arg.name.length)) ?? 0
         const maxLength = maxArgumentLength > maxOptionLength ? maxArgumentLength : maxOptionLength
 
         if (availableArguments.length > 0) {
