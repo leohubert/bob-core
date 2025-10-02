@@ -1,4 +1,4 @@
-import {CommandOption, Command as BaseCommand} from "@/src/index.js";
+import {CommandOption, LegacyCommand as BaseCommand} from "@/src/index.js";
 import {LoggerVerboseOption} from "./options/LoggerVerboseOption.js";
 
 export type CommandContext = {

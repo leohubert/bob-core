@@ -25,9 +25,9 @@ cli.run('commandName', 'arg1', 'arg2', 'arg3');
 Create a command in the `commands` folder:
 
 ```typescript
-import { Command } from 'bob-core';
+import { LegacyCommand } from 'bob-core';
 
-export default class MyCommand extends Command {
+export default class MyCommand extends LegacyCommand {
   public name = 'my-command {arg1} {--option1}';
   public description = 'This is my command';
   
@@ -87,7 +87,7 @@ sub:
 
 ```
 
-## Command help
+## LegacyCommand help
 
 You can also display the help of a specific command.
 

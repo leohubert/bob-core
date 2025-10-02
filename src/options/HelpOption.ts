@@ -1,11 +1,11 @@
 import chalk from "chalk";
 
-import {Command} from "@/src/Command.js";
+import {LegacyCommand} from "@/src/LegacyCommand.js";
 import {generateSpace} from "@/src/lib/string.js";
-import {ArgSignature} from "@/src/CommandParser.js";
+import {OptionDefinition} from "@/src/lib/types.js";
 import {CommandOption} from "@/src/contracts/index.js";
 
-export class HelpOption implements CommandOption<Command> {
+export class HelpOption implements CommandOption<LegacyCommand> {
 
     option = 'help'
     alias = ['h']
@@ -14,38 +14,40 @@ export class HelpOption implements CommandOption<Command> {
 
     description = chalk`Display help for the given command. When no command is given display help for the {green list} command`
 
-    public async handler(this: Command): Promise<number|void> {
+    public async handler(this: LegacyCommand): Promise<number|void> {
         const log = console.log
 
-        const availableArguments = Object.values(this.parser.getArgumentSignatures())
-        const availableOptions = Object.values(this.parser.getOptionSignatures())
-            .map((signature) => ({
+        const availableArguments = Object.entries(this.parser.getArgumentSignatures())
+        const availableOptions = Object.entries(this.parser.getOptionSignatures())
+            .map(([name, signature]) => ({
+				name,
                 ...signature,
-                optionWithAlias: `--${signature.name}${signature.alias?.map(a => `, -${a}`).join('') ?? ''}`
-            }) as ArgSignature & { optionWithAlias: string })
+                optionWithAlias: `--${name}${signature.alias?.map(a => `, -${a}`).join('') ?? ''}`
+            }))
 
-        const requiredArguments = availableArguments.filter((signature) => !signature.optional)
+        const requiredArguments = availableArguments.filter(([name, signature]) => signature.required)
 
         log(chalk`{yellow Description}:`)
         log(chalk`  ${this.description}\n`)
 
         log(chalk`{yellow Usage}:`)
-        log(chalk`  ${this.command} ${requiredArguments.length > 0 ? requiredArguments.map((signature) => `<${signature.name}>`).join(' ') : '\b'} [options]`)
+        log(chalk`  ${this.command} ${requiredArguments.length > 0 ? requiredArguments.map(([name]) => `<${name}>`).join(' ') : '\b'} [options]`)
 
-        const maxOptionLength: number = Math.max(...availableOptions.map((signature) => signature.optionWithAlias.length)) ?? 0
-        const maxArgumentLength: number = Math.max(...availableArguments.map((arg) => arg.name.length)) ?? 0
+        const maxOptionLength: number = Math.max(...availableOptions.map((opt) => opt.optionWithAlias.length)) ?? 0
+        const maxArgumentLength: number = Math.max(...availableArguments.map(([name]) => name.length)) ?? 0
         const maxLength = maxArgumentLength > maxOptionLength ? maxArgumentLength : maxOptionLength
 
         if (availableArguments.length > 0) {
             log(chalk`\n{yellow Arguments}:`)
 
-            for (const  signature of availableArguments) {
-                const spaces = generateSpace(maxLength - signature.name.length)
+            for (const [name, signature] of availableArguments) {
+                const spaces = generateSpace(maxLength - name.length)
 
-                let message = chalk`  {green ${signature.name}} ${spaces} ${signature.help ?? '\b'}`
+                let message = chalk`  {green ${name}} ${spaces} ${signature.description ?? '\b'}`
 
-                if (signature.defaultValue !== undefined && signature.optional) {
-                    const defaultValue = signature.type === 'array' ? JSON.stringify(signature.defaultValue) : signature.defaultValue
+                if (signature.default !== undefined && !signature.required) {
+					const typeDisplay = Array.isArray(signature.type) ? `[${signature.type[0]}]` : signature.type;
+                    const defaultValue = typeDisplay === 'array' || Array.isArray(signature.type) ? JSON.stringify(signature.default) : signature.default
 
                     message += chalk` {yellow [default: ${defaultValue}]}`
                 }
@@ -65,14 +67,16 @@ export class HelpOption implements CommandOption<Command> {
                 const spaces = generateSpace(maxLength - signature.optionWithAlias.length)
 
 
-                let message = chalk`{green ${signature.optionWithAlias}} ${spaces} ${signature.help ?? '\b'}`
+                let message = chalk`{green ${signature.optionWithAlias}} ${spaces} ${signature.description ?? '\b'}`
 
                 if (signature.type) {
-                    message += chalk` {white (${signature.type})}`
+					const typeDisplay = Array.isArray(signature.type) ? `[${signature.type[0]}]` : signature.type;
+                    message += chalk` {white (${typeDisplay})}`
                 }
 
-                if (signature.defaultValue !== undefined && signature.optional) {
-                    const defaultValue = signature.type === 'array' ? JSON.stringify(signature.defaultValue) : signature.defaultValue
+                if (signature.default !== undefined && !signature.required) {
+					const typeDisplay = Array.isArray(signature.type) ? `[${signature.type[0]}]` : signature.type;
+                    const defaultValue = typeDisplay === 'array' || Array.isArray(signature.type) ? JSON.stringify(signature.default) : signature.default
                     message += chalk` {yellow [default: ${defaultValue}]}`
                 }
 

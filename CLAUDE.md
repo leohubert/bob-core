@@ -19,11 +19,11 @@ BOB Core is a TypeScript library for creating CLI applications. It provides comm
 ### Core Components
 
 - **CLI** (`src/Cli.ts`) - Main CLI class that orchestrates command execution
-- **Command** (`src/Command.ts`) - Abstract base class for all commands
+- **LegacyCommand** (`src/LegacyCommand.ts`) - Abstract base class for all commands
 - **CommandRegistry** (`src/CommandRegistry.ts`) - Manages command registration and discovery
 - **CommandParser** (`src/CommandParser.ts`) - Parses command signatures and arguments
 
-### Command System
+### LegacyCommand System
 
 Commands are defined with signatures like `"my-command {arg1} {arg2?} {--option1} {--option2=value}"`:
 - `{arg}` - Required argument
@@ -39,7 +39,7 @@ Commands are defined with signatures like `"my-command {arg1} {arg2?} {--option1
 - `src/commands/` - Built-in commands (HelpCommand)
 - `src/contracts/` - TypeScript interfaces and types
 - `src/errors/` - Custom error classes
-- `src/options/` - Command options (HelpOption)
+- `src/options/` - LegacyCommand options (HelpOption)
 - `src/lib/` - Utility functions
 
 ### Module System

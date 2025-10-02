@@ -3,14 +3,15 @@ import path from "path";
 import * as SS from "string-similarity";
 import chalk from "chalk";
 
-import { Command } from "@/src/Command.js";
+import { LegacyCommand } from "@/src/LegacyCommand.js";
 import {CommandNotFoundError} from "@/src/errors/CommandNotFoundError.js";
 import {CommandIO} from "@/src/CommandIO.js";
+import {Command} from "@/src/Command.js";
 
-export type CommandResolver = (path: string) => Promise<Command>;
+export type CommandResolver = (path: string) => Promise<LegacyCommand|Command>;
 
 export class CommandRegistry {
-    private readonly commands: Record<string, Command> = {};
+    private readonly commands: Record<string, LegacyCommand | Command> = {};
 	protected readonly io!: CommandIO;
 
     get commandSuffix() {
@@ -29,30 +30,45 @@ export class CommandRegistry {
         return Object.keys(this.commands)
     }
 
-    getCommands(): Command[] {
+    getCommands(): Array<LegacyCommand|Command> {
         return Object.values(this.commands)
     }
 
 
-    private commandResolver: CommandResolver = async (path: string) => {
-        const CommandClass = (await import(path)).default
+    private commandResolver: CommandResolver = async (path: string)=> {
+        let defaultImport = (await import(path)).default
+        if (!defaultImport) {
+			throw new Error(`The command at path ${path} does not have a default export.`)
+	    }
 
-        let command: Command
-        if (CommandClass?.default) {
-            command = new CommandClass.default()
+		if (defaultImport?.default) {
+			defaultImport = defaultImport.default
+		}
+
+        let command: LegacyCommand|Command
+
+        if (typeof defaultImport === 'function') {
+			command = new defaultImport();
+	    } else if (defaultImport instanceof LegacyCommand || defaultImport instanceof Command) {
+			command = defaultImport;
         } else {
-            command = new CommandClass()
+			throw new Error(`The command at path ${path} is not a valid command class.`)
         }
 
         return command;
     }
 
-    setCommandResolver(resolver: (path: string) => Promise<Command>) {
+    setCommandResolver(resolver: CommandResolver) {
         this.commandResolver = resolver;
     }
 
-    registerCommand(command: Command, force: boolean = false) {
-        const commandName = command.signature.split(' ')[0]
+    registerCommand(command: LegacyCommand | Command, force: boolean = false) {
+		let commandName: string;
+		if (command instanceof Command) {
+			commandName = command.command;
+		} else {
+			commandName = command.signature.split(' ')[0];
+		}
         if (!commandName) {
             throw new Error('Command signature is invalid, it must have a command name.')
         }
@@ -76,8 +92,8 @@ export class CommandRegistry {
         }
     }
 
-    async runCommand(ctx: any, command: string|Command, ...args: any[]): Promise<number> {
-        const commandToRun: Command = typeof command === 'string' ? this.commands[command] : command;
+    async runCommand(ctx: any, command: string|LegacyCommand|Command, ...args: any[]): Promise<number> {
+        const commandToRun: LegacyCommand|Command = typeof command === 'string' ? this.commands[command] : command;
         const commandSignature = typeof command === 'string' ? command : commandToRun.command;
 
         if (!commandToRun) {
@@ -88,7 +104,13 @@ export class CommandRegistry {
             return 1;
         }
 
-        return await commandToRun.run(ctx, ...args);
+		if (commandToRun instanceof LegacyCommand) {
+			return await commandToRun.run(ctx, ...args);
+		}
+
+	    return await commandToRun.run(ctx, {
+		    args
+	    }) ?? 0;
     }
 
     private async suggestCommand(command: string): Promise<string | null> {
@@ -136,9 +158,9 @@ export class CommandRegistry {
             if (dirent.isDirectory()) {
                 yield* this.listCommandsFiles(path.resolve(basePath, dirent.name));
             } else {
-                if (!direntPath.endsWith(`${this.commandSuffix}.ts`) && !direntPath.endsWith(`${this.commandSuffix}.js`)) {
-                    continue
-                }
+                // if (!direntPath.endsWith(`${this.commandSuffix}.ts`) && !direntPath.endsWith(`${this.commandSuffix}.js`)) {
+                //     continue
+                // }
                 yield direntPath;
             }
         }

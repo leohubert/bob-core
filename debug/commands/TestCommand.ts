@@ -1,73 +1,32 @@
+import {Command} from "@/src/Command.js";
 
-import {BadCommandParameter} from "@/src/errors/index.js";
-import {Command} from "../command.js";
-
-export default class TestCommand extends Command {
-    signature = 'test {user} {test?: test description} {test2*?} {--option|o|b} {--flag=} {--arr=*} { --flag2 = 2}';
-    description = 'test description'
-
-    helperDefinitions = {
-        user: 'user description',
-        arr: 'arr description',
-        '--option': 'option description',
-        '--flag': 'flag description',
-        '--flag2': 'flag2 description'
-    }
-
-    commandsExamples = [
-        {
-            description: 'Example 1',
-            command: 'test yayo --option'
-        },
-        {
-            description: 'Example 2',
-            command: 'test anothervalue --flag=2'
-        }
-    ]
-
-    protected async handle(): Promise<void> {
-        let user = this.argument('user')
-	    console.log('user', user)
-        if (user === 'yayo') {
-            throw new BadCommandParameter({
-                param: 'user',
-                reason: 'yayo is not allowed'
-            })
-        }
-
-		const test = await this.askForConfirmation('Are you sure?')
-
-	    if (!test) {
-			console.log('aborted')
-			return;
-	    }
-
-		const loader = this.newLoader('Loading...')
-
-        const options = this.option('option')
-        console.log('options', options)
-
-        console.log('ctx', await this.ctx.bambooClient.getProjects())
-
-        console.log('test command', this.argument('user'), this.argument('test'))
-
-        console.log('variadic', this.argumentArray('test2'))
-
-        console.log('option', this.optionBoolean('option'))
-
-        console.log('flag', this.option('flag'))
-
-        console.log('arr', this.option('arr'))
-
-        console.log('flag2', this.option('flag2'))
-
-        console.log('logger verbose is', this.ctx.logger.verbose)
-
-	    await sleep(2000)
-	    loader.stop()
-    }
-}
-
-async function sleep(ms: number) {
-	return new Promise(resolve => setTimeout(resolve, ms));
-}
+export default new Command('new-test')
+	.arguments({
+		name: {
+			type: 'string',
+			required: true,
+			description: 'Name argument'
+		},
+		age: {
+			type: 'number',
+			required: false,
+			description: 'Age argument'
+		},
+		tags: {
+			type: ['string'],
+			required: false,
+			variadic: true,
+			description: 'Tags (variadic)'
+		}
+	})
+	.options({
+		test: 'string',
+		force: {
+			alias: ['f'],
+			type: 'boolean',
+			description: 'Force the action',
+		}
+	})
+	.handle((ctx, opts) => {
+		console.log('test command', { options: opts.options, arguments: opts.arguments });
+	})

@@ -1,29 +1,37 @@
 import chalk from "chalk";
 
 import {BobError} from "@/src/errors/BobError.js";
-import {ArgSignature} from "@/src/CommandParser.js";
+import {OptionsSchema} from "@/src/lib/types.js";
+import {getOptionDetails} from "@/src/lib/optionHelpers.js";
+
 
 export class InvalidOption extends BobError {
-    constructor(private option: string, private optionsSignature: ArgSignature[]) {
+    constructor(
+		private option: string,
+		private optionsSchema: OptionsSchema = {}
+	) {
         super(`Invalid option ${option} in not recognized`);
     }
 
     pretty(): void {
         const log = console.log
+		const options = Object.entries(this.optionsSchema);
 
-        if (this.optionsSignature.length > 0) {
+        if (options.length > 0) {
             log(chalk`\n{yellow Available options}:`)
-            for (const option of this.optionsSignature) {
-                const type = option.type ? chalk`{white (${option.type})}` : ''
-                const nameWithAlias = `--${option.name}${option.alias?.map(a => `, -${a}`).join('') ?? ''}`
 
-                const spaces = ' '.repeat(30 - nameWithAlias.length)
+			for (const [name, definition] of options) {
+				const details = getOptionDetails(definition);
+				const alias = typeof details.alias === 'string' ? [details.alias] : details.alias;
+				const typeDisplay = Array.isArray(details.type) ? `[${details.type[0]}]` : details.type;
+                const nameWithAlias = `--${name}${alias.length > 0 ? alias.map(a => `, -${a}`).join('') : ''}`;
+                const spaces = ' '.repeat(30 - nameWithAlias.length);
 
-                log(chalk`  {green ${nameWithAlias}} ${spaces} ${option.help ?? '\b'} ${type}`)
+                log(chalk`  {green ${nameWithAlias}} ${spaces} ${details.description || '\b'} {white (${typeDisplay})}`);
             }
-            log('')
+            log('');
         }
 
-        log(chalk`{white.bgRed  ERROR } Option {bold.yellow ${this.option}} is not recognized.`)
+        log(chalk`{white.bgRed  ERROR } Option {bold.yellow ${this.option}} is not recognized.`);
     }
 }

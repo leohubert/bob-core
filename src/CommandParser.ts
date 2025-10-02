@@ -1,308 +1,217 @@
-import minimist from 'minimist'
-
-import {MissingRequiredArgumentValue} from "@/src/errors/MissingRequiredArgumentValue.js";
-import {MissingSignatureOption} from "@/src/errors/MissingSignatureOption.js";
-import {MissingSignatureArgument} from "@/src/errors/MissingSignatureArgument.js";
+import minimist from "minimist";
+import {
+	OptionsSchema,
+	OptionReturnType,
+	OptionsObject,
+	ArgumentsObject
+} from "@/src/lib/types.js";
+import {BadCommandOption} from "@/src/errors/index.js";
 import {InvalidOption} from "@/src/errors/InvalidOption.js";
-import {CommandOption} from "@/src/contracts/index.js";
-import {CommandIO} from "@/src/CommandIO.js";
-import chalk from "chalk";
+import {getOptionDetails, OptionDetails} from "@/src/lib/optionHelpers.js";
+import {convertValue} from "@/src/lib/valueConverter.js";
 
-export type ArgSignature = {
-	name: string
-	type: 'string' | 'boolean' | 'array'
-	optional?: boolean
-	variadic?: boolean
-	alias?: string[]
-	help?: string
-	defaultValue: string | boolean | Array<string> | null
-	isOption?: boolean
-}
+/**
+ * Parses command-line arguments into typed options and arguments
+ * Handles validation, type conversion, and default values
+ */
+export class CommandParser<Options extends OptionsSchema, Arguments extends OptionsSchema> {
 
-export class CommandParser {
+	protected options: Options;
+	protected parsedOptions: OptionsObject<Options> | null = null;
 
-	public command: string
-	private arguments: { [argument: string]: any } = {}
-	private options: Record<string, any> = {}
-	private argumentsSignature: { [argument: string]: ArgSignature } = {}
-	private optionSignatures: { [option: string]: ArgSignature } = {}
-	private optionAliases: { [alias: string]: string } = {}
+	protected arguments: Arguments;
+	protected parsedArguments: OptionsObject<Arguments> | null = null;
 
-	constructor(
-		protected readonly io: CommandIO,
-		protected readonly signature: string,
-		protected readonly helperDefinitions: { [key: string]: string },
-		protected readonly defaultCommandOptions: CommandOption<any>[],
-		...args: any[]) {
-		const [command, ...signatureParams] = signature.split(/\{(.*?)\}/g).map(param => param.trim()).filter(Boolean)
-
-		const {_: paramValues, ...optionValues} = minimist(args)
-		this.command = command
-		this.parseSignature(signatureParams)
-		this.parseDefaultOptions()
-		this.handleArguments(paramValues)
-		this.handleOptions(optionValues)
+	constructor(opts: {
+		options: Options
+		arguments: Arguments
+	}) {
+		this.options = opts.options;
+		this.arguments = opts.arguments;
 	}
 
-	public option(name: string): any {
-		if (!this.optionSignatures[name]) {
-			throw new MissingSignatureOption(name, Object.values(this.optionSignatures))
+	// === PUBLIC METHODS ===
+
+	/**
+	 * Parses raw command-line arguments into structured options and arguments
+	 * @param args - Raw command line arguments (typically from process.argv.slice(2))
+	 * @returns Object containing parsed options and arguments
+	 * @throws {InvalidOption} If an unknown option is provided
+	 * @throws {BadCommandOption} If a value cannot be converted to the expected type
+	 */
+	init(args: string[]): { options: OptionsObject<Options>, arguments: OptionsObject<Arguments> } {
+		const {_: positionalArgs, ...optionValues} = minimist(args)
+
+		this.validateUnknownOptions(optionValues);
+		this.parsedOptions = this.handleOptions(optionValues);
+		this.parsedArguments = this.handleArguments(positionalArgs);
+
+		return {
+			options: this.parsedOptions,
+			arguments: this.parsedArguments,
 		}
-		return this.options[name]
 	}
 
-	public setOption(name: string, value: any) {
-		if (!this.optionSignatures[name]) {
-			throw new MissingSignatureOption(name, Object.values(this.optionSignatures))
+	/**
+	 * Retrieves a parsed option value by name
+	 * @param name - The option name
+	 * @returns The typed option value
+	 * @throws {Error} If init() has not been called yet
+	 */
+	option<OptsName extends keyof Options>(name: OptsName): OptionReturnType<Options[OptsName]> {
+		if (!this.parsedOptions) {
+			throw new Error('Options have not been parsed yet. Call init() first.');
 		}
-		this.options[name] = value
+		return this.parsedOptions[name];
 	}
 
-	public optionHelp(name: string): string | undefined {
-		const optionSignature = this.optionSignatures[name]
-		if (!optionSignature) {
-			throw new MissingSignatureOption(name, Object.values(this.optionSignatures))
+	/**
+	 * Retrieves a parsed argument value by name
+	 * @param name - The argument name
+	 * @returns The typed argument value
+	 * @throws {Error} If init() has not been called yet
+	 */
+	argument<ArgName extends keyof Arguments>(name: ArgName): OptionReturnType<Arguments[ArgName]> {
+		if (!this.parsedArguments) {
+			throw new Error('Arguments have not been parsed yet. Call init() first.');
 		}
-		return this.optionSignatures[name].help
+		return this.parsedArguments[name];
 	}
 
-	public argument(name: string): any {
-		if (!this.argumentsSignature[name]) {
-			throw new MissingSignatureArgument(name, Object.values(this.argumentsSignature))
-		}
-		return this.arguments[name]
-	}
+	// === PRIVATE HELPERS ===
 
-	public setArgument(name: string, value: any) {
-		if (!this.argumentsSignature[name]) {
-			throw new MissingSignatureArgument(name, Object.values(this.argumentsSignature))
-		}
-		this.arguments[name] = value
-	}
+	/**
+	 * Validates that all provided options are recognized
+	 * @throws {InvalidOption} If an unknown option is found
+	 */
+	private validateUnknownOptions(optionValues: Record<string, any>): void {
+		const validOptionNames = new Set<string>();
 
-	public argumentHelp(name: string): string | undefined {
-		const argumentSignature = this.argumentsSignature[name]
-		if (!argumentSignature) {
-			throw new MissingSignatureArgument(name, Object.values(this.argumentsSignature))
-		}
-		return this.argumentsSignature[name].help
-	}
-
-	public getArgumentSignatures() {
-		return this.argumentsSignature
-	}
-
-	public getOptionSignatures() {
-		return this.optionSignatures
-	}
-
-	private getParamValue(value: any, signature: ArgSignature) {
-		if (signature.type === 'boolean') {
-			if (value === 'true' || value === '1') {
-				return true
-			} else if (value === 'false' || value === '0') {
-				return false
+		// Collect all valid option names and their aliases
+		for (const key in this.options) {
+			validOptionNames.add(key);
+			const optionDetails = getOptionDetails(this.options[key]);
+			for (const alias of optionDetails.alias) {
+				validOptionNames.add(alias);
 			}
-			return Boolean(value)
 		}
 
-		if (signature.type === 'array') {
-			if (!value) {
-				return []
-			}
-			return Array.isArray(value) ? value : [value]
-		}
-
-		return value ?? signature.defaultValue
-	}
-
-	private handleArguments(paramValues: string[]) {
-		for (const [argument, value] of Object.entries(this.arguments)) {
-			const argSignature = this.argumentsSignature[argument]
-
-			if (argSignature.variadic) {
-				this.arguments[argument] = paramValues
-			} else {
-				const paramValue = paramValues.shift()
-
-				this.arguments[argument] = this.getParamValue(paramValue, argSignature)
+		// Check for unknown options
+		for (const optionName in optionValues) {
+			if (!validOptionNames.has(optionName)) {
+				throw new InvalidOption(optionName, this.options);
 			}
 		}
 	}
 
-	private handleOptions(optionValues: Record<string, any>) {
-		for (const [option, value] of Object.entries(optionValues)) {
-			const optionAlias = this.optionAliases[option]
-			const optionSignature = this.optionSignatures[option] ?? this.optionSignatures[optionAlias]
+	/**
+	 * Processes named options from minimist output
+	 */
+	private handleOptions(optionValues: Record<string, any>): OptionsObject<Options> {
+		const parsedOptions = {} as OptionsObject<Options>;
 
-			if (!optionSignature) {
-				throw new InvalidOption(option, Object.values(this.optionSignatures))
-			}
-
-			this.options[option] = this.getParamValue(value, optionSignature)
-
-			for (const alias of optionSignature.alias ?? []) {
-				if (optionValues[alias]) {
-					this.options[optionSignature.name] = optionValues[alias]
-				}
-			}
+		for (const key in this.options) {
+			const optionDetails = getOptionDetails(this.options[key]);
+			parsedOptions[key] = this.resolveOptionValue(
+				key,
+				optionDetails,
+				optionValues,
+				'option'
+			);
 		}
+
+		return parsedOptions;
 	}
 
-	private parseSignature(params: string[]) {
-		for (const paramSignature of params) {
-			const param = this.parseParamSignature(paramSignature)
+	/**
+	 * Processes positional arguments from minimist output
+	 */
+	private handleArguments(positionalArgs: string[]): ArgumentsObject<Arguments> {
+		const parsedArgs = {} as ArgumentsObject<Arguments>;
+		const remainingArgs = [...positionalArgs];
 
-			if (param.isOption) {
-				this.options[param.name] = param.defaultValue ?? null
-				this.optionSignatures[param.name] = param
+		for (const key in this.arguments) {
+			const argDefinition = getOptionDetails(this.arguments[key]);
 
-				for (const alias of param.alias ?? []) {
-					this.optionAliases[alias] = param.name
-				}
-			} else {
-				this.arguments[param.name] = param.defaultValue ?? null
-				this.argumentsSignature[param.name] = param
+			// Handle variadic arguments (consumes all remaining values)
+			if (argDefinition.variadic) {
+				parsedArgs[key] = this.handleVariadicArgument(key, argDefinition, remainingArgs);
+				continue;
 			}
+
+			// Handle regular single-value argument
+			const argValue = remainingArgs.shift();
+			parsedArgs[key] = this.resolveArgumentValue(key, argDefinition, argValue);
 		}
+
+		return parsedArgs;
 	}
 
-	private parseDefaultOptions() {
-		if (this.defaultCommandOptions.length) {
-			for (const option of this.defaultCommandOptions) {
-				this.optionSignatures[option.option] = {
-					name: option.option,
-					type: option.defaultValue == null ? 'string' : typeof option.defaultValue === 'boolean' ? 'boolean' : Array.isArray(option.defaultValue) ? 'array' : 'string',
-					optional: true,
-					alias: option.alias,
-					variadic: false,
-					help: option.description,
-					defaultValue: option.defaultValue ?? null,
-					isOption: true
-				}
-				this.options[option.option] = option.defaultValue
-				if (option.alias) {
-					for (const alias of option.alias) {
-						this.optionAliases[alias] = option.option
-					}
-				}
-			}
-		}
+	/**
+	 * Handles variadic arguments that consume all remaining positional values
+	 */
+	private handleVariadicArgument(
+		key: string,
+		definition: OptionDetails,
+		remainingArgs: string[]
+	): any {
+		// Variadic arguments are always arrays - convert each element if present, otherwise return default
+		return remainingArgs.length
+			? convertValue(remainingArgs, definition.type, key, definition.default)
+			: definition.default;
 	}
 
-	private parseParamSignature(argument: string): ArgSignature {
-		const arg: ArgSignature = {
-			name: argument,
-			optional: false,
-			type: 'string',
-			help: undefined,
-			defaultValue: null,
-			variadic: false,
-			isOption: false
+	/**
+	 * Resolves a single positional argument value with defaults and type conversion
+	 * Note: Does not validate required arguments - validation happens in subclass validate() methods
+	 */
+	private resolveArgumentValue(
+		key: string,
+		definition: OptionDetails,
+		argValue: string | undefined
+	): any {
+		// If no value provided, return default (validation happens later)
+		if (argValue === undefined) {
+			return definition.default;
 		}
 
-		if (arg.name.includes(':')) {
-			const [name, help] = arg.name.split(':')
-			arg.name = name.trim()
-			arg.help = help.trim()
-		}
-
-		if (arg.name.includes('=')) {
-			const [name, defaultValue] = arg.name.split('=')
-			arg.name = name.trim()
-			arg.defaultValue = defaultValue.trim()
-			arg.optional = true
-
-			if (!arg.defaultValue.length) {
-				arg.defaultValue = null
-			} else if (arg.defaultValue === 'true') {
-				arg.defaultValue = true
-				arg.type = 'boolean'
-			} else if (arg.defaultValue === 'false') {
-				arg.defaultValue = false
-				arg.type = 'boolean'
-			}
-		} else {
-			if (arg.name.startsWith('--')) {
-				arg.optional = true
-				arg.defaultValue = false
-				arg.type = 'boolean'
-			}
-		}
-
-		if (arg.name.includes('|')) {
-			const [name, ...alias] = arg.name.split('|')
-			arg.name = name.trim()
-			arg.alias = alias.map(a => a.trim())
-		}
-
-		if (arg.name.startsWith('--')) {
-			arg.isOption = true
-			arg.name = arg.name.slice(2)
-		}
-
-		if (arg.defaultValue === '*') {
-			arg.defaultValue = []
-			arg.type = 'array'
-		}
-
-		if (arg.name.endsWith('?')) {
-			arg.optional = true
-			arg.name = arg.name.slice(0, -1)
-		}
-
-		if (arg.name.endsWith('*')) {
-			arg.type = 'array'
-			arg.variadic = true
-			arg.defaultValue = []
-			arg.name = arg.name.slice(0, -1)
-		}
-
-		arg.help = arg.help ?? this.helperDefinitions[arg.name] ?? this.helperDefinitions[`--${arg.name}`]
-
-		return arg
+		// Convert the value to the correct type
+		return convertValue(argValue, definition.type, key, definition.default);
 	}
 
-	public async validate() {
-		// validate arguments
-		for (const [argument, value] of Object.entries(this.arguments)) {
-			const argSignature = this.argumentsSignature[argument]
+	/**
+	 * Resolves an option value from the parsed option values object
+	 * Handles alias resolution, defaults, and type conversion
+	 */
+	private resolveOptionValue(
+		key: string,
+		definition: OptionDetails,
+		optionValues: Record<string, any>,
+		paramType: 'option' | 'argument'
+	): any {
+		let rawValue: any = undefined;
 
-			if (!value && !argSignature.optional) {
-				let newValue: any = null
-
-				switch (argSignature.type) {
-					case 'string':
-
-						let text = chalk`{yellow.bold ${argSignature.name}} is required`
-						if (argSignature.help) {
-							text += chalk`: {gray (${argSignature.help})}`
-						}
-						text += '\n'
-
-
-						newValue = await this.io.askForInput(text, argSignature.defaultValue as string | undefined, {
-							validate: (value) => {
-								if (!Boolean(value?.trim()?.length)) {
-									return `${argSignature.name} cannot be empty`
-								}
-								return true
-							}
-						})
-						break;
-				}
-
-				if (newValue) {
-					this.setArgument(argument, newValue)
-				} else {
-					throw new MissingRequiredArgumentValue(argSignature)
-				}
-
-			}
-
-			if (!value?.length && argSignature.variadic && !argSignature.optional) {
-				throw new MissingRequiredArgumentValue(argSignature)
+		// Search through option name and its aliases
+		const allNames = [key, ...definition.alias];
+		for (const name of allNames) {
+			if (name in optionValues) {
+				rawValue = optionValues[name];
+				break;
 			}
 		}
+
+		// Handle missing value
+		if (rawValue === undefined) {
+			if (definition.required) {
+				throw new BadCommandOption({
+					option: key,
+					reason: `${paramType === 'option' ? 'Option' : 'Argument'} is required but not provided`,
+				});
+			}
+			return definition.default;
+		}
+
+		// Convert to the correct type
+		return convertValue(rawValue, definition.type, key, definition.default);
 	}
 }

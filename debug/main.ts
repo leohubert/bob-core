@@ -57,11 +57,8 @@ async function main() {
 
     const command = process.argv.at(2)
 
-    if (command) {
-        return await cli.runCommand(command, ...process.argv.slice(3))
-    }
 
-    return await cli.runHelpCommand()
+	return await cli.runCommand(command, ...process.argv.slice(3))
 }
 
 main()

@@ -1,5 +1,5 @@
 import { CommandRegistry } from "@/src/CommandRegistry.js";
-import {Command} from "@/src/Command.js";
+import {LegacyCommand} from "@/src/LegacyCommand.js";
 import HelpCommand from "@/src/commands/HelpCommand.js";
 import {ExceptionHandler} from "@/src/ExceptionHandler.js";
 
@@ -40,11 +40,11 @@ export class Cli<C> {
         });
     }
 
-    setCommandResolver(resolver: (path: string) => Promise<Command<C>>) {
+    setCommandResolver(resolver: (path: string) => Promise<LegacyCommand<C>>) {
         this.commandRegistry.setCommandResolver(resolver);
     }
 
-    async withCommands(...commands: Array<Command<C> | { new (): Command<C> } | string>) {
+    async withCommands(...commands: Array<LegacyCommand<C> | { new (): LegacyCommand<C> } | string>) {
         for (const command of commands) {
             if (typeof command === 'string') {
                 await this.commandRegistry.loadCommandsPath(command);
@@ -58,7 +58,7 @@ export class Cli<C> {
         }
     }
 
-    async runCommand(command: string|Command, ...args: any[]): Promise<number> {
+    async runCommand(command: string|LegacyCommand|undefined, ...args: any[]): Promise<number> {
         if (!command) {
             return await this.runHelpCommand()
         }
@@ -71,7 +71,7 @@ export class Cli<C> {
         return await this.runCommand(this.helpCommand)
     }
 
-    protected registerCommand(command: Command<C>) {
+    protected registerCommand(command: LegacyCommand<C>) {
         this.commandRegistry.registerCommand(command)
     }
 }

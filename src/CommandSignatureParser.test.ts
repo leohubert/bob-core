@@ -1,14 +1,14 @@
 import {describe, it, expect, beforeEach, vi} from 'vitest';
-import { CommandParser } from '@/src/CommandParser.js';
+import { CommandSignatureParser } from '@/src/CommandSignatureParser.js';
 import {MissingRequiredArgumentValue} from "@/src/errors/MissingRequiredArgumentValue.js";
 import {CommandOption} from "@/src/contracts/index.js";
-import {Command} from "@/src/Command.js";
+import {LegacyCommand} from "@/src/LegacyCommand.js";
 import {CommandIO} from "@/src/CommandIO.js";
 import {MaybeMockedDeep} from "@vitest/spy";
 import {before} from "node:test";
 
 
-class TestCommandOptions implements CommandOption<Command>{
+class TestCommandOptions implements CommandOption<LegacyCommand>{
     option = 'testOption';
     description = 'Test option';
 
@@ -22,14 +22,14 @@ class TestCommandOptions implements CommandOption<Command>{
 }
 
 describe('CommandParser', () => {
-    let commandParser: CommandParser;
+    let commandParser: CommandSignatureParser;
 	let commandIO: MaybeMockedDeep<CommandIO>;
-	let parseCommand: (signature: string, args: string[], helperDefinition?: Record<string, string>, defaultCommandOptions?: CommandOption<any>[]) => CommandParser;
+	let parseCommand: (signature: string, args: string[], helperDefinition?: Record<string, string>, defaultCommandOptions?: CommandOption<any>[]) => CommandSignatureParser;
 
 	before(() => {
 		commandIO = vi.mockObject(new CommandIO())
 		parseCommand = (signature: string, args: string[], helperDefinition: Record<string, string> = {}, defaultCommandOptions: CommandOption<any>[] = []) => {
-			return new CommandParser(commandIO, signature, helperDefinition, defaultCommandOptions , ...args);
+			return new CommandSignatureParser(commandIO, signature, helperDefinition, defaultCommandOptions , ...args);
 		}
 	})
 
@@ -190,7 +190,7 @@ describe('CommandParser', () => {
     describe('Helper', () => {
         it('should parse help signature', () => {
             commandParser = parseCommand('test {arg1} {arg2:help 1} {--option : option help 2 }', ['value1', 'value2', '--option']);
-            expect(commandParser.argumentHelp('arg1')).toBeUndefined()
+            expect(commandParser.argumentHelp('arg1')).toBe('')
             expect(commandParser.argumentHelp('arg2')).toBe('help 1')
             expect(commandParser.optionHelp('option')).toBe('option help 2')
         })
@@ -204,7 +204,7 @@ describe('CommandParser', () => {
             expect(commandParser.argumentHelp('arg1')).toBe('arg1 help')
             expect(commandParser.argumentHelp('arg2')).toBe('arg2 help')
             expect(commandParser.optionHelp('option')).toBe('option help')
-            expect(commandParser.optionHelp('option2')).toBeUndefined()
+            expect(commandParser.optionHelp('option2')).toBe('')
         })
 
 
