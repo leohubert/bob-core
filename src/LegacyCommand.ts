@@ -81,11 +81,11 @@ export abstract class LegacyCommand<C = any> {
     protected option<T = string>(key: string): T | null
     protected option<T = string>(key: string, defaultValue: T): NoInfer<T>
     protected option<T = string>(key: string, defaultValue: T | null = null): NoInfer<T> | null {
-        return this.parser.option(key) ?? defaultValue;
+        return this.parser.option(key) as T ?? defaultValue;
     }
 
     protected optionBoolean(key: string, defaultValue: boolean = false): boolean  {
-        return this.parser.option(key) ?? defaultValue;
+        return this.parser.option(key) as boolean ?? defaultValue;
     }
 
     protected optionArray<T = string>(key: string, defaultValue: Array<T> = []): Array<NoInfer<T>> {
@@ -110,14 +110,14 @@ export abstract class LegacyCommand<C = any> {
             return value;
         }
 
-        return parseInt(value);
+        return parseInt(value as string);
     }
 
 
     protected argument<T = string>(key: string): T | null
     protected argument<T = string>(key: string, defaultValue: T): NoInfer<T>
     protected argument<T = string>(key: string, defaultValue: T | null = null): NoInfer<T> | null {
-        return this.parser.argument(key) ?? defaultValue;
+        return this.parser.argument(key) as T ?? defaultValue;
     }
 
     protected argumentArray<T = string>(key: string, defaultValue: Array<any> = []): Array<T> {
@@ -133,7 +133,7 @@ export abstract class LegacyCommand<C = any> {
     }
 
     protected argumentBoolean(key: string, defaultValue: boolean = false): boolean {
-        return this.parser.argument(key) ?? defaultValue;
+        return this.parser.argument(key) as boolean ?? defaultValue;
     }
 
     protected argumentNumber(key: string, defaultValue: number | null = null): number | null {
@@ -145,7 +145,7 @@ export abstract class LegacyCommand<C = any> {
             return value;
         }
 
-        return parseInt(value);
+        return parseInt(value as string);
     }
 
 	/**

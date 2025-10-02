@@ -1,4 +1,3 @@
-import minimist from 'minimist'
 import {OptionsSchema, OptionsObject, ArgumentsSchema, ArgumentsObject} from "@/src/lib/types.js";
 import {CommandParser} from "@/src/CommandParser.js";
 
