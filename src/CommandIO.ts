@@ -63,8 +63,35 @@ export class CommandIO {
 			type: 'text',
 			name: 'value',
 			message: message,
-			initial: defaultValue
-			,...opts
+			initial: defaultValue,
+			...opts
+		}))?.value ?? null;
+	}
+
+	async askForDate(message: string, defaultValue?: Date, opts?: {
+		validate?: (value: Date) => boolean | string
+		mask?: string
+	}): Promise<Date | null> {
+		return (await prompts({
+			type: 'date',
+			name: 'value',
+			message: message,
+			initial: defaultValue,
+			...opts
+		}))?.value ?? null;
+	}
+
+	async askForList(message: string, defaultValue?: string | number, opts?: {
+		validate?: (value: string[]) => boolean | string
+		format?: (value: string) => string
+		separator?: string
+	}): Promise<string[] | null> {
+		return (await prompts({
+			type: 'list',
+			name: 'value',
+			message: message,
+			initial: defaultValue,
+			...opts
 		}))?.value ?? null;
 	}
 

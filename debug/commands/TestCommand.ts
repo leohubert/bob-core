@@ -18,8 +18,8 @@ export default new Command('new-test')
 			description: 'Age argument'
 		},
 		tags: {
-			type: ['string'],
-			required: false,
+			type: ['number'],
+			required: true,
 			variadic: true,
 			description: 'Tags (variadic)'
 		}

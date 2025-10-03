@@ -94,7 +94,17 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 			}
 
 			// Additional validation for variadic arguments
-			if (argDetails.variadic && argDetails.required && Array.isArray(value) && value.length === 0) {
+			if (argDetails.required && argDetails.variadic  && Array.isArray(value) && value.length === 0) {
+
+				if (this.shouldPromptForMissingOptions) {
+					const newValue = await this.promptForArgument(key, argDetails);
+
+					if (newValue && this.parsedArguments) {
+						(this.parsedArguments as any)[key] = convertValue(newValue, argDetails.type, key);
+						continue;
+					}
+				}
+
 				throw new MissingRequiredArgumentValue(key);
 			}
 		}
@@ -322,8 +332,8 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 	protected async promptForArgument(
 		argumentName: string,
 		argDef: OptionDefinition
-	): Promise<string | number | null> {
-		if (Array.isArray(argDef.type) || !['string', 'number', 'secret'].includes(argDef.type)) {
+	): Promise<string | number | string[] | null> {
+		if (!Array.isArray(argDef.type) && !['string', 'number', 'secret'].includes(argDef.type)) {
 			return null;
 		}
 
@@ -332,6 +342,24 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 			promptText += chalk`: {gray (${argDef.description})}`;
 		}
 		promptText += '\n';
+
+		if (Array.isArray(argDef.type)) {
+			promptText += chalk`Please provide one or more values, separated by commas:\n`;
+
+			return await this.io.askForList(
+				promptText,
+				undefined,
+				{
+					validate: (value: string[]) => {
+						if (!value.length) {
+							return 'Please enter at least one value';
+						}
+
+						return true;
+					}
+				}
+			);
+		}
 
 		return await this.io.askForInput(
 			promptText,

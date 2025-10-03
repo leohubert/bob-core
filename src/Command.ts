@@ -47,7 +47,7 @@ export class Command<C = any, Options extends OptionsSchema = {}, Arguments exte
 	protected logger!: Logger;
 	protected parser!: CommandParser<Options, Arguments>;
 
-	disablePromptingFlag = false;
+	protected disablePromptingFlag = false;
 
 	protected preHandle?(): Promise<void|number>;
 	protected _preHandler?: CommandHandler<C, Options, Arguments>;
