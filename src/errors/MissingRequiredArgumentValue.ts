@@ -5,8 +5,7 @@ import {OptionDefinition} from "@/src/lib/types.js";
 
 export class MissingRequiredArgumentValue extends BobError {
     constructor(
-		public readonly paramName: string,
-		public readonly paramSignature: OptionDefinition
+		public readonly paramName: string
 	) {
         super(`Argument "${paramName}" is required.`)
     }

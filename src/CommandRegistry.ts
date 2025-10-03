@@ -8,10 +8,10 @@ import {CommandNotFoundError} from "@/src/errors/CommandNotFoundError.js";
 import {CommandIO} from "@/src/CommandIO.js";
 import {Command} from "@/src/Command.js";
 
-export type CommandResolver = (path: string) => Promise<LegacyCommand|Command>;
+export type CommandResolver = (path: string) => Promise<Command>;
 
 export class CommandRegistry {
-    private readonly commands: Record<string, LegacyCommand | Command> = {};
+    private readonly commands: Record<string, Command> = {};
 	protected readonly io!: CommandIO;
 
     get commandSuffix() {
@@ -45,11 +45,10 @@ export class CommandRegistry {
 			defaultImport = defaultImport.default
 		}
 
-        let command: LegacyCommand|Command
-
+        let command: Command
         if (typeof defaultImport === 'function') {
 			command = new defaultImport();
-	    } else if (defaultImport instanceof LegacyCommand || defaultImport instanceof Command) {
+	    } else if (defaultImport instanceof Command) {
 			command = defaultImport;
         } else {
 			throw new Error(`The command at path ${path} is not a valid command class.`)
@@ -62,13 +61,8 @@ export class CommandRegistry {
         this.commandResolver = resolver;
     }
 
-    registerCommand(command: LegacyCommand | Command, force: boolean = false) {
-		let commandName: string;
-		if (command instanceof Command) {
-			commandName = command.command;
-		} else {
-			commandName = command.signature.split(' ')[0];
-		}
+    registerCommand(command: Command, force: boolean = false) {
+		const commandName = command.command;
         if (!commandName) {
             throw new Error('Command signature is invalid, it must have a command name.')
         }
@@ -87,7 +81,9 @@ export class CommandRegistry {
                 this.registerCommand(command)
 
             } catch (e) {
-                throw new Error(`Command ${file} failed to load. ${e}`)
+                throw new Error(`Command ${file} failed to load. ${e}`, {
+					cause: e
+                })
             }
         }
     }
@@ -103,10 +99,6 @@ export class CommandRegistry {
             }
             return 1;
         }
-
-		if (commandToRun instanceof LegacyCommand) {
-			return await commandToRun.run(ctx, ...args);
-		}
 
 	    return await commandToRun.run(ctx, {
 		    args

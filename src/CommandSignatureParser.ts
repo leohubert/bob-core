@@ -3,7 +3,7 @@ import {MissingSignatureOption} from "@/src/errors/MissingSignatureOption.js";
 import {MissingSignatureArgument} from "@/src/errors/MissingSignatureArgument.js";
 import {CommandOption} from "@/src/contracts/index.js";
 import {CommandIO} from "@/src/CommandIO.js";
-import {Option, OptionDefinition, OptionReturnType, OptionsSchema} from "@/src/lib/types.js";
+import {Option, OptionDefinition, OptionReturnType, OptionsObject, OptionsSchema} from "@/src/lib/types.js";
 import {CommandParser} from "@/src/CommandParser.js";
 import chalk from "chalk";
 import {getOptionDetails} from "@/src/lib/optionHelpers.js";
@@ -18,30 +18,26 @@ export class CommandSignatureParser<Opts extends OptionsSchema = any, Args exten
 	private readonly argumentsSchema: Args
 	private readonly optionsSchema: Opts
 
-	constructor(
-		protected readonly io: CommandIO,
-		protected readonly signature: string,
-		protected readonly helperDefinitions: { [key: string]: string },
-		protected readonly defaultCommandOptions: CommandOption<any>[],
-		...args: any[]
-	) {
+	constructor(opts: {
+		io: CommandIO,
+		signature: string,
+		helperDefinitions: { [key: string]: string },
+		defaultOptions: CommandOption<any>[],
+	}) {
 		// Parse signature to extract command name and parameter schemas
 		const parseResult = CommandSignatureParser.parseSignature<Opts, Args>(
-			signature,
-			helperDefinitions,
-			defaultCommandOptions
+			opts.signature,
+			opts.helperDefinitions,
+			opts.defaultOptions
 		);
 
 		// Initialize parent with schemas
-		super({ options: parseResult.options, arguments: parseResult.arguments });
+		super({io: opts.io, options: parseResult.options, arguments: parseResult.arguments });
 
 		// Store parsed definitions for later access
 		this.command = parseResult.command;
 		this.optionsSchema = parseResult.options;
 		this.argumentsSchema = parseResult.arguments;
-
-		// Parse actual command-line arguments via parent
-		super.init(args);
 	}
 
 	/**
@@ -78,15 +74,12 @@ export class CommandSignatureParser<Opts extends OptionsSchema = any, Args exten
 		// Add default command options (e.g., global --help, --version)
 		for (const option of defaultCommandOptions) {
 			optionsSchema[option.option] = {
-				type: option.defaultValue == null ? 'string'
-					: typeof option.defaultValue === 'boolean' ? 'boolean'
-					: Array.isArray(option.defaultValue) ? ['string']
-					: 'string',
-				required: false,
+				type: option.type,
+				required: option.required,
 				alias: option.alias,
-				variadic: false,
+				variadic: option.variadic ?? false,
 				description: option.description,
-				default: option.defaultValue ?? null
+				default: option.default ?? null
 			};
 		}
 
@@ -98,7 +91,7 @@ export class CommandSignatureParser<Opts extends OptionsSchema = any, Args exten
 	/**
 	 * Retrieves an option value by name, with signature validation
 	 */
-	public option<O extends keyof Opts>(name: O): OptionReturnType<Opts[O]> {
+	public option(name: any): any {
 		if (!this.optionsSchema[name]) {
 			throw new MissingSignatureOption(name as string, this.optionsSchema)
 		}
@@ -140,7 +133,7 @@ export class CommandSignatureParser<Opts extends OptionsSchema = any, Args exten
 	/**
 	 * Retrieves an argument value by name, with signature validation
 	 */
-	public argument<A extends keyof Args>(name: A): OptionReturnType<Args[A]> {
+	public argument(name: any):any {
 		if (!this.argumentsSchema[name]) {
 			throw new MissingSignatureArgument(name as string, this.argumentsSchema)
 		}
@@ -332,5 +325,20 @@ export class CommandSignatureParser<Opts extends OptionsSchema = any, Args exten
 				}
 			}
 		)
+	}
+
+	public optionValues(): OptionsObject<Opts> {
+		if (!this.parsedOptions) {
+			throw new Error("Options have not been parsed yet. Call init() first.");
+		}
+
+		return this.parsedOptions
+	}
+
+	public argumentValues(): OptionsObject<Args> {
+		if (!this.parsedArguments) {
+			throw new Error("Arguments have not been parsed yet. Call init() first.");
+		}
+		return this.parsedArguments
 	}
 }

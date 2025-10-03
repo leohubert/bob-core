@@ -1,17 +1,16 @@
-import {describe, it, expect, beforeEach, vi} from 'vitest';
+import {describe, it, expect, beforeEach, vi, beforeAll} from 'vitest';
 import { CommandSignatureParser } from '@/src/CommandSignatureParser.js';
 import {MissingRequiredArgumentValue} from "@/src/errors/MissingRequiredArgumentValue.js";
 import {CommandOption} from "@/src/contracts/index.js";
-import {LegacyCommand} from "@/src/LegacyCommand.js";
+import {Command} from "@/src/Command.js";
 import {CommandIO} from "@/src/CommandIO.js";
 import {MaybeMockedDeep} from "@vitest/spy";
-import {before} from "node:test";
 
 
-class TestCommandOptions implements CommandOption<LegacyCommand>{
+class TestCommandOptions implements CommandOption<Command>{
     option = 'testOption';
     description = 'Test option';
-
+	type = 'string' as const;
     defaultValue: string|null = 'default';
 
     alias = ['t'];
@@ -24,12 +23,19 @@ class TestCommandOptions implements CommandOption<LegacyCommand>{
 describe('CommandParser', () => {
     let commandParser: CommandSignatureParser;
 	let commandIO: MaybeMockedDeep<CommandIO>;
-	let parseCommand: (signature: string, args: string[], helperDefinition?: Record<string, string>, defaultCommandOptions?: CommandOption<any>[]) => CommandSignatureParser;
+	let parseCommand: (signature: string, args: string[], helperDefinition?: Record<string, string>, defaultCommandOptions?: CommandOption<any>[]) => Promise<CommandSignatureParser>;
 
-	before(() => {
+	beforeAll(() => {
 		commandIO = vi.mockObject(new CommandIO())
-		parseCommand = (signature: string, args: string[], helperDefinition: Record<string, string> = {}, defaultCommandOptions: CommandOption<any>[] = []) => {
-			return new CommandSignatureParser(commandIO, signature, helperDefinition, defaultCommandOptions , ...args);
+		parseCommand = async (signature: string, args: string[], helperDefinition: Record<string, string> = {}, defaultCommandOptions: CommandOption<any>[] = []) => {
+			const parser = new CommandSignatureParser({
+				io: commandIO,
+				signature,
+				helperDefinitions: helperDefinition,
+				defaultOptions: defaultCommandOptions
+			});
+			await parser.init(args);
+			return parser;
 		}
 	})
 

@@ -23,6 +23,7 @@
   "scripts": {
     "start": "node -r @swc-node/register debug/main.ts",
     "build": "rimraf ./dist && vite build",
+    "typecheck": "tsc --noEmit",
     "prepare": "npm run build",
     "test": "vitest run"
   },

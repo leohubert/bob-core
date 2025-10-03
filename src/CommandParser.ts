@@ -9,6 +9,8 @@ import {BadCommandOption} from "@/src/errors/index.js";
 import {InvalidOption} from "@/src/errors/InvalidOption.js";
 import {getOptionDetails, OptionDetails} from "@/src/lib/optionHelpers.js";
 import {convertValue} from "@/src/lib/valueConverter.js";
+import {CommandIO} from "@/src/CommandIO.js";
+import {MissingRequiredArgumentValue} from "@/src/errors/MissingRequiredArgumentValue.js";
 
 /**
  * Parses command-line arguments into typed options and arguments
@@ -22,12 +24,16 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 	protected arguments: Arguments;
 	protected parsedArguments: OptionsObject<Arguments> | null = null;
 
+	protected io: CommandIO;
+
 	constructor(opts: {
-		options: Options
-		arguments: Arguments
+		io: CommandIO,
+		options: Options,
+		arguments: Arguments,
 	}) {
 		this.options = opts.options;
 		this.arguments = opts.arguments;
+		this.io = opts.io;
 	}
 
 	// === PUBLIC METHODS ===
@@ -39,7 +45,7 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 	 * @throws {InvalidOption} If an unknown option is provided
 	 * @throws {BadCommandOption} If a value cannot be converted to the expected type
 	 */
-	init(args: string[]): { options: OptionsObject<Options>, arguments: OptionsObject<Arguments> } {
+	async init(args: string[]): Promise<{ options: OptionsObject<Options>, arguments: OptionsObject<Arguments> }> {
 		const {_: positionalArgs, ...optionValues} = minimist(args)
 
 		this.validateUnknownOptions(optionValues);
@@ -140,8 +146,13 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 			}
 
 			// Handle regular single-value argument
-			const argValue = remainingArgs.shift();
-			parsedArgs[key] = this.resolveArgumentValue(key, argDefinition, argValue);
+			const argValue = this.resolveArgumentValue(key, argDefinition, remainingArgs.shift());
+
+			if (!argValue && argDefinition.required) {
+				throw new MissingRequiredArgumentValue(key);
+			}
+
+			parsedArgs[key] = argValue
 		}
 
 		return parsedArgs;
@@ -213,5 +224,29 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 
 		// Convert to the correct type
 		return convertValue(rawValue, definition.type, key, definition.default);
+	}
+
+	optionDefinitions(): Record<string, OptionDetails> {
+		const defs: Record<string, OptionDetails> = {};
+		for (const key in this.options) {
+			defs[key] = getOptionDetails(this.options[key]);
+		}
+		return defs;
+	}
+
+	argumentDefinitions(): Record<string, OptionDetails> {
+		const defs: Record<string, OptionDetails> = {};
+		for (const key in this.arguments) {
+			defs[key] = getOptionDetails(this.arguments[key]);
+		}
+		return defs;
+	}
+
+	availableOptions(): string[] {
+		return Object.keys(this.options);
+	}
+
+	availableArguments(): string[] {
+		return Object.keys(this.arguments);
 	}
 }

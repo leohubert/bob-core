@@ -1,31 +1,31 @@
 import {describe, it, expect, beforeEach, vi} from 'vitest';
-import { LegacyCommand } from '@/src/LegacyCommand.js';
+import { Command } from '@/src/Command.js';
 import {MissingRequiredArgumentValue} from "@/src/errors/MissingRequiredArgumentValue.js";
 import {CommandIO} from "@/src/CommandIO.js";
 
-class MockCommand extends LegacyCommand {
+class MockCommand extends Command {
     signature = 'mockCommand {argument} {--option}';
     description = 'This is a mock command for testing';
 
-	protected get CommandIOClass(): typeof CommandIO {
-		return vi.mockObject(CommandIO);
+	protected newCommandIO(): CommandIO {
+		return vi.mockObject(new CommandIO);
 	}
 
-	protected handle() {
+	async handle(): Promise<number | void> {
         const opts = this.option('option');
         const arg = this.argument('argument');
 
         if (opts) {
-            return Promise.resolve(11);
+            return 11;
         }
 
         if (arg === 'value') {
-            return Promise.resolve(1);
+            return 1;
         } else if (arg) {
-            return Promise.resolve(-1);
+            return -1;
         }
 
-        return Promise.resolve(0);
+        return 0;
     }
 }
 
@@ -50,22 +50,30 @@ describe('Command', () => {
 
 
     it('should handle command with argument', async () => {
-        const result = await command.run(undefined, 'value')
+        const result = await command.run(undefined, {
+			args: ['value'],
+        })
         expect(result).toBe(1);
     });
 
     it('should handle command with argument', async () => {
-        const result = await command.run(undefined, 'badValue')
+        const result = await command.run(undefined, {
+			args: ['badValue'],
+        })
         expect(result).toBe(-1);
     });
 
     it('should throw error if argument is missing', async () => {
-        await expect(command.run(undefined)).rejects.toThrowError(MissingRequiredArgumentValue);
+        await expect(command.run(undefined, {
+			args: [],
+        })).rejects.toThrowError(MissingRequiredArgumentValue);
 
     });
 
     it('should handle command with option', async () => {
-        const result = await command.run(undefined,  'value', '--option')
+        const result = await command.run(undefined,  {
+			args: ['value', '--option'],
+        })
         expect(result).toBe(11);
     })
 });

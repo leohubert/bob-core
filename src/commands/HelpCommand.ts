@@ -3,6 +3,7 @@ import chalk from "chalk";
 import {LegacyCommand} from "@/src/LegacyCommand.js";
 import {CommandRegistry} from "@/src/CommandRegistry.js";
 import {generateSpace} from "@/src/lib/string.js";
+import {Command} from "@/src/Command.js";
 
 export type HelpCommandOptions = {
     commandRegistry: CommandRegistry
@@ -10,15 +11,14 @@ export type HelpCommandOptions = {
     cliVersion?: string
 }
 
-export default class HelpCommand extends LegacyCommand {
-    signature = 'help'
-    description = 'Show help'
-
+export default class HelpCommand extends Command {
     constructor(private opts: HelpCommandOptions) {
-        super();
+        super('help', {
+			description: chalk.bold('Show help information about the CLI and its commands')
+        });
     }
 
-    protected async handle(): Promise<void> {
+	handler = async (): Promise<void> => {
         const commands = this.opts.commandRegistry.getCommands()
 
         const cliName = this.opts.cliName ?? 'Bob CLI'
@@ -35,7 +35,7 @@ export default class HelpCommand extends LegacyCommand {
 `)
 
         const maxCommandLength = Math.max(...commands.map(command => command.command.length)) ?? 0
-        const commandByGroups: { [key: string]: LegacyCommand[] } = {}
+        const commandByGroups: { [key: string]: Array<LegacyCommand | Command> } = {}
 
         for (const command of commands) {
             const commandGroup = command.command.split(':')[0]

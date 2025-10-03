@@ -1,11 +1,12 @@
 import {Command} from "../command.js";
 import {CommandOption} from "../../src/index.js";
+import { OptionPrimitive } from "@/src/lib/types.js";
 
 export class LoggerVerboseOption implements CommandOption<Command> {
+    type: OptionPrimitive = 'boolean'
+
     option = 'verbose'
     alias = ['v']
-
-    defaultValue = true
 
     description = 'Enable verbose logging'
 

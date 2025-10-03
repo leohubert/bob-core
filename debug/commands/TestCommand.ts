@@ -25,8 +25,10 @@ export default new Command('new-test')
 			alias: ['f'],
 			type: 'boolean',
 			description: 'Force the action',
+			required: false,
 		}
 	})
 	.handle((ctx, opts) => {
+		const test = opts.options.force
 		console.log('test command', { options: opts.options, arguments: opts.arguments });
 	})

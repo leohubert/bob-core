@@ -1,31 +1,40 @@
 import chalk from "chalk";
 
-import {LegacyCommand} from "@/src/LegacyCommand.js";
 import {generateSpace} from "@/src/lib/string.js";
-import {OptionDefinition} from "@/src/lib/types.js";
 import {CommandOption} from "@/src/contracts/index.js";
+import {Command} from "@/src/Command.js";
+import {OptionPrimitive} from "@/src/lib/types.js";
+import {OptionDetails} from "@/src/lib/optionHelpers.js";
 
-export class HelpOption implements CommandOption<LegacyCommand> {
+export class HelpOption implements CommandOption<Command> {
 
+    type: OptionPrimitive = 'boolean'
     option = 'help'
     alias = ['h']
 
-    defaultValue = false
+    default = false
 
     description = chalk`Display help for the given command. When no command is given display help for the {green list} command`
 
-    public async handler(this: LegacyCommand): Promise<number|void> {
+    public async handler(this: Command): Promise<number|void> {
         const log = console.log
 
-        const availableArguments = Object.entries(this.parser.getArgumentSignatures())
-        const availableOptions = Object.entries(this.parser.getOptionSignatures())
-            .map(([name, signature]) => ({
-				name,
-                ...signature,
-                optionWithAlias: `--${name}${signature.alias?.map(a => `, -${a}`).join('') ?? ''}`
-            }))
+	    const argumentDefinitions = this.parser.argumentDefinitions();
+	    const optionDefinitions = this.parser.optionDefinitions();
 
-        const requiredArguments = availableArguments.filter(([name, signature]) => signature.required)
+	    const availableArguments: [string, OptionDetails][] = Object.entries(argumentDefinitions)
+	    const availableOptions: [string, OptionDetails][] = Object.entries(optionDefinitions)
+
+        const optionsWithAlias = availableOptions.map(([name, signature]) => {
+            const aliases = Array.isArray(signature.alias) ? signature.alias : signature.alias ? [signature.alias] : [];
+            return {
+                name,
+                ...signature,
+                optionWithAlias: `--${name}${aliases.map((a: string) => `, -${a}`).join('')}`
+            };
+        });
+
+        const requiredArguments = availableArguments.filter(([, signature]) => signature.required);
 
         log(chalk`{yellow Description}:`)
         log(chalk`  ${this.description}\n`)
@@ -33,8 +42,8 @@ export class HelpOption implements CommandOption<LegacyCommand> {
         log(chalk`{yellow Usage}:`)
         log(chalk`  ${this.command} ${requiredArguments.length > 0 ? requiredArguments.map(([name]) => `<${name}>`).join(' ') : '\b'} [options]`)
 
-        const maxOptionLength: number = Math.max(...availableOptions.map((opt) => opt.optionWithAlias.length)) ?? 0
-        const maxArgumentLength: number = Math.max(...availableArguments.map(([name]) => name.length)) ?? 0
+        const maxOptionLength: number = Math.max(...optionsWithAlias.map((opt) => opt.optionWithAlias.length), 0)
+        const maxArgumentLength: number = Math.max(...availableArguments.map(([name]) => name.length), 0)
         const maxLength = maxArgumentLength > maxOptionLength ? maxArgumentLength : maxOptionLength
 
         if (availableArguments.length > 0) {
@@ -63,9 +72,8 @@ export class HelpOption implements CommandOption<LegacyCommand> {
         if (availableOptions.length > 0) {
             log(chalk`\n{yellow Options}:`)
 
-            for (const signature of availableOptions) {
+            for (const signature of optionsWithAlias) {
                 const spaces = generateSpace(maxLength - signature.optionWithAlias.length)
-
 
                 let message = chalk`{green ${signature.optionWithAlias}} ${spaces} ${signature.description ?? '\b'}`
 
@@ -84,6 +92,7 @@ export class HelpOption implements CommandOption<LegacyCommand> {
             }
         }
 
+        // Only show examples for LegacyCommand which has commandsExamples property
         if (this.commandsExamples.length > 0) {
             log(chalk`\n{yellow Examples}:`)
             let  binaryName = process.argv[0].split('/').pop()
@@ -91,7 +100,7 @@ export class HelpOption implements CommandOption<LegacyCommand> {
                 binaryName += ' ' + process.argv[1].split('/').pop()
             }
 
-            for (const [index, example] of this.commandsExamples.entries()) {
+            for (const [index, example] of (this as any).commandsExamples.entries()) {
                 if (index > 0) {
                     log('')
                 }

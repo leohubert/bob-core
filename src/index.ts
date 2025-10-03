@@ -1,4 +1,3 @@
-export * from './LegacyCommand.js';
 export * from './Command.js';
 export * from './CommandIO.js';
 export * from './Cli.js';
