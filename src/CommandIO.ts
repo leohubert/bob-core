@@ -1,4 +1,5 @@
 import prompts from "prompts"
+import {Logger} from "@/src/Logger.js";
 
 export type SelectOption = {
 	title: string;
@@ -9,6 +10,40 @@ export type SelectOption = {
 }
 
 export class CommandIO {
+	private logger: Logger;
+
+	constructor(logger?: Logger) {
+		this.logger = logger ?? new Logger();
+	}
+
+	/**
+	 * Logger methods
+	 */
+
+	log(...args: any[]): void {
+		this.logger.log(...args);
+	}
+
+	info(...args: any[]): void {
+		this.logger.info(...args);
+	}
+
+	warn(...args: any[]): void {
+		this.logger.warn(...args);
+	}
+
+	error(...args: any[]): void {
+		this.logger.error(...args);
+	}
+
+	debug(...args: any[]): void {
+		this.logger.debug(...args);
+	}
+
+	verbose(...args: any[]): void {
+		this.logger.verbose(...args);
+	}
+
 	/**
 	 * Prompt utils
 	 */

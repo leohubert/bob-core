@@ -9,23 +9,22 @@ export class MissingSignatureArgument extends BobError {
         super(`Missing ${argument} in the command signature`);
     }
 
-    pretty(): void {
-        const log = console.log
+    pretty(io: any): void {
 		const entries = Object.entries(this.argumentsSchema);
 
         if (entries.length) {
-            log(chalk`\n{yellow Available arguments}:`)
+            io.log(chalk`\n{yellow Available arguments}:`)
             for (const [name, definition] of entries) {
 				const details = getOptionDetails(definition);
 				const typeDisplay = Array.isArray(details.type) ? `[${details.type[0]}]` : details.type;
                 const type = typeDisplay ? chalk`{white (${typeDisplay})}` : ''
                 const spaces = ' '.repeat(20 - name.length)
 
-                log(chalk`  {green ${name}} ${spaces} ${details.description ?? '\b'} ${type}`)
+                io.log(chalk`  {green ${name}} ${spaces} ${details.description ?? '\b'} ${type}`)
             }
-            log('')
+            io.log('')
         }
 
-        log(chalk`{white.bgRed  ERROR } Argument {bold.yellow ${this.argument}} is missing in the signature.`)
+        io.log(chalk`{white.bgRed  ERROR } Argument {bold.yellow ${this.argument}} is missing in the signature.`)
     }
 }

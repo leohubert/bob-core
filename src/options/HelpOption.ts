@@ -17,8 +17,6 @@ export class HelpOption implements CommandOption<Command> {
     description = chalk`Display help for the given command. When no command is given display help for the {green list} command`
 
     public async handler(this: Command): Promise<number|void> {
-        const log = console.log
-
 	    const argumentDefinitions = this.parser.argumentDefinitions();
 	    const optionDefinitions = this.parser.optionDefinitions();
 
@@ -36,18 +34,18 @@ export class HelpOption implements CommandOption<Command> {
 
         const requiredArguments = availableArguments.filter(([, signature]) => signature.required);
 
-        log(chalk`{yellow Description}:`)
-        log(chalk`  ${this.description}\n`)
+        this.io.log(chalk`{yellow Description}:`)
+        this.io.log(chalk`  ${this.description}\n`)
 
-        log(chalk`{yellow Usage}:`)
-        log(chalk`  ${this.command} ${requiredArguments.length > 0 ? requiredArguments.map(([name]) => `<${name}>`).join(' ') : '\b'} [options]`)
+        this.io.log(chalk`{yellow Usage}:`)
+        this.io.log(chalk`  ${this.command} ${requiredArguments.length > 0 ? requiredArguments.map(([name]) => `<${name}>`).join(' ') : '\b'} [options]`)
 
         const maxOptionLength: number = Math.max(...optionsWithAlias.map((opt) => opt.optionWithAlias.length), 0)
         const maxArgumentLength: number = Math.max(...availableArguments.map(([name]) => name.length), 0)
         const maxLength = maxArgumentLength > maxOptionLength ? maxArgumentLength : maxOptionLength
 
         if (availableArguments.length > 0) {
-            log(chalk`\n{yellow Arguments}:`)
+            this.io.log(chalk`\n{yellow Arguments}:`)
 
             for (const [name, signature] of availableArguments) {
                 const spaces = generateSpace(maxLength - name.length)
@@ -65,12 +63,12 @@ export class HelpOption implements CommandOption<Command> {
                     message += chalk` {white (variadic)}`
                 }
 
-                log(message)
+                this.io.log(message)
             }
         }
 
         if (availableOptions.length > 0) {
-            log(chalk`\n{yellow Options}:`)
+            this.io.log(chalk`\n{yellow Options}:`)
 
             for (const signature of optionsWithAlias) {
                 const spaces = generateSpace(maxLength - signature.optionWithAlias.length)
@@ -88,13 +86,13 @@ export class HelpOption implements CommandOption<Command> {
                     message += chalk` {yellow [default: ${defaultValue}]}`
                 }
 
-                log(message)
+                this.io.log(message)
             }
         }
 
         // Only show examples for LegacyCommand which has commandsExamples property
         if (this.commandsExamples.length > 0) {
-            log(chalk`\n{yellow Examples}:`)
+            this.io.log(chalk`\n{yellow Examples}:`)
             let  binaryName = process.argv[0].split('/').pop()
             if (binaryName === 'node') {
                 binaryName += ' ' + process.argv[1].split('/').pop()
@@ -102,10 +100,10 @@ export class HelpOption implements CommandOption<Command> {
 
             for (const [index, example] of (this as any).commandsExamples.entries()) {
                 if (index > 0) {
-                    log('')
+                    this.io.log('')
                 }
-                log(`  ${example.description}\n`)
-                log(chalk`    {green ${binaryName} ${example.command}}`)
+                this.io.log(`  ${example.description}\n`)
+                this.io.log(chalk`    {green ${binaryName} ${example.command}}`)
             }
         }
 

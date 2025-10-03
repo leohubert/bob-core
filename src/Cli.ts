@@ -1,77 +1,91 @@
-import { CommandRegistry } from "@/src/CommandRegistry.js";
-import HelpCommand from "@/src/commands/HelpCommand.js";
+import {CommandRegistry} from "@/src/CommandRegistry.js";
+import HelpCommand, {HelpCommandOptions} from "@/src/commands/HelpCommand.js";
 import {ExceptionHandler} from "@/src/ExceptionHandler.js";
 import {Command} from "@/src/Command.js";
+import {Logger, LoggerOptions} from "@/src/Logger.js";
 
 export type CliOptions<C> = {
-    ctx?: C;
-    name?: string;
-    version?: string;
+	ctx?: C;
+	name?: string;
+	version?: string;
+	logger?: Logger;
+	loggerOptions?: LoggerOptions;
 }
 
 export class Cli<C> {
 
-    public readonly commandRegistry: CommandRegistry;
-    private readonly exceptionHandler: ExceptionHandler
-    private readonly ctx?: C;
+	private readonly ctx?: C;
+	public readonly logger: Logger;
 
-    private readonly helpCommand: HelpCommand;
+	public readonly commandRegistry: CommandRegistry;
+	private readonly exceptionHandler: ExceptionHandler
 
-    get CommandRegistryClass() {
-        return CommandRegistry;
-    }
+	private readonly helpCommand: Command;
 
-    get HelpCommandClass() {
-        return HelpCommand;
-    }
+	protected newCommandRegistry(opts: {
+		logger: Logger
+	}) {
+		return new CommandRegistry(opts.logger);
+	}
 
-    get ExceptionHandlerClass() {
-        return ExceptionHandler;
-    }
+	protected newHelpCommand(opts: HelpCommandOptions) {
+		return new HelpCommand(opts);
+	}
 
-    constructor(opts: CliOptions<C> = {}) {
-        this.ctx = opts.ctx;
-        this.commandRegistry = new this.CommandRegistryClass();
-        this.exceptionHandler = new this.ExceptionHandlerClass();
-        this.helpCommand = new this.HelpCommandClass({
-            cliName: opts.name,
-            cliVersion: opts.version,
-            commandRegistry: this.commandRegistry
-        });
-    }
+	protected newExceptionHandler(opts: {
+		logger: Logger
+	}) {
+		return new ExceptionHandler(opts.logger);
+	}
 
-    setCommandResolver(resolver: (path: string) => Promise<Command<C>>) {
-        this.commandRegistry.setCommandResolver(resolver);
-    }
+	constructor(opts: CliOptions<C> = {}) {
+		this.ctx = opts.ctx;
+		this.logger = opts.logger ?? new Logger(opts.loggerOptions);
+		this.commandRegistry = this.newCommandRegistry({
+			logger: this.logger
+		});
+		this.exceptionHandler = this.newExceptionHandler({
+			logger: this.logger
+		});
+		this.helpCommand = this.newHelpCommand({
+			cliName: opts.name,
+			cliVersion: opts.version,
+			commandRegistry: this.commandRegistry
+		});
+	}
 
-    async withCommands(...commands: Array<Command<C> | { new (): Command<C> } | string>) {
-        for (const command of commands) {
-            if (typeof command === 'string') {
-                await this.commandRegistry.loadCommandsPath(command);
-            } else {
-                if (typeof command === 'function') {
-                    this.registerCommand(new command())
-                } else {
-                    this.registerCommand(command)
-                }
-            }
-        }
-    }
+	setCommandResolver(resolver: (path: string) => Promise<Command<C>>) {
+		this.commandRegistry.setCommandResolver(resolver);
+	}
 
-    async runCommand(command: string|Command|undefined, ...args: any[]): Promise<number> {
-        if (!command) {
-            return await this.runHelpCommand()
-        }
+	async withCommands(...commands: Array<Command<C> | { new(): Command<C> } | string>) {
+		for (const command of commands) {
+			if (typeof command === 'string') {
+				await this.commandRegistry.loadCommandsPath(command);
+			} else {
+				if (typeof command === 'function') {
+					this.registerCommand(new command())
+				} else {
+					this.registerCommand(command)
+				}
+			}
+		}
+	}
 
-        return await this.commandRegistry.runCommand(this.ctx, command, ...args)
-            .catch(this.exceptionHandler.handle);
-    }
+	async runCommand(command: string | Command | undefined, ...args: any[]): Promise<number> {
+		if (!command) {
+			return await this.runHelpCommand()
+		}
 
-    async runHelpCommand(): Promise<number> {
-        return await this.runCommand(this.helpCommand)
-    }
+		return await this.commandRegistry.runCommand(this.ctx, command, ...args)
+			.catch(this.exceptionHandler.handle.bind(this.exceptionHandler));
+	}
 
-    protected registerCommand(command: Command<C>) {
-        this.commandRegistry.registerCommand(command)
-    }
+	async runHelpCommand(): Promise<number> {
+		return await this.runCommand(this.helpCommand)
+	}
+
+	protected registerCommand(command: Command<C>) {
+		this.commandRegistry.registerCommand(command)
+	}
 }

@@ -35,6 +35,7 @@ export class Command<C = any, Options extends OptionsSchema = {}, Arguments exte
 
 	protected ctx!: C;
 	protected io!: CommandIO;
+	protected logger?: any;
 
 	protected _handler?: CommandHandler<C, Options, Arguments>;
 
@@ -62,7 +63,7 @@ export class Command<C = any, Options extends OptionsSchema = {}, Arguments exte
 	}
 
 	protected newCommandIO():  CommandIO {
-		return new CommandIO();
+		return new CommandIO(this.logger);
 	}
 
 	constructor(command: string, opts?: {
@@ -115,8 +116,9 @@ export class Command<C = any, Options extends OptionsSchema = {}, Arguments exte
 		return this as any;
 	}
 
-	async run(ctx: C, opts: CommandRunOption<Options, Arguments>): Promise<number | void> {
+	async run(ctx: C, opts: CommandRunOption<Options, Arguments>, logger?: any): Promise<number | void> {
 		this.ctx = ctx;
+		this.logger = logger;
 
 		if (!this._handler && !this.handle) {
 			throw new Error(`No handler defined for command ${this.command || '(unknown)'}`);

@@ -8,7 +8,7 @@ class TestTestCommand extends Command {
 
     protected async handle(): Promise<number | void> {
         const res = await this.ctx.bambooClient.getProjects()
-        console.log(res)
+        this.io.info(res)
         throw new Error("Method not implemented.");
     }
 }
@@ -64,6 +64,7 @@ async function main() {
 main()
     .then(process.exit)
     .catch(err => {
+        // Using console.error here is fine as this is the top-level error handler
         console.error(err)
         process.exit(1)
     })

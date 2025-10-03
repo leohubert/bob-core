@@ -10,9 +10,7 @@ export class MissingRequiredOptionValue extends BobError {
         super(`Argument "${option}" is required.`)
     }
 
-    pretty(): void {
-        const log = console.log
-
-        log(chalk`{white.bgRed  ERROR } Option {bold.yellow ${this.option}} is required.`)
+    pretty(io: any): void {
+        io.log(chalk`{white.bgRed  ERROR } Option {bold.yellow ${this.option}} is required.`)
     }
 }

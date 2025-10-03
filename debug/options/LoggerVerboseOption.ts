@@ -11,8 +11,8 @@ export class LoggerVerboseOption implements CommandOption<Command> {
     description = 'Enable verbose logging'
 
     public async handler(this: Command): Promise<void> {
-        console.log('Setting logger verbose to true')
+        this.io.info('Setting logger verbose to true')
         this.ctx.logger.verbose = true
-        console.log(await this.ctx.bambooClient.getProjects())
+        this.io.info(await this.ctx.bambooClient.getProjects())
     }
 }

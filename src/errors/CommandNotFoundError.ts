@@ -7,9 +7,7 @@ export class CommandNotFoundError extends BobError {
         super(`Command "${command}" not found.`);
     }
 
-    pretty(): void {
-        const log = console.log
-
-	    log(chalk`{bgRed  ERROR } Command {yellow ${this.command}} not found.`)
+    pretty(io: any): void {
+	    io.log(chalk`{bgRed  ERROR } Command {yellow ${this.command}} not found.`)
 	}
 }

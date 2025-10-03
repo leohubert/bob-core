@@ -1,10 +1,18 @@
 import {BobError} from "@/src/errors/index.js";
+import {CommandIO} from "@/src/CommandIO.js";
+import {Logger} from "@/src/Logger.js";
 
 export class ExceptionHandler {
+    private readonly logger: Logger;
+
+    constructor(logger: Logger) {
+		this.logger = logger;
+    }
+
     handle(err: Error | BobError) {
 
         if (err instanceof BobError) {
-            err.pretty()
+            err.pretty(this.logger);
 
             return -1;
         }

@@ -25,7 +25,7 @@ export default class HelpCommand extends Command {
 
         const coreVersion = (await import('../../package.json'))?.default?.version ?? '0.0.0'
 
-        console.log(chalk`${cliName} {green ${version}} (core: {yellow ${coreVersion}})
+        this.io.log(chalk`${cliName} {green ${version}} (core: {yellow ${coreVersion}})
 
 {yellow Usage}:
   command [options] [arguments]
@@ -54,7 +54,7 @@ export default class HelpCommand extends Command {
             const isGrouped = groupCommands.length > 1
 
             if (isGrouped) {
-                console.log(chalk`{yellow ${group}}:`)
+                this.io.log(chalk`{yellow ${group}}:`)
             }
 
             const sortedGroupCommands = groupCommands.sort((a, b) => a.command.toLowerCase().localeCompare(b.command.toLowerCase()))
@@ -64,7 +64,7 @@ export default class HelpCommand extends Command {
                 if (isGrouped) {
                     spaces = spaces.slice(2)
                 }
-                console.log(chalk`${isGrouped ? '  ' : ''}{green ${command.command}} ${spaces} ${command.description}`)
+                this.io.log(chalk`${isGrouped ? '  ' : ''}{green ${command.command}} ${spaces} ${command.description}`)
             }
         }
     }

@@ -6,12 +6,14 @@ import chalk from "chalk";
 import {CommandNotFoundError} from "@/src/errors/CommandNotFoundError.js";
 import {CommandIO} from "@/src/CommandIO.js";
 import {Command} from "@/src/Command.js";
+import {Logger} from "@/src/Logger.js";
 
 export type CommandResolver = (path: string) => Promise<Command>;
 
 export class CommandRegistry {
     private readonly commands: Record<string, Command> = {};
 	protected readonly io!: CommandIO;
+	protected readonly logger: Logger;
 
     get commandSuffix() {
         return "Command";
@@ -21,8 +23,9 @@ export class CommandRegistry {
 		return CommandIO;
 	}
 
-    constructor() {
-		this.io = new this.CommandIOClass();
+    constructor(logger?: Logger) {
+		this.logger = logger ?? new Logger();
+		this.io = new this.CommandIOClass(this.logger);
     }
 
     getAvailableCommands(): string[] {
@@ -101,7 +104,7 @@ export class CommandRegistry {
 
 	    return await commandToRun.run(ctx, {
 		    args
-	    }) ?? 0;
+	    }, this.logger) ?? 0;
     }
 
     private async suggestCommand(command: string): Promise<string | null> {
@@ -120,7 +123,7 @@ export class CommandRegistry {
         }
 
 		if (similarCommands.length) {
-			console.log(chalk`{bgRed  ERROR } Command {yellow ${command}} not found.\n`)
+			this.io.error(chalk`{bgRed  ERROR } Command {yellow ${command}} not found.\n`)
 
 			const commandToRun = await this.io.askForSelect(
 				chalk`{green Did you mean to run one of these commands instead?}`,
@@ -135,7 +138,7 @@ export class CommandRegistry {
     }
 
     private async askRunSimilarCommand(command: string, commandToAsk: string): Promise<boolean> {
-	    console.log(chalk`{bgRed  ERROR } Command {yellow ${command}} not found.\n`)
+	    this.io.error(chalk`{bgRed  ERROR } Command {yellow ${command}} not found.\n`)
 
 	    return this.io.askForConfirmation(chalk`{green Do you want to run {yellow ${commandToAsk}} instead?} `);
     }

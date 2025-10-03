@@ -5,7 +5,7 @@ export default  class SubCommand extends Command {
     description = 'sub command description'
 
     protected handle(ctx: any, opts: any): Promise<void> {
-		console.log("Sub command executed", ctx, opts);
+		this.io.info("Sub command executed", ctx, opts);
         throw new Error("Method not implemented.");
     }
 }

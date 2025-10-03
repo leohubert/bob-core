@@ -10,9 +10,7 @@ export class MissingRequiredArgumentValue extends BobError {
         super(`Argument "${argument}" is required.`)
     }
 
-    pretty(): void {
-        const log = console.log
-
-        log(chalk`{white.bgRed  ERROR } Argument {bold.yellow ${this.argument}} is required.`)
+    pretty(io: any): void {
+        io.log(chalk`{white.bgRed  ERROR } Argument {bold.yellow ${this.argument}} is required.`)
     }
 }
