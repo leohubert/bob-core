@@ -5,12 +5,15 @@ import {InvalidOption} from '@/src/errors/InvalidOption.js';
 import {MissingRequiredOptionValue} from '@/src/errors/MissingRequiredOptionValue.js';
 import {MissingRequiredArgumentValue} from '@/src/errors/MissingRequiredArgumentValue.js';
 import {BadCommandOption} from '@/src/errors/BadCommandOption.js';
+import {newTestLogger, TestLogger} from "@/src/testFixtures.js";
 
 describe('CommandParser', () => {
 	let io: CommandIO;
+	let logger: TestLogger;
 
 	beforeEach(() => {
-		io = new CommandIO();
+		logger = newTestLogger();
+		io = new CommandIO(logger);
 	});
 
 	describe('Basic parsing', () => {

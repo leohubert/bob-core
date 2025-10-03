@@ -15,10 +15,6 @@ export class CommandRegistry {
 	protected readonly io!: CommandIO;
 	protected readonly logger: Logger;
 
-    get commandSuffix() {
-        return "Command";
-    }
-
 	protected get CommandIOClass(): typeof CommandIO {
 		return CommandIO;
 	}
@@ -63,7 +59,7 @@ export class CommandRegistry {
         this.commandResolver = resolver;
     }
 
-    registerCommand(command: Command, force: boolean = false) {
+    registerCommand(command: Command<any, any, any>, force: boolean = false) {
 		const commandName = command.command;
         if (!commandName) {
             throw new Error('Command signature is invalid, it must have a command name.')
@@ -102,9 +98,11 @@ export class CommandRegistry {
             return 1;
         }
 
-	    return await commandToRun.run(ctx, {
+	    return await commandToRun.run({
+		    ctx,
+		    logger: this.logger,
 		    args
-	    }, this.logger) ?? 0;
+	    }) ?? 0;
     }
 
     private async suggestCommand(command: string): Promise<string | null> {

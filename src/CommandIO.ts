@@ -12,8 +12,8 @@ export type SelectOption = {
 export class CommandIO {
 	private logger: Logger;
 
-	constructor(logger?: Logger) {
-		this.logger = logger ?? new Logger();
+	constructor(logger: Logger) {
+		this.logger = logger;
 	}
 
 	/**

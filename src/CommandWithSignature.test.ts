@@ -1,15 +1,17 @@
 import {describe, it, expect, beforeEach, vi} from 'vitest';
-import { Command } from '@/src/Command.js';
 import {MissingRequiredArgumentValue} from "@/src/errors/MissingRequiredArgumentValue.js";
 import {CommandIO} from "@/src/CommandIO.js";
 import {CommandWithSignature} from "@/src/CommandWithSignature.js";
+import {newTestLogger, TestLogger} from "@/src/testFixtures.js";
 
 class MockCommand extends CommandWithSignature {
     signature = 'mockCommand {argument} {--option}';
     description = 'This is a mock command for testing';
 
-	protected newCommandIO(): CommandIO {
-		return vi.mockObject(new CommandIO);
+	protected newCommandIO(opts: {
+		logger: TestLogger;
+	}): CommandIO {
+		return vi.mockObject(new CommandIO(opts.logger));
 	}
 
 	async handle(): Promise<number | void> {
@@ -32,8 +34,10 @@ class MockCommand extends CommandWithSignature {
 
 describe('Command', () => {
     let command: MockCommand;
+	let logger: TestLogger
 
     beforeEach(() => {
+		logger = newTestLogger();
         command = new MockCommand();
     });
 
@@ -51,28 +55,36 @@ describe('Command', () => {
 
 
     it('should handle command with argument', async () => {
-        const result = await command.run(undefined, {
-			args: ['value'],
+        const result = await command.run({
+	        ctx: undefined,
+	        logger: logger,
+	        args: ['value'],
         })
         expect(result).toBe(1);
     });
 
     it('should handle command with argument', async () => {
-        const result = await command.run(undefined, {
+        const result = await command.run({
+	        ctx: undefined,
+	        logger: logger,
 			args: ['badValue'],
         })
         expect(result).toBe(-1);
     });
 
     it('should throw error if argument is missing', async () => {
-        await expect(command.run(undefined, {
+        await expect(command.run( {
+	        ctx: undefined,
+	        logger: logger,
 			args: [],
         })).rejects.toThrowError(MissingRequiredArgumentValue);
 
     });
 
     it('should handle command with option', async () => {
-        const result = await command.run(undefined,  {
+        const result = await command.run(  {
+	        ctx: undefined,
+	        logger: logger,
 			args: ['value', '--option'],
         })
         expect(result).toBe(11);

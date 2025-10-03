@@ -1,86 +1,53 @@
-import {describe, it, expect, vi} from 'vitest';
-import {Command} from '@/src/Command.js';
-import {CommandIO} from '@/src/CommandIO.js';
-import {setupMockedLogger} from '@/src/testFixtures.js';
+import {describe, it, expect, vi, beforeEach} from 'vitest';
+import {Command, CommandRunOption} from '@/src/Command.js';
+import {newTestLogger, TestLogger} from '@/src/testFixtures.js';
+import {Logger} from '@/src/Logger.js';
+import {faker} from "@faker-js/faker";
 
 describe('Command', () => {
-	setupMockedLogger();
+	let logger: TestLogger;
+	let command: Command
+	let commandRunOption: CommandRunOption<any, any, any>;
 
-	describe('Constructor and basic properties', () => {
-		it('should create a command with name', () => {
-			const command = new Command('test-command');
-			expect(command.command).toBe('test-command');
-		});
+	beforeEach(() => {
+		logger = newTestLogger()
 
-		it('should create a command with description', () => {
-			const command = new Command('test-command', {
-				description: 'Test description'
-			});
-			expect(command.description).toBe('Test description');
+		command = new Command('test-command', {
+			description: 'A test command'
 		});
-
-		it('should have empty description by default', () => {
-			const command = new Command('test-command');
-			expect(command.description).toBe('');
-		});
+		commandRunOption = {
+			ctx: {},
+			logger: logger,
+			args: []
+		}
 	});
 
-	describe('Options and arguments configuration', () => {
-		it('should allow chaining options', () => {
-			const command = new Command('test')
-				.options({
-					verbose: 'boolean',
-					output: 'string'
-				});
+	it('should instantiate Command', () => {
+		expect(command).toBeInstanceOf(Command);
+		expect(command).toHaveProperty('command', 'test-command');
+		expect(command).toHaveProperty('description', 'A test command');
+	})
 
-			expect(command).toBeInstanceOf(Command);
-		});
 
-		it('should allow chaining arguments', () => {
-			const command = new Command('test')
-				.arguments({
-					file: 'string',
-					count: 'number'
-				});
-
-			expect(command).toBeInstanceOf(Command);
-		});
-
-		it('should allow chaining both options and arguments', () => {
-			const command = new Command('test')
-				.options({verbose: 'boolean'})
-				.arguments({file: 'string'});
-
-			expect(command).toBeInstanceOf(Command);
-		});
-	});
-
-	describe('Handler configuration', () => {
-		it('should set handler via handler method', () => {
-			const handlerFn = vi.fn();
-			const command = new Command('test').handler(handlerFn);
-
-			expect(command).toBeInstanceOf(Command);
-		});
-
-		it('should throw error when running without handler', async () => {
-			const command = new Command('test');
-
-			await expect(command.run({}, {
-				args: []
-			})).rejects.toThrow('No handler defined for command test');
-		});
+	it('should throw error when running without handler', async () => {
+		await expect(command.run(commandRunOption)).rejects.toThrow('No handler defined for command test');
 	});
 
 	describe('Running commands', () => {
-		it('should run command with handler method', async () => {
-			const handlerFn = vi.fn().mockResolvedValue(0);
-			const command = new Command('test').handler(handlerFn);
+		let handlerFn: ReturnType<typeof vi.fn>;
+		let handlerResult: number | void;
 
-			const result = await command.run({}, {args: []});
+		beforeEach(() => {
+			handlerResult = faker.number.int({min: 0, max: 100});
+			handlerFn = vi.fn().mockImplementation(() => handlerResult);
+			command = command.handler(handlerFn)
+		})
+
+		it('should run command with handler method', async () => {
+			const result = await command.run(commandRunOption);
 
 			expect(handlerFn).toHaveBeenCalled();
-			expect(result).toBe(0);
+			expect(result).toBe(handlerResult);
 		});
 
 		it('should run command with handle instance method', async () => {
@@ -91,17 +58,20 @@ describe('Command', () => {
 			}
 
 			const command = new TestCommand('test');
-			const result = await command.run({}, {args: []});
+			const result = await command.run(commandRunOption);
 
 			expect(result).toBe(42);
+			expect(handlerFn).not.toHaveBeenCalled();
 		});
 
 		it('should pass context to handler', async () => {
 			const context = {user: 'test-user', config: {}};
-			const handlerFn = vi.fn().mockResolvedValue(0);
 
-			const command = new Command<typeof context>('test').handler(handlerFn);
-			await command.run(context, {args: []});
+			await command.run({
+				ctx: context,
+				logger,
+				args: [],
+			});
 
 			expect(handlerFn).toHaveBeenCalledWith(
 				context,
@@ -113,17 +83,18 @@ describe('Command', () => {
 		});
 
 		it('should parse args when provided', async () => {
-			const handlerFn = vi.fn().mockResolvedValue(0);
+			command = command
+				.options<{}>({verbose: 'boolean'})
+				.arguments<{}>({file: 'string'})
+			commandRunOption = {
+				...commandRunOption,
+				args: ['test.txt', '--verbose']
+			}
 
-			const command = new Command('test')
-				.options({verbose: 'boolean'})
-				.arguments({file: 'string'})
-				.handler(handlerFn);
-
-			await command.run({}, {args: ['test.txt', '--verbose']});
+			await command.run(commandRunOption);
 
 			expect(handlerFn).toHaveBeenCalledWith(
-				{},
+				commandRunOption.ctx,
 				expect.objectContaining({
 					options: expect.objectContaining({verbose: true}),
 					arguments: expect.objectContaining({file: 'test.txt'})
@@ -132,21 +103,21 @@ describe('Command', () => {
 		});
 
 		it('should accept pre-parsed options and arguments when parser available', async () => {
-			const handlerFn = vi.fn().mockResolvedValue(0);
-
-			const command = new Command('test')
-				.options({verbose: 'boolean'})
-				.arguments({file: 'string'})
-				.handler(handlerFn);
+			command = command
+				.options<{}>({verbose: 'boolean'})
+				.arguments<{}>({file: 'string'})
 
 			// When using pre-parsed, the command flow bypasses parser init
 			// This test verifies pre-parsed values are passed through
-			await command.run({}, {
-				args: ['test.txt', '--verbose']
+			await command.run({
+				ctx: commandRunOption.ctx,
+				logger: commandRunOption.logger,
+				options: {verbose: true},
+				arguments: {file: 'test.txt'}
 			});
 
 			expect(handlerFn).toHaveBeenCalledWith(
-				{},
+				commandRunOption.ctx,
 				expect.objectContaining({
 					options: expect.objectContaining({verbose: true}),
 					arguments: expect.objectContaining({file: 'test.txt'})
@@ -155,30 +126,34 @@ describe('Command', () => {
 		});
 
 		it('should return 0 by default when handler returns void', async () => {
-			const command = new Command('test').handler(() => {
-				// Return nothing
+			command = command.handler(() => {
+				// No return value
 			});
 
-			const result = await command.run({}, {args: []});
+			const result = await command.run(commandRunOption);
 
 			expect(result).toBe(0);
 		});
 
-		it('should return handler exit code', async () => {
-			const handlerFn = vi.fn().mockResolvedValue(42);
-			const command = new Command('test').handler(handlerFn);
 
-			const result = await command.run({}, {args: []});
+		it('should handle asynchronous handlers', async () => {
+			handlerFn.mockResolvedValue(handlerResult);
 
-			expect(result).toBe(42);
+			const result = await command.run(commandRunOption);
+
+			expect(result).toBe(handlerResult);
 		});
 
-		it('should handle synchronous handlers', async () => {
-			const command = new Command('test').handler(() => 123);
+		it('should include help option by default', async () => {
+			commandRunOption = {
+				...commandRunOption,
+				args: ['--help']
+			}
 
-			const result = await command.run({}, {args: []});
+			const result = await command.run(commandRunOption);
 
-			expect(result).toBe(123);
+			expect(handlerFn).not.toHaveBeenCalled();
+			expect(result).toBe(-1);
 		});
 	});
 
@@ -198,7 +173,7 @@ describe('Command', () => {
 			}
 
 			const command = new TestCommand('test');
-			await command.run({}, {args: []});
+			await command.run(commandRunOption);
 
 			expect(calls).toEqual(['preHandle', 'handle']);
 		});
@@ -218,7 +193,7 @@ describe('Command', () => {
 			}
 
 			const command = new TestCommand('test');
-			const result = await command.run({}, {args: []});
+			const result = await command.run(commandRunOption);
 
 			expect(result).toBe(5);
 			expect(handlerFn).not.toHaveBeenCalled();
@@ -239,34 +214,12 @@ describe('Command', () => {
 			}
 
 			const command = new TestCommand('test');
-			await command.run({}, {args: []});
+			await command.run(commandRunOption);
 
 			expect(handlerFn).toHaveBeenCalled();
 		});
 	});
 
-	describe('Default options (help)', () => {
-		it('should include help option by default', async () => {
-			const handlerFn = vi.fn().mockResolvedValue(0);
-
-			class TestCommand extends Command {
-				protected newCommandIO(): CommandIO {
-					return vi.mocked(new CommandIO());
-				}
-
-				async handle() {
-					handlerFn();
-					return 0;
-				}
-			}
-
-			const command = new TestCommand('test');
-			const result = await command.run({}, {args: ['--help']});
-
-			// Help option should intercept and prevent handler execution
-			expect(handlerFn).not.toHaveBeenCalled();
-		});
-	});
 
 	describe('Validation', () => {
 		it('should validate required options', async () => {
@@ -276,7 +229,7 @@ describe('Command', () => {
 				})
 				.handler(() => 0);
 
-			await expect(command.run({}, {args: []}))
+			await expect(command.run(commandRunOption))
 				.rejects.toThrow();
 		});
 
@@ -287,7 +240,7 @@ describe('Command', () => {
 				})
 				.handler(() => 0);
 
-			await expect(command.run({}, {args: []}))
+			await expect(command.run(commandRunOption))
 				.rejects.toThrow();
 		});
 
@@ -301,7 +254,12 @@ describe('Command', () => {
 				})
 				.handler(() => 0);
 
-			const result = await command.run({}, {args: ['test.txt', '--name', 'value']});
+			commandRunOption = {
+				...commandRunOption,
+				args: ['test.txt', '--name', 'value']
+			}
+
+			const result = await command.run(commandRunOption);
 
 			expect(result).toBe(0);
 		});
@@ -309,7 +267,7 @@ describe('Command', () => {
 
 	describe('Type safety with generics', () => {
 		it('should maintain type safety through options chain', async () => {
-			type Context = {userId: string};
+			type Context = { userId: string };
 
 			const command = new Command<Context>('test')
 				.options({verbose: 'boolean', count: 'number'})
@@ -321,7 +279,11 @@ describe('Command', () => {
 					return 0;
 				});
 
-			await command.run({userId: '123'}, {args: []});
+			commandRunOption.ctx = {userId: '123'};
+
+			await command.run(commandRunOption);
+
+			expect(commandRunOption.ctx).toHaveProperty('userId', '123');
 		});
 
 		it('should maintain type safety through arguments chain', async () => {
@@ -334,7 +296,12 @@ describe('Command', () => {
 					return 0;
 				});
 
-			await command.run({}, {args: ['test.txt', '10']});
+			commandRunOption = {
+				...commandRunOption,
+				args: ['test.txt', '10']
+			}
+
+			await command.run(commandRunOption);
 		});
 	});
 });

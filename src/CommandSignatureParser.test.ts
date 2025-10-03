@@ -5,6 +5,7 @@ import {CommandOption} from "@/src/contracts/index.js";
 import {Command} from "@/src/Command.js";
 import {CommandIO} from "@/src/CommandIO.js";
 import {MaybeMockedDeep} from "@vitest/spy";
+import {newTestLogger, TestLogger} from "@/src/testFixtures.js";
 
 
 class TestCommandOptions implements CommandOption<Command>{
@@ -23,10 +24,12 @@ class TestCommandOptions implements CommandOption<Command>{
 describe('CommandParser', () => {
     let commandParser: CommandSignatureParser;
 	let commandIO: MaybeMockedDeep<CommandIO>;
+	let logger: TestLogger
 	let parseCommand: (signature: string, args: string[], helperDefinition?: Record<string, string>, defaultCommandOptions?: CommandOption<any>[]) => CommandSignatureParser;
 
 	beforeAll(() => {
-		commandIO = vi.mockObject(new CommandIO())
+		logger = newTestLogger()
+		commandIO = vi.mockObject(new CommandIO(logger))
 		parseCommand =  (signature: string, args: string[], helperDefinition: Record<string, string> = {}, defaultCommandOptions: CommandOption<any>[] = []) => {
 			const parser = new CommandSignatureParser({
 				io: commandIO,

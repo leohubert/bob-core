@@ -4,6 +4,7 @@ import {CommandSignatureParser} from "@/src/CommandSignatureParser.js";
 import {CommandOption} from "@/src/contracts/index.js";
 import {HelpOption} from "@/src/options/index.js";
 import {CommandIO} from "@/src/CommandIO.js";
+import {Logger} from "@/src/Logger.js";
 
 export type CommandHandlerOptions<Options extends OptionsSchema, Arguments extends ArgumentsSchema> = {
 	options: OptionsObject<Options>
@@ -11,12 +12,20 @@ export type CommandHandlerOptions<Options extends OptionsSchema, Arguments exten
 };
 export type CommandHandler<C, Options extends OptionsSchema, Arguments extends ArgumentsSchema> = (ctx: C, opts: CommandHandlerOptions<Options, Arguments>) => Promise<number | void> | number | void;
 
-type CommandRunOption<Options extends OptionsSchema, Arguments extends ArgumentsSchema> = {
+type BaseCommandRunOption<C> = {
+	logger: Logger
+	ctx: C
+}
+
+export type CommandRunArgsOption<C> = {
 	args: string[];
-} | {
+} & BaseCommandRunOption<C>;
+export type CommandRunParsedOption<C, Options extends OptionsSchema, Arguments extends ArgumentsSchema> = {
 	options: OptionsObject<Options>;
 	arguments: ArgumentsObject<Arguments>;
-}
+} & BaseCommandRunOption<C>;
+
+export type CommandRunOption<C, Options extends OptionsSchema, Arguments extends ArgumentsSchema> = CommandRunArgsOption<C> | CommandRunParsedOption<C, Options, Arguments>;
 
 export type CommandExample = {
 	description: string;
@@ -35,7 +44,7 @@ export class Command<C = any, Options extends OptionsSchema = {}, Arguments exte
 
 	protected ctx!: C;
 	protected io!: CommandIO;
-	protected logger?: any;
+	protected logger!: Logger;
 
 	protected _handler?: CommandHandler<C, Options, Arguments>;
 
@@ -62,8 +71,10 @@ export class Command<C = any, Options extends OptionsSchema = {}, Arguments exte
 		});
 	}
 
-	protected newCommandIO():  CommandIO {
-		return new CommandIO(this.logger);
+	protected newCommandIO(opts: {
+		logger: Logger;
+	}):  CommandIO {
+		return new CommandIO(opts.logger);
 	}
 
 	constructor(command: string, opts?: {
@@ -87,7 +98,7 @@ export class Command<C = any, Options extends OptionsSchema = {}, Arguments exte
 	}
 
 	protected preHandle?(): Promise<void|number>;
-	protected handle?(ctx: C, opts: CommandHandlerOptions<Options, Arguments>): Promise<number | void>;
+	protected handle?(ctx: C, opts: CommandHandlerOptions<Options, Arguments>): Promise<number | void> | number | void;
 
 	handler(handler: CommandHandler<C, Options, Arguments>): Command<C, Options, Arguments> {
 		this._handler = handler;
@@ -116,17 +127,18 @@ export class Command<C = any, Options extends OptionsSchema = {}, Arguments exte
 		return this as any;
 	}
 
-	async run(ctx: C, opts: CommandRunOption<Options, Arguments>, logger?: any): Promise<number | void> {
-		this.ctx = ctx;
-		this.logger = logger;
-
+	async run(opts: CommandRunOption<C, Options, Arguments>): Promise<number | void> {
 		if (!this._handler && !this.handle) {
 			throw new Error(`No handler defined for command ${this.command || '(unknown)'}`);
 		}
 
 		let handlerOptions: CommandHandlerOptions<Options, Arguments>
 
-		this.io = this.newCommandIO();
+		this.ctx = opts.ctx;
+		this.logger = opts.logger;
+		this.io = this.newCommandIO({
+			logger: opts.logger
+		});
 
 		if (opts && 'args' in opts) {
 			const options = this.tmp?.options ?? {} as Options;
@@ -142,23 +154,23 @@ export class Command<C = any, Options extends OptionsSchema = {}, Arguments exte
 				arguments: this.tmp?.arguments ?? {} as Arguments
 			});
 			handlerOptions = this.parser.init(opts.args);
+
+			for (const option of this.defaultOptions()) {
+				if (handlerOptions.options[option.option] === true) {
+					const code = await option.handler.call(this);
+					if (code && code !== 0) {
+						return code;
+					}
+				}
+			}
+
+			await this.parser.validate()
 		} else {
 			handlerOptions = {
 				options: opts.options,
 				arguments: opts.arguments
 			}
 		}
-
-		for (const option of this.defaultOptions()) {
-			if (this.parser.option(option.option)) {
-				const code = await option.handler.call(this);
-				if (code && code !== 0) {
-					return code;
-				}
-			}
-		}
-
-		await this.parser.validate()
 
 		const preHandleResult = this.preHandle ? await this.preHandle() : null;
 		if (preHandleResult && preHandleResult !== 0) {
@@ -172,7 +184,7 @@ export class Command<C = any, Options extends OptionsSchema = {}, Arguments exte
 			throw new Error(`No handler defined for command ${this.command || '(unknown)'}`);
 		}
 
-		const res = this._handler(ctx, handlerOptions);
-		return Promise.resolve(res ?? 0);
+		const res = await this._handler(opts.ctx, handlerOptions);
+		return res ?? 0;
 	}
 }
