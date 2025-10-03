@@ -1,6 +1,5 @@
 import chalk from "chalk";
 
-import {LegacyCommand} from "@/src/LegacyCommand.js";
 import {CommandRegistry} from "@/src/CommandRegistry.js";
 import {generateSpace} from "@/src/lib/string.js";
 import {Command} from "@/src/Command.js";
@@ -18,7 +17,7 @@ export default class HelpCommand extends Command {
         });
     }
 
-	handler = async (): Promise<void> => {
+	async handle(): Promise<void> {
         const commands = this.opts.commandRegistry.getCommands()
 
         const cliName = this.opts.cliName ?? 'Bob CLI'
@@ -35,7 +34,7 @@ export default class HelpCommand extends Command {
 `)
 
         const maxCommandLength = Math.max(...commands.map(command => command.command.length)) ?? 0
-        const commandByGroups: { [key: string]: Array<LegacyCommand | Command> } = {}
+        const commandByGroups: { [key: string]: Array<Command> } = {}
 
         for (const command of commands) {
             const commandGroup = command.command.split(':')[0]

@@ -11,6 +11,7 @@ import {getOptionDetails, OptionDetails} from "@/src/lib/optionHelpers.js";
 import {convertValue} from "@/src/lib/valueConverter.js";
 import {CommandIO} from "@/src/CommandIO.js";
 import {MissingRequiredArgumentValue} from "@/src/errors/MissingRequiredArgumentValue.js";
+import {MissingRequiredOptionValue} from "@/src/errors/MissingRequiredOptionValue.js";
 
 /**
  * Parses command-line arguments into typed options and arguments
@@ -45,7 +46,7 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 	 * @throws {InvalidOption} If an unknown option is provided
 	 * @throws {BadCommandOption} If a value cannot be converted to the expected type
 	 */
-	async init(args: string[]): Promise<{ options: OptionsObject<Options>, arguments: OptionsObject<Arguments> }> {
+	init(args: string[]): { options: OptionsObject<Options>, arguments: OptionsObject<Arguments> } {
 		const {_: positionalArgs, ...optionValues} = minimist(args)
 
 		this.validateUnknownOptions(optionValues);
@@ -55,6 +56,26 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 		return {
 			options: this.parsedOptions,
 			arguments: this.parsedArguments,
+		}
+	}
+
+	/**
+	 * Validates the parsed options and arguments
+	 * @throws {Error} If validation fails
+	 */
+	async validate(): Promise<void> {
+		for (const key in this.options) {
+			const optionDetails = getOptionDetails(this.options[key]);
+			if (optionDetails.required && (this.parsedOptions?.[key] === undefined || this.parsedOptions?.[key] === null)) {
+				throw new MissingRequiredOptionValue(key)
+			}
+		}
+
+		for (const key in this.arguments) {
+			const argDetails = getOptionDetails(this.arguments[key]);
+			if (argDetails.required && (this.parsedArguments?.[key] === undefined || this.parsedArguments?.[key] === null)) {
+				throw new MissingRequiredArgumentValue(key);
+			}
 		}
 	}
 
@@ -145,14 +166,7 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 				continue;
 			}
 
-			// Handle regular single-value argument
-			const argValue = this.resolveArgumentValue(key, argDefinition, remainingArgs.shift());
-
-			if (!argValue && argDefinition.required) {
-				throw new MissingRequiredArgumentValue(key);
-			}
-
-			parsedArgs[key] = argValue
+			parsedArgs[key] = this.resolveArgumentValue(key, argDefinition, remainingArgs.shift());
 		}
 
 		return parsedArgs;

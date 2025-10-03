@@ -3,7 +3,6 @@ import path from "path";
 import * as SS from "string-similarity";
 import chalk from "chalk";
 
-import { LegacyCommand } from "@/src/LegacyCommand.js";
 import {CommandNotFoundError} from "@/src/errors/CommandNotFoundError.js";
 import {CommandIO} from "@/src/CommandIO.js";
 import {Command} from "@/src/Command.js";
@@ -30,7 +29,7 @@ export class CommandRegistry {
         return Object.keys(this.commands)
     }
 
-    getCommands(): Array<LegacyCommand|Command> {
+    getCommands(): Array<Command> {
         return Object.values(this.commands)
     }
 
@@ -88,8 +87,8 @@ export class CommandRegistry {
         }
     }
 
-    async runCommand(ctx: any, command: string|LegacyCommand|Command, ...args: any[]): Promise<number> {
-        const commandToRun: LegacyCommand|Command = typeof command === 'string' ? this.commands[command] : command;
+    async runCommand(ctx: any, command: string|Command, ...args: any[]): Promise<number> {
+        const commandToRun: Command = typeof command === 'string' ? this.commands[command] : command;
         const commandSignature = typeof command === 'string' ? command : commandToRun.command;
 
         if (!commandToRun) {

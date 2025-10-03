@@ -5,11 +5,11 @@ import {CommandOption} from "@/src/contracts/index.js";
 import {HelpOption} from "@/src/options/index.js";
 import {CommandIO} from "@/src/CommandIO.js";
 
-type CommandHandlerOptions<Options extends OptionsSchema, Arguments extends ArgumentsSchema> = {
+export type CommandHandlerOptions<Options extends OptionsSchema, Arguments extends ArgumentsSchema> = {
 	options: OptionsObject<Options>
 	arguments: ArgumentsObject<Arguments>
 };
-type CommandHandler<C, Options extends OptionsSchema, Arguments extends ArgumentsSchema> = (ctx: C, opts: CommandHandlerOptions<Options, Arguments>) => Promise<number | void> | number | void;
+export type CommandHandler<C, Options extends OptionsSchema, Arguments extends ArgumentsSchema> = (ctx: C, opts: CommandHandlerOptions<Options, Arguments>) => Promise<number | void> | number | void;
 
 type CommandRunOption<Options extends OptionsSchema, Arguments extends ArgumentsSchema> = {
 	args: string[];
@@ -25,18 +25,18 @@ export type CommandExample = {
 
 export class Command<C = any, Options extends OptionsSchema = {}, Arguments extends ArgumentsSchema = {}> {
 
-	private readonly _command?: string;
-
-	signature?: string;
-	description: string = '';
-
-	protected helperDefinitions: { [key: string]: string } = {};
+	public readonly _command: string;
+	public readonly description: string = '';
 	protected commandsExamples: CommandExample[] = [];
+
+	get command(): string {
+		return this._command;
+	}
 
 	protected ctx!: C;
 	protected io!: CommandIO;
 
-	public handler?: CommandHandler<C, Options, Arguments>;
+	protected _handler?: CommandHandler<C, Options, Arguments>;
 
 	protected parser!: CommandParser<Options, Arguments>;
 
@@ -45,20 +45,7 @@ export class Command<C = any, Options extends OptionsSchema = {}, Arguments exte
 		arguments: Arguments;
 	}
 
-	public get command(): string {
-		if (this._command) {
-			return this._command;
-		}
-		if (this.signature) {
-			if (this.parser && this.parser instanceof CommandSignatureParser) {
-				return this.parser.command;
-			}
-			return this.signature.split(' ')[0];
-		}
-		throw new Error('Command name is not defined');
-	}
-
-	protected defaultOptions(): CommandOption<Command>[] {
+	protected defaultOptions(): CommandOption<Command<any, any, any>>[] {
 		return [new HelpOption()];
 	}
 
@@ -74,34 +61,15 @@ export class Command<C = any, Options extends OptionsSchema = {}, Arguments exte
 		});
 	}
 
-	protected newSignatureParser(opts: {
-		io: CommandIO
-		args: string[]
-	}): CommandSignatureParser {
-		return new CommandSignatureParser({
-			io: opts.io,
-			signature: this.signature!,
-			helperDefinitions: this.helperDefinitions,
-			defaultOptions: this.defaultOptions(),
-		});
-	}
-
 	protected newCommandIO():  CommandIO {
 		return new CommandIO();
 	}
 
-	constructor(command?: string, opts?: {
+	constructor(command: string, opts?: {
 		description?: string
 	}) {
 		this._command = command;
 		this.description = opts?.description ?? '';
-
-		// If this is a subclass with signature property, set up handler to call handle() method
-		if (this.constructor !== Command && 'signature' in this) {
-			this.handler = async () => {
-				return (this as any).handle();
-			};
-		}
 
 		const defaultOptions = this.defaultOptions();
 
@@ -118,21 +86,11 @@ export class Command<C = any, Options extends OptionsSchema = {}, Arguments exte
 	}
 
 	protected preHandle?(): Promise<void|number>;
+	protected handle?(ctx: C, opts: CommandHandlerOptions<Options, Arguments>): Promise<number | void>;
 
-	// For fluent API: .handle(function)
-	handle(handler: CommandHandler<C, Options, Arguments>): Command<C, Options, Arguments>;
-	// For signature-based commands: override this method
-	handle(): Promise<number | void> | number | void;
-	handle(arg?: any): any {
-		if (typeof arg === 'function') {
-			this.handler = arg;
-			return this;
-		} else if (arg === undefined) {
-			// Signature-based command - subclass should override this
-			throw new Error('Unimplemented handle() method. Please override handle() in your command class.');
-		} else {
-			throw new Error('Invalid argument passed to handle() method.');
-		}
+	handler(handler: CommandHandler<C, Options, Arguments>): Command<C, Options, Arguments> {
+		this._handler = handler;
+		return this;
 	}
 
 	options<Opts extends OptionsSchema>(opts: Opts): Command<C, Options & Opts, Arguments> {
@@ -160,8 +118,7 @@ export class Command<C = any, Options extends OptionsSchema = {}, Arguments exte
 	async run(ctx: C, opts: CommandRunOption<Options, Arguments>): Promise<number | void> {
 		this.ctx = ctx;
 
-		// Options-based command (new Command pattern)
-		if (!this.handler) {
+		if (!this._handler && !this.handle) {
 			throw new Error(`No handler defined for command ${this.command || '(unknown)'}`);
 		}
 
@@ -170,20 +127,19 @@ export class Command<C = any, Options extends OptionsSchema = {}, Arguments exte
 		this.io = this.newCommandIO();
 
 		if (opts && 'args' in opts) {
-			if (this.signature) {
-				this.parser = this.newSignatureParser({
-					io: this.io,
-					args: opts.args
-				});
-			} else {
-				this.parser = this.newCommandParser({
-					io: this.io,
-					options: this.tmp?.options ?? {} as Options,
-					arguments: this.tmp?.arguments ?? {} as Arguments
-				});
+			const options = this.tmp?.options ?? {} as Options;
+			for (const option of this.defaultOptions()) {
+				if (!(option.option in options)) {
+					(options as any)[option.option] = option as any;
+				}
 			}
 
-			handlerOptions = await this.parser.init(opts.args);
+			this.parser = this.newCommandParser({
+				io: this.io,
+				options: options,
+				arguments: this.tmp?.arguments ?? {} as Arguments
+			});
+			handlerOptions = this.parser.init(opts.args);
 		} else {
 			handlerOptions = {
 				options: opts.options,
@@ -191,133 +147,30 @@ export class Command<C = any, Options extends OptionsSchema = {}, Arguments exte
 			}
 		}
 
+		for (const option of this.defaultOptions()) {
+			if (this.parser.option(option.option)) {
+				const code = await option.handler.call(this);
+				if (code && code !== 0) {
+					return code;
+				}
+			}
+		}
+
+		await this.parser.validate()
+
 		const preHandleResult = this.preHandle ? await this.preHandle() : null;
 		if (preHandleResult && preHandleResult !== 0) {
 			return preHandleResult;
 		}
 
 
-		const res = this.handler(ctx, handlerOptions);
+		if (!this._handler && this.handle) {
+			this._handler = this.handle.bind(this);
+		} else if (!this._handler) {
+			throw new Error(`No handler defined for command ${this.command || '(unknown)'}`);
+		}
+
+		const res = this._handler(ctx, handlerOptions);
 		return Promise.resolve(res ?? 0);
-	}
-
-	// Helper methods from LegacyCommand
-
-	protected setOption(name: string, value: any) {
-		if (this.parser instanceof CommandSignatureParser) {
-			this.parser.setOption(name, value);
-		}
-	}
-
-	protected setArgument(name: string, value: any) {
-		if (this.parser instanceof CommandSignatureParser) {
-			this.parser.setArgument(name, value);
-		}
-	}
-
-	protected option<T = string>(key: string): T | null
-	protected option<T = string>(key: string, defaultValue: T): NoInfer<T>
-	protected option<T = string>(key: string, defaultValue: T | null = null): NoInfer<T> | null {
-		if (this.parser instanceof CommandSignatureParser) {
-			return this.parser.option(key) as T ?? defaultValue;
-		}
-		return defaultValue;
-	}
-
-	protected optionBoolean(key: string, defaultValue: boolean = false): boolean  {
-		if (this.parser instanceof CommandSignatureParser) {
-			return this.parser.option(key) as boolean ?? defaultValue;
-		}
-		return defaultValue;
-	}
-
-	protected optionArray<T = string>(key: string, defaultValue: Array<T> = []): Array<NoInfer<T>> {
-		if (this.parser instanceof CommandSignatureParser) {
-			const values = this.parser.option(key) as Array<T>
-			if (!Array.isArray(values)) {
-				throw new Error(`Option ${key} is not an array`);
-			}
-			if (values.length) {
-				return values;
-			}
-		}
-		return defaultValue;
-	}
-
-	protected optionNumber(key: string): number | null
-	protected optionNumber(key: string, defaultValue: number): number
-	protected optionNumber(key: string, defaultValue: number | null = null): number | null {
-		if (this.parser instanceof CommandSignatureParser) {
-			const value = this.parser.option(key);
-			if (!value) {
-				return defaultValue;
-			}
-			if (typeof value === 'number') {
-				return value;
-			}
-			return parseInt(value as string);
-		}
-		return defaultValue;
-	}
-
-	protected argument<T = string>(key: string): T | null
-	protected argument<T = string>(key: string, defaultValue: T): NoInfer<T>
-	protected argument<T = string>(key: string, defaultValue: T | null = null): NoInfer<T> | null {
-		if (this.parser instanceof CommandSignatureParser) {
-			return this.parser.argument(key) as T ?? defaultValue;
-		}
-		return defaultValue;
-	}
-
-	protected argumentArray<T = string>(key: string, defaultValue: Array<any> = []): Array<T> {
-		if (this.parser instanceof CommandSignatureParser) {
-			const values = this.parser.argument(key) as Array<T>
-			if (!Array.isArray(values)) {
-				throw new Error(`Argument ${key} is not an array`);
-			}
-			if (values?.length) {
-				return values;
-			}
-		}
-		return defaultValue;
-	}
-
-	protected argumentBoolean(key: string, defaultValue: boolean = false): boolean {
-		if (this.parser instanceof CommandSignatureParser) {
-			return this.parser.argument(key) as boolean ?? defaultValue;
-		}
-		return defaultValue;
-	}
-
-	protected argumentNumber(key: string, defaultValue: number | null = null): number | null {
-		if (this.parser instanceof CommandSignatureParser) {
-			const value = this.parser.argument(key);
-			if (!value) {
-				return defaultValue;
-			}
-			if (typeof value === 'number') {
-				return value;
-			}
-			return parseInt(value as string);
-		}
-		return defaultValue;
-	}
-
-	// Prompt utils
-
-	async askForConfirmation(...opts: Parameters<typeof this.io.askForConfirmation>): ReturnType<typeof this.io.askForConfirmation> {
-		return this.io.askForConfirmation(...opts);
-	}
-
-	async askForInput(...opts: Parameters<typeof this.io.askForInput>): ReturnType<typeof this.io.askForInput> {
-		return this.io.askForInput(...opts);
-	}
-
-	async askForSelect(...opts: Parameters<typeof this.io.askForSelect>): ReturnType<typeof this.io.askForSelect> {
-		return this.io.askForSelect(...opts);
-	}
-
-	newLoader(...opts: Parameters<typeof this.io.newLoader>): ReturnType<typeof this.io.newLoader> {
-		return this.io.newLoader(...opts);
 	}
 }

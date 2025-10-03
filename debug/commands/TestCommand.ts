@@ -28,7 +28,7 @@ export default new Command('new-test')
 			required: false,
 		}
 	})
-	.handle((ctx, opts) => {
+	.handler((ctx, opts) => {
 		const test = opts.options.force
 		console.log('test command', { options: opts.options, arguments: opts.arguments });
 	})

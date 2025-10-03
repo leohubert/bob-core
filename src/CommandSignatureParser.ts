@@ -14,7 +14,7 @@ import {getOptionDetails} from "@/src/lib/optionHelpers.js";
  */
 export class CommandSignatureParser<Opts extends OptionsSchema = any, Args extends OptionsSchema = any> extends CommandParser<Opts, Args> {
 
-	public command: string = ''
+	public readonly command: string;
 	private readonly argumentsSchema: Args
 	private readonly optionsSchema: Opts
 
@@ -284,13 +284,13 @@ export class CommandSignatureParser<Opts extends OptionsSchema = any, Args exten
 				if (newValue) {
 					this.setArgument(argumentName, newValue)
 				} else {
-					throw new MissingRequiredArgumentValue(argumentName, optionDetails)
+					throw new MissingRequiredArgumentValue(argumentName)
 				}
 			}
 
 			// Check if required variadic argument is empty
 			if (optionDetails.variadic && optionDetails.required && typeof value === 'object' && !value?.length ) {
-				throw new MissingRequiredArgumentValue(argumentName, optionDetails)
+				throw new MissingRequiredArgumentValue(argumentName)
 			}
 		}
 	}

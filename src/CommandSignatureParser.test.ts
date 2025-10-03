@@ -11,7 +11,7 @@ class TestCommandOptions implements CommandOption<Command>{
     option = 'testOption';
     description = 'Test option';
 	type = 'string' as const;
-    defaultValue: string|null = 'default';
+    default?: string|null = 'default';
 
     alias = ['t'];
 
@@ -23,18 +23,18 @@ class TestCommandOptions implements CommandOption<Command>{
 describe('CommandParser', () => {
     let commandParser: CommandSignatureParser;
 	let commandIO: MaybeMockedDeep<CommandIO>;
-	let parseCommand: (signature: string, args: string[], helperDefinition?: Record<string, string>, defaultCommandOptions?: CommandOption<any>[]) => Promise<CommandSignatureParser>;
+	let parseCommand: (signature: string, args: string[], helperDefinition?: Record<string, string>, defaultCommandOptions?: CommandOption<any>[]) => CommandSignatureParser;
 
 	beforeAll(() => {
 		commandIO = vi.mockObject(new CommandIO())
-		parseCommand = async (signature: string, args: string[], helperDefinition: Record<string, string> = {}, defaultCommandOptions: CommandOption<any>[] = []) => {
+		parseCommand =  (signature: string, args: string[], helperDefinition: Record<string, string> = {}, defaultCommandOptions: CommandOption<any>[] = []) => {
 			const parser = new CommandSignatureParser({
 				io: commandIO,
 				signature,
 				helperDefinitions: helperDefinition,
 				defaultOptions: defaultCommandOptions
 			});
-			await parser.init(args);
+			parser.init(args);
 			return parser;
 		}
 	})
@@ -250,7 +250,7 @@ describe('CommandParser', () => {
 
         it('should handle null default value', () => {
             const option = new TestCommandOptions();
-            option.defaultValue = null
+			option.default = undefined
             commandParser = parseCommand('test', ['--testOption=value'], {}, [option]);
             expect(commandParser.option('testOption')).toBe('value');
         })

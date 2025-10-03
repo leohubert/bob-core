@@ -2,8 +2,9 @@ import {describe, it, expect, beforeEach, vi} from 'vitest';
 import { Command } from '@/src/Command.js';
 import {MissingRequiredArgumentValue} from "@/src/errors/MissingRequiredArgumentValue.js";
 import {CommandIO} from "@/src/CommandIO.js";
+import {CommandWithSignature} from "@/src/CommandWithSignature.js";
 
-class MockCommand extends Command {
+class MockCommand extends CommandWithSignature {
     signature = 'mockCommand {argument} {--option}';
     description = 'This is a mock command for testing';
 

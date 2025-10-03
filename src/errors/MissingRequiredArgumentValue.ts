@@ -5,14 +5,14 @@ import {OptionDefinition} from "@/src/lib/types.js";
 
 export class MissingRequiredArgumentValue extends BobError {
     constructor(
-		public readonly paramName: string
+		public readonly argument: string
 	) {
-        super(`Argument "${paramName}" is required.`)
+        super(`Argument "${argument}" is required.`)
     }
 
     pretty(): void {
         const log = console.log
 
-        log(chalk`{white.bgRed  ERROR } Argument {bold.yellow ${this.paramName}} is required.`)
+        log(chalk`{white.bgRed  ERROR } Argument {bold.yellow ${this.argument}} is required.`)
     }
 }

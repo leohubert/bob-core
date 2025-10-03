@@ -1,4 +1,5 @@
 export * from './Command.js';
+export * from './CommandWithSignature.js';
 export * from './CommandIO.js';
 export * from './Cli.js';
 export * from './errors/index.js';
