@@ -37,7 +37,7 @@ export default class HelpCommand extends Command {
         const commandByGroups: { [key: string]: Array<Command> } = {}
 
         for (const command of commands) {
-            const commandGroup = command.command.split(':')[0]
+            const commandGroup = command.group ?? command.command.split(':')[0]
 
             if (!commandByGroups[commandGroup]) {
                 commandByGroups[commandGroup] = []

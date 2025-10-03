@@ -36,6 +36,7 @@ export class Command<C = any, Options extends OptionsSchema = {}, Arguments exte
 
 	public readonly _command: string;
 	public readonly description: string = '';
+	public readonly group?: string;
 	protected commandsExamples: CommandExample[] = [];
 
 	get command(): string {
@@ -83,10 +84,12 @@ export class Command<C = any, Options extends OptionsSchema = {}, Arguments exte
 	}
 
 	constructor(command: string, opts?: {
-		description?: string
+		description?: string,
+		group?: string
 	}) {
 		this._command = command;
 		this.description = opts?.description ?? '';
+		this.group = opts?.group;
 
 		const defaultOptions = this.defaultOptions();
 
