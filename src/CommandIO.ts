@@ -40,10 +40,6 @@ export class CommandIO {
 		this.logger.debug(...args);
 	}
 
-	verbose(...args: any[]): void {
-		this.logger.verbose(...args);
-	}
-
 	/**
 	 * Prompt utils
 	 */

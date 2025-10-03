@@ -1,10 +1,11 @@
-export type LogLevel = 'debug' | 'verbose' | 'info' | 'warn' | 'error' | 'silent';
+import {LoggerContract, LogLevel} from "@/src/contracts/index.js";
+
 
 export type LoggerOptions = {
 	level?: LogLevel;
 }
 
-export class Logger {
+export class Logger implements LoggerContract {
 	private level: LogLevel;
 
 	constructor(opts: LoggerOptions = {}) {
@@ -12,7 +13,7 @@ export class Logger {
 	}
 
 	private shouldLog(level: LogLevel): boolean {
-		const levels: LogLevel[] = ['debug', 'verbose', 'info', 'warn', 'error', 'silent'];
+		const levels: LogLevel[] = ['debug', 'info', 'warn', 'error'];
 		const currentLevelIndex = levels.indexOf(this.level);
 		const messageLevelIndex = levels.indexOf(level);
 		return messageLevelIndex >= currentLevelIndex;
@@ -50,12 +51,6 @@ export class Logger {
 
 	debug(...args: any[]): void {
 		if (this.shouldLog('debug')) {
-			console.log(...args);
-		}
-	}
-
-	verbose(...args: any[]): void {
-		if (this.shouldLog('verbose')) {
 			console.log(...args);
 		}
 	}

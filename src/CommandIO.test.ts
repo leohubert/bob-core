@@ -57,13 +57,6 @@ describe('CommandIO', () => {
 			expect(logger.debug).toHaveBeenCalledWith(message);
 		});
 
-		it('should delegate verbose() to logger', () => {
-			const message = faker.lorem.sentence();
-
-			io.verbose(message);
-
-			expect(logger.verbose).toHaveBeenCalledWith(message);
-		});
 
 		it('should pass multiple arguments to logger methods', () => {
 			const args = ['msg1', 'msg2', {key: 'value'}, 123];

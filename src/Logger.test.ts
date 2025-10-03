@@ -1,5 +1,6 @@
 import {describe, it, expect, beforeEach, vi, afterEach} from 'vitest';
-import {Logger, LogLevel} from '@/src/Logger.js';
+import {Logger} from '@/src/Logger.js';
+import {LogLevel} from "@/src/contracts/index.js";
 
 describe('Logger', () => {
 	let consoleLogSpy: ReturnType<typeof vi.spyOn>;
@@ -30,7 +31,7 @@ describe('Logger', () => {
 		});
 
 		it('should accept all valid log levels', () => {
-			const levels: LogLevel[] = ['debug', 'verbose', 'info', 'warn', 'error', 'silent'];
+			const levels: LogLevel[] = ['debug', 'info', 'warn', 'error'];
 
 			levels.forEach(level => {
 				const logger = new Logger({level});
@@ -60,7 +61,7 @@ describe('Logger', () => {
 
 	describe('log() method', () => {
 		it('should always output regardless of log level', () => {
-			const logger = new Logger({level: 'silent'});
+			const logger = new Logger({level: 'warn'});
 			logger.log('test message');
 			expect(consoleLogSpy).toHaveBeenCalledWith('test message');
 		});
@@ -77,7 +78,6 @@ describe('Logger', () => {
 			const logger = new Logger({level: 'debug'});
 
 			logger.debug('debug msg');
-			logger.verbose('verbose msg');
 			logger.info('info msg');
 			logger.warn('warn msg');
 			logger.error('error msg');
@@ -88,28 +88,11 @@ describe('Logger', () => {
 		});
 	});
 
-	describe('Log level filtering - verbose', () => {
-		it('should show verbose and above at verbose level', () => {
-			const logger = new Logger({level: 'verbose'});
-
-			logger.debug('debug msg');
-			logger.verbose('verbose msg');
-			logger.info('info msg');
-			logger.warn('warn msg');
-			logger.error('error msg');
-
-			expect(consoleLogSpy).toHaveBeenCalledTimes(2); // verbose, info
-			expect(consoleWarnSpy).toHaveBeenCalledTimes(1); // warn
-			expect(consoleErrorSpy).toHaveBeenCalledTimes(1); // error
-		});
-	});
-
 	describe('Log level filtering - info', () => {
 		it('should show info and above at info level', () => {
 			const logger = new Logger({level: 'info'});
 
 			logger.debug('debug msg');
-			logger.verbose('verbose msg');
 			logger.info('info msg');
 			logger.warn('warn msg');
 			logger.error('error msg');
@@ -125,7 +108,6 @@ describe('Logger', () => {
 			const logger = new Logger({level: 'warn'});
 
 			logger.debug('debug msg');
-			logger.verbose('verbose msg');
 			logger.info('info msg');
 			logger.warn('warn msg');
 			logger.error('error msg');
@@ -141,7 +123,6 @@ describe('Logger', () => {
 			const logger = new Logger({level: 'error'});
 
 			logger.debug('debug msg');
-			logger.verbose('verbose msg');
 			logger.info('info msg');
 			logger.warn('warn msg');
 			logger.error('error msg');
@@ -152,33 +133,12 @@ describe('Logger', () => {
 		});
 	});
 
-	describe('Log level filtering - silent', () => {
-		it('should show nothing at silent level', () => {
-			const logger = new Logger({level: 'silent'});
-
-			logger.debug('debug msg');
-			logger.verbose('verbose msg');
-			logger.info('info msg');
-			logger.warn('warn msg');
-			logger.error('error msg');
-
-			expect(consoleLogSpy).not.toHaveBeenCalled();
-			expect(consoleWarnSpy).not.toHaveBeenCalled();
-			expect(consoleErrorSpy).not.toHaveBeenCalled();
-		});
-	});
 
 	describe('Output methods', () => {
 		it('should use console.log for debug messages', () => {
 			const logger = new Logger({level: 'debug'});
 			logger.debug('debug message');
 			expect(consoleLogSpy).toHaveBeenCalledWith('debug message');
-		});
-
-		it('should use console.log for verbose messages', () => {
-			const logger = new Logger({level: 'verbose'});
-			logger.verbose('verbose message');
-			expect(consoleLogSpy).toHaveBeenCalledWith('verbose message');
 		});
 
 		it('should use console.log for info messages', () => {

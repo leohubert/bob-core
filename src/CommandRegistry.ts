@@ -150,9 +150,9 @@ export class CommandRegistry {
             if (dirent.isDirectory()) {
                 yield* this.listCommandsFiles(path.resolve(basePath, dirent.name));
             } else {
-                // if (!direntPath.endsWith(`${this.commandSuffix}.ts`) && !direntPath.endsWith(`${this.commandSuffix}.js`)) {
-                //     continue
-                // }
+                if (!direntPath.endsWith(`.ts`) && !direntPath.endsWith(`.js`)) {
+                    continue
+                }
                 yield direntPath;
             }
         }

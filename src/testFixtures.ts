@@ -10,7 +10,6 @@ export function newTestLogger(): TestLogger {
 		warn: vi.fn(),
 		error: vi.fn(),
 		debug: vi.fn(),
-		verbose: vi.fn(),
 		setLevel: vi.fn(),
 		getLevel: vi.fn().mockReturnValue('info'),
 	} satisfies LoggerContract as unknown as TestLogger;

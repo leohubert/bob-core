@@ -1,7 +1,6 @@
 import {describe, it, expect, vi, beforeEach} from 'vitest';
 import {Command, CommandRunOption} from '@/src/Command.js';
 import {newTestLogger, TestLogger} from '@/src/testFixtures.js';
-import {Logger} from '@/src/Logger.js';
 import {faker} from "@faker-js/faker";
 
 describe('Command', () => {
