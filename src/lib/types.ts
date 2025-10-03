@@ -1,4 +1,4 @@
-export type OptionPrimitive = 'string' | 'number' | 'boolean' | ['string'] | ['number'];
+export type OptionPrimitive = 'secret' | 'string' | 'number' | 'boolean' | ['string'] | ['number'];
 export type OptionDefinition = {
 	type: OptionPrimitive
 	description?: string
@@ -11,13 +11,14 @@ export type OptionDefinition = {
 export type Option = OptionPrimitive | OptionDefinition;
 
 export type OptionType<O extends Option> =
-	O extends 'string' ? string :
-		O extends 'number' ? number :
-			O extends 'boolean' ? boolean :
-				O extends Array<'string'> ? Array<string> :
-					O extends Array<'number'> ? Array<number> :
-						O extends { type: infer T extends Option } ? OptionType<T> :
-							never;
+	O extends 'secret' ? string :
+		O extends 'string' ? string :
+			O extends 'number' ? number :
+				O extends 'boolean' ? boolean :
+					O extends Array<'string'> ? Array<string> :
+						O extends Array<'number'> ? Array<number> :
+							O extends { type: infer T extends Option } ? OptionType<T> :
+								never;
 
 export type IsRequired<O extends Option> =
 	O extends { required: true } ? true : false;

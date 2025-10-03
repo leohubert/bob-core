@@ -9,7 +9,12 @@ export default new Command('new-test')
 		},
 		age: {
 			type: 'number',
-			required: false,
+			required: true,
+			description: 'Age argument'
+		},
+		tests: {
+			type: 'secret',
+			required: true,
 			description: 'Age argument'
 		},
 		tags: {

@@ -1,7 +1,7 @@
 import {Option, OptionDefinition, OptionReturnType} from "@/src/lib/types.js";
 
 export function getOptionPrimitiveDefaultValue<Opts extends Option>(type: Opts): OptionReturnType<Opts> {
-	if (type === 'string') return null as OptionReturnType<Opts>;
+	if (type === 'string' || type === 'secret') return null as OptionReturnType<Opts>;
 	if (type === 'number') return null as OptionReturnType<Opts>;
 	if (type === 'boolean') return false as OptionReturnType<Opts>;
 	if (Array.isArray(type) && type.length === 1) {
@@ -11,16 +11,8 @@ export function getOptionPrimitiveDefaultValue<Opts extends Option>(type: Opts):
 	throw new Error('Invalid option type: ' + type);
 }
 
-export function getOptionDefaultValue<Opts extends Option>(option: Opts): OptionReturnType<Opts> {
-	if (typeof option === 'string') {
-		return getOptionPrimitiveDefaultValue(option)
-	}
-
-	if (Array.isArray(option)) {
-		return [] as unknown as OptionReturnType<Opts>;
-	}
-
-	if (typeof option === 'object' && option.type) {
+export function getOptionDefaultValue<Opts extends Option>(option: Opts): OptionReturnType<Opts> | null {
+	if (!Array.isArray(option) && typeof option === 'object' && option.type) {
 
 		if (option.default !== undefined) {
 			return option.default as OptionReturnType<Opts>;
@@ -29,7 +21,7 @@ export function getOptionDefaultValue<Opts extends Option>(option: Opts): Option
 		return getOptionPrimitiveDefaultValue(option.type) as OptionReturnType<Opts>;
 	}
 
-	return null as OptionReturnType<Opts>;
+	return getOptionPrimitiveDefaultValue(option)
 }
 
 export type OptionDetails = Required<OptionDefinition>;

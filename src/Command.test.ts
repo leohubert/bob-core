@@ -234,6 +234,7 @@ describe('Command', () => {
 
 		it('should validate required arguments', async () => {
 			const command = new Command('test')
+				.disablePrompting()
 				.arguments({
 					file: {type: 'string', required: true}
 				})

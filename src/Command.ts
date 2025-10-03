@@ -45,10 +45,15 @@ export class Command<C = any, Options extends OptionsSchema = {}, Arguments exte
 	protected ctx!: C;
 	protected io!: CommandIO;
 	protected logger!: Logger;
-
-	protected _handler?: CommandHandler<C, Options, Arguments>;
-
 	protected parser!: CommandParser<Options, Arguments>;
+
+	disablePromptingFlag = false;
+
+	protected preHandle?(): Promise<void|number>;
+	protected _preHandler?: CommandHandler<C, Options, Arguments>;
+
+	protected handle?(ctx: C, opts: CommandHandlerOptions<Options, Arguments>): Promise<number | void> | number | void;
+	protected _handler?: CommandHandler<C, Options, Arguments>;
 
 	private tmp?: {
 		options: Options;
@@ -63,7 +68,7 @@ export class Command<C = any, Options extends OptionsSchema = {}, Arguments exte
 		io: CommandIO
 		options: Options
 		arguments: Arguments
-	}): CommandParser<Options, Arguments> | CommandSignatureParser {
+	}): CommandParser<Options, Arguments> {
 		return new CommandParser({
 			io: opts.io,
 			options: opts.options,
@@ -97,10 +102,17 @@ export class Command<C = any, Options extends OptionsSchema = {}, Arguments exte
 		}
 	}
 
-	protected preHandle?(): Promise<void|number>;
-	protected handle?(ctx: C, opts: CommandHandlerOptions<Options, Arguments>): Promise<number | void> | number | void;
+	disablePrompting() {
+		this.disablePromptingFlag = true;
+		return this;
+	}
 
-	handler(handler: CommandHandler<C, Options, Arguments>): Command<C, Options, Arguments> {
+	preHandler(handler: CommandHandler<C, Options, Arguments>) {
+		this._preHandler = handler;
+		return this;
+	}
+
+	handler(handler: CommandHandler<C, Options, Arguments>){
 		this._handler = handler;
 		return this;
 	}
@@ -152,7 +164,7 @@ export class Command<C = any, Options extends OptionsSchema = {}, Arguments exte
 				io: this.io,
 				options: options,
 				arguments: this.tmp?.arguments ?? {} as Arguments
-			});
+			})
 			handlerOptions = this.parser.init(opts.args);
 
 			for (const option of this.defaultOptions()) {
@@ -162,6 +174,10 @@ export class Command<C = any, Options extends OptionsSchema = {}, Arguments exte
 						return code;
 					}
 				}
+			}
+
+			if (this.disablePromptingFlag) {
+				this.parser.disablePrompting();
 			}
 
 			await this.parser.validate()

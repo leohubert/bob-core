@@ -328,7 +328,7 @@ describe('CommandParser', () => {
 				arguments: {
 					file: {type: 'string', required: true}
 				}
-			});
+			}).disablePrompting();
 
 			parser.init([]);
 

@@ -1,12 +1,7 @@
-import {MissingRequiredArgumentValue} from "@/src/errors/MissingRequiredArgumentValue.js";
-import {MissingSignatureOption} from "@/src/errors/MissingSignatureOption.js";
-import {MissingSignatureArgument} from "@/src/errors/MissingSignatureArgument.js";
 import {CommandOption} from "@/src/contracts/index.js";
 import {CommandIO} from "@/src/CommandIO.js";
-import {Option, OptionDefinition, OptionReturnType, OptionsObject, OptionsSchema} from "@/src/lib/types.js";
+import {OptionDefinition, OptionsObject, OptionsSchema} from "@/src/lib/types.js";
 import {CommandParser} from "@/src/CommandParser.js";
-import chalk from "chalk";
-import {getOptionDetails} from "@/src/lib/optionHelpers.js";
 
 /**
  * Extends CommandParser to parse command signatures like "command {arg} {--option}"
@@ -15,8 +10,6 @@ import {getOptionDetails} from "@/src/lib/optionHelpers.js";
 export class CommandSignatureParser<Opts extends OptionsSchema = any, Args extends OptionsSchema = any> extends CommandParser<Opts, Args> {
 
 	public readonly command: string;
-	private readonly argumentsSchema: Args
-	private readonly optionsSchema: Opts
 
 	constructor(opts: {
 		io: CommandIO,
@@ -36,8 +29,6 @@ export class CommandSignatureParser<Opts extends OptionsSchema = any, Args exten
 
 		// Store parsed definitions for later access
 		this.command = parseResult.command;
-		this.optionsSchema = parseResult.options;
-		this.argumentsSchema = parseResult.arguments;
 	}
 
 	/**
@@ -85,87 +76,6 @@ export class CommandSignatureParser<Opts extends OptionsSchema = any, Args exten
 
 		return { command, options: optionsSchema as Opts, arguments: argumentsSchema as Args };
 	}
-
-	// === PUBLIC API ===
-
-	/**
-	 * Retrieves an option value by name, with signature validation
-	 */
-	public option(name: any): any {
-		if (!this.optionsSchema[name]) {
-			throw new MissingSignatureOption(name as string, this.optionsSchema)
-		}
-		return super.option(name);
-	}
-
-	/**
-	 * Sets an option value programmatically
-	 */
-	public setOption(name: string, value: any): void {
-		if (!this.optionsSchema[name]) {
-			throw new MissingSignatureOption(name, this.optionsSchema)
-		}
-		if (this.parsedOptions) {
-			(this.parsedOptions as any)[name] = value;
-		}
-	}
-
-	/**
-	 * Retrieves the description/help text for an option
-	 */
-	public optionHelp(name: string): string | undefined {
-		if (!this.optionsSchema[name]) {
-			throw new MissingSignatureOption(name, this.optionsSchema)
-		}
-		return getOptionDetails(this.optionsSchema[name]).description
-	}
-
-	/**
-	 * Retrieves the description/help text for an argument
-	 */
-	public argumentHelp(name: string): string | undefined {
-		if (!this.argumentsSchema[name]) {
-			throw new MissingSignatureArgument(name, this.argumentsSchema)
-		}
-		return getOptionDetails(this.argumentsSchema[name]).description
-	}
-
-	/**
-	 * Retrieves an argument value by name, with signature validation
-	 */
-	public argument(name: any):any {
-		if (!this.argumentsSchema[name]) {
-			throw new MissingSignatureArgument(name as string, this.argumentsSchema)
-		}
-		return super.argument(name)
-	}
-
-	/**
-	 * Sets an argument value programmatically
-	 */
-	public setArgument(name: string, value: any): void {
-		if (!this.argumentsSchema[name]) {
-			throw new MissingSignatureArgument(name, this.argumentsSchema)
-		}
-		if (this.parsedArguments) {
-			(this.parsedArguments as any)[name] = value;
-		}
-	}
-
-	/**
-	 * Returns all argument definitions from the signature
-	 */
-	public getArgumentSignatures(): OptionsSchema {
-		return this.argumentsSchema
-	}
-
-	/**
-	 * Returns all option definitions from the signature
-	 */
-	public getOptionSignatures(): OptionsSchema {
-		return this.optionsSchema
-	}
-
 
 	/**
 	 * Parses a single parameter signature like "{name}" or "{--force}" or "{files*}"
@@ -265,80 +175,5 @@ export class CommandSignatureParser<Opts extends OptionsSchema = any, Args exten
 			?? helperDefinitions[`--${name}`]
 
 		return { name, isOption, definition }
-	}
-
-	/**
-	 * Validates that all required arguments are present
-	 * If missing, prompts the user via CommandIO to provide them
-	 * @throws {MissingRequiredArgumentValue} If a required argument cannot be obtained
-	 */
-	public async validate(): Promise<void> {
-		for (const argumentName in this.argumentsSchema) {
-			const optionDetails = getOptionDetails(this.argumentsSchema[argumentName])
-			const value = this.argument(argumentName)
-
-			// Check if required argument is missing
-			if (!value && optionDetails.required) {
-				const newValue = await this.promptForArgument(argumentName, optionDetails)
-
-				if (newValue) {
-					this.setArgument(argumentName, newValue)
-				} else {
-					throw new MissingRequiredArgumentValue(argumentName)
-				}
-			}
-
-			// Check if required variadic argument is empty
-			if (optionDetails.variadic && optionDetails.required && typeof value === 'object' && !value?.length ) {
-				throw new MissingRequiredArgumentValue(argumentName)
-			}
-		}
-	}
-
-	/**
-	 * Prompts the user to provide a missing argument value via CommandIO
-	 */
-	private async promptForArgument(
-		argumentName: string,
-		argDef: OptionDefinition
-	): Promise<string | null> {
-		// Only handle string arguments for now
-		if (argDef.type !== 'string') {
-			return null
-		}
-
-		let promptText = chalk`{yellow.bold ${argumentName}} is required`
-		if (argDef.description) {
-			promptText += chalk`: {gray (${argDef.description})}`
-		}
-		promptText += '\n'
-
-		return await this.io.askForInput(
-			promptText,
-			argDef.default as string | undefined,
-			{
-				validate: (value) => {
-					if (!value?.trim()?.length) {
-						return `${argumentName} cannot be empty`
-					}
-					return true
-				}
-			}
-		)
-	}
-
-	public optionValues(): OptionsObject<Opts> {
-		if (!this.parsedOptions) {
-			throw new Error("Options have not been parsed yet. Call init() first.");
-		}
-
-		return this.parsedOptions
-	}
-
-	public argumentValues(): OptionsObject<Args> {
-		if (!this.parsedArguments) {
-			throw new Error("Arguments have not been parsed yet. Call init() first.");
-		}
-		return this.parsedArguments
 	}
 }

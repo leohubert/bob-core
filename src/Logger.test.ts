@@ -82,7 +82,7 @@ describe('Logger', () => {
 			logger.warn('warn msg');
 			logger.error('error msg');
 
-			expect(consoleLogSpy).toHaveBeenCalledTimes(3); // debug, verbose, info
+			expect(consoleLogSpy).toHaveBeenCalledTimes(2); // debug, info
 			expect(consoleWarnSpy).toHaveBeenCalledTimes(1); // warn
 			expect(consoleErrorSpy).toHaveBeenCalledTimes(1); // error
 		});

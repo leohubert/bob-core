@@ -3,7 +3,8 @@ import {
 	OptionsSchema,
 	OptionReturnType,
 	OptionsObject,
-	ArgumentsObject
+	ArgumentsObject,
+	OptionDefinition
 } from "@/src/lib/types.js";
 import {BadCommandOption} from "@/src/errors/index.js";
 import {InvalidOption} from "@/src/errors/InvalidOption.js";
@@ -12,6 +13,7 @@ import {convertValue} from "@/src/lib/valueConverter.js";
 import {CommandIO} from "@/src/CommandIO.js";
 import {MissingRequiredArgumentValue} from "@/src/errors/MissingRequiredArgumentValue.js";
 import {MissingRequiredOptionValue} from "@/src/errors/MissingRequiredOptionValue.js";
+import chalk from "chalk";
 
 /**
  * Parses command-line arguments into typed options and arguments
@@ -26,6 +28,8 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 	protected parsedArguments: OptionsObject<Arguments> | null = null;
 
 	protected io: CommandIO;
+
+	protected shouldPromptForMissingOptions = true;
 
 	constructor(opts: {
 		io: CommandIO,
@@ -73,7 +77,24 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 
 		for (const key in this.arguments) {
 			const argDetails = getOptionDetails(this.arguments[key]);
-			if (argDetails.required && (this.parsedArguments?.[key] === undefined || this.parsedArguments?.[key] === null)) {
+			const value = this.parsedArguments?.[key];
+
+			if (argDetails.required && (value === undefined || value === null)) {
+				// Try prompting if enabled
+				if (this.shouldPromptForMissingOptions) {
+					const newValue = await this.promptForArgument(key, argDetails);
+
+					if (newValue && this.parsedArguments) {
+						(this.parsedArguments as any)[key] = convertValue(newValue, argDetails.type, key);
+						continue;
+					}
+				}
+
+				throw new MissingRequiredArgumentValue(key);
+			}
+
+			// Additional validation for variadic arguments
+			if (argDetails.variadic && argDetails.required && Array.isArray(value) && value.length === 0) {
 				throw new MissingRequiredArgumentValue(key);
 			}
 		}
@@ -92,6 +113,16 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 		return this.parsedOptions[name];
 	}
 
+	setOption<OptsName extends keyof Options>(name: OptsName, value: OptionReturnType<Options[OptsName]>): void {
+		if (!this.parsedOptions) {
+			throw new Error('Options have not been parsed yet. Call init() first.');
+		}
+		if (!(name in this.options)) {
+			throw new InvalidOption(name as string, this.options);
+		}
+		(this.parsedOptions as any)[name] = value;
+	}
+
 	/**
 	 * Retrieves a parsed argument value by name
 	 * @param name - The argument name
@@ -103,6 +134,16 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 			throw new Error('Arguments have not been parsed yet. Call init() first.');
 		}
 		return this.parsedArguments[name];
+	}
+
+	setArgument<ArgName extends keyof Arguments>(name: ArgName, value: OptionReturnType<Arguments[ArgName]>): void {
+		if (!this.parsedArguments) {
+			throw new Error('Arguments have not been parsed yet. Call init() first.');
+		}
+		if (!(name in this.arguments)) {
+			throw new InvalidOption(name as string, this.arguments);
+		}
+		(this.parsedArguments as any)[name] = value;
 	}
 
 	// === PRIVATE HELPERS ===
@@ -142,8 +183,7 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 			parsedOptions[key] = this.resolveOptionValue(
 				key,
 				optionDetails,
-				optionValues,
-				'option'
+				optionValues
 			);
 		}
 
@@ -212,7 +252,6 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 		key: string,
 		definition: OptionDetails,
 		optionValues: Record<string, any>,
-		paramType: 'option' | 'argument'
 	): any {
 		let rawValue: any = undefined;
 
@@ -230,7 +269,7 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 			if (definition.required) {
 				throw new BadCommandOption({
 					option: key,
-					reason: `${paramType === 'option' ? 'Option' : 'Argument'} is required but not provided`,
+					reason: `Required option is missing`,
 				});
 			}
 			return definition.default;
@@ -262,5 +301,57 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 
 	availableArguments(): string[] {
 		return Object.keys(this.arguments);
+	}
+
+	/**
+	 * Disables prompting for missing argument values
+	 * Useful for non-interactive environments
+	 */
+	disablePrompting() {
+		this.shouldPromptForMissingOptions = false;
+		return this;
+	}
+
+	/**
+	 * Prompts the user to provide a missing argument value via CommandIO
+	 * Used by validate() when shouldPromptForMissingArgs is enabled
+	 * @param argumentName - The name of the missing argument
+	 * @param argDef - The argument's definition for type and description
+	 * @returns The user-provided value, or null if none given
+	 */
+	protected async promptForArgument(
+		argumentName: string,
+		argDef: OptionDefinition
+	): Promise<string | number | null> {
+		if (Array.isArray(argDef.type) || !['string', 'number', 'secret'].includes(argDef.type)) {
+			return null;
+		}
+
+		let promptText = chalk`{yellow.bold ${argumentName}} is required`;
+		if (argDef.description) {
+			promptText += chalk`: {gray (${argDef.description})}`;
+		}
+		promptText += '\n';
+
+		return await this.io.askForInput(
+			promptText,
+			undefined,
+			{
+				type: argDef.type === 'number' ? 'number' : argDef.type === 'secret' ? 'password' : 'text',
+				validate: (value: string | number) => {
+					if (argDef.type === 'number') {
+						const num = Number(value);
+						if (isNaN(num)) {
+							return 'Please enter a valid number';
+						}
+					} else if (argDef.type === 'string') {
+						if (typeof value !== 'string' || !value.length) {
+							return 'Please enter a valid text';
+						}
+					}
+					return true;
+				}
+			}
+		);
 	}
 }

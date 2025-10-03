@@ -196,39 +196,6 @@ describe('CommandParser', () => {
         })
     })
 
-    describe('Helper', () => {
-        it('should parse help signature', () => {
-            commandParser = parseCommand('test {arg1} {arg2:help 1} {--option : option help 2 }', ['value1', 'value2', '--option']);
-            expect(commandParser.argumentHelp('arg1')).toBe('')
-            expect(commandParser.argumentHelp('arg2')).toBe('help 1')
-            expect(commandParser.optionHelp('option')).toBe('option help 2')
-        })
-
-        it('should define help with helperDefinition', () => {
-            commandParser = parseCommand('test {arg1} {arg2} {--option} {--option2}', ['value1', 'value2', '--option'], {
-                arg1: 'arg1 help',
-                arg2: 'arg2 help',
-                '--option': 'option help'
-            });
-            expect(commandParser.argumentHelp('arg1')).toBe('arg1 help')
-            expect(commandParser.argumentHelp('arg2')).toBe('arg2 help')
-            expect(commandParser.optionHelp('option')).toBe('option help')
-            expect(commandParser.optionHelp('option2')).toBe('')
-        })
-
-
-        it('should define help with helperDefinition with default value', () => {
-            commandParser = parseCommand('test {arg1:arg1 help} {arg2} {--option=default}', ['value1', 'value2'], {
-                arg2: 'arg2 help',
-                '--option': 'option help'
-            });
-            expect(commandParser.argumentHelp('arg1')).toBe('arg1 help')
-            expect(commandParser.argumentHelp('arg2')).toBe('arg2 help')
-            expect(commandParser.optionHelp('option')).toBe('option help')
-        })
-
-    })
-
     describe('DefaultCommandOptions', () => {
 
         it('should parse default command options', () => {
@@ -244,11 +211,6 @@ describe('CommandParser', () => {
         it('should parse default command options with provided value with alias', () => {
             commandParser = parseCommand('test', ['-t=value'], {}, [new TestCommandOptions()]);
             expect(commandParser.option('testOption')).toBe('value');
-        })
-
-        it('should parse default command option help', () => {
-            commandParser = parseCommand('test', [], {}, [new TestCommandOptions()]);
-            expect(commandParser.optionHelp('testOption')).toBe('Test option');
         })
 
         it('should handle null default value', () => {
