@@ -1,8 +1,11 @@
-import {describe, it, expect, beforeEach, vi} from 'vitest';
+import {describe, it, expect, vi} from 'vitest';
 import {Command} from '@/src/Command.js';
 import {CommandIO} from '@/src/CommandIO.js';
+import {setupMockedLogger} from '@/src/testFixtures.js';
 
 describe('Command', () => {
+	setupMockedLogger();
+
 	describe('Constructor and basic properties', () => {
 		it('should create a command with name', () => {
 			const command = new Command('test-command');
