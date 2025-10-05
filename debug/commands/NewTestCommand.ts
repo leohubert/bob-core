@@ -1,7 +1,9 @@
 import {Command} from "@/src/Command.js";
 
-export default new Command('new-test')
-	.arguments({
+export default new Command('test-new', {
+	description: 'A new test command that is not implemented yet',
+	group: 'testing',
+	arguments: {
 		name: {
 			type: 'string',
 			required: true,
@@ -23,16 +25,16 @@ export default new Command('new-test')
 			variadic: true,
 			description: 'Tags (variadic)'
 		}
-	})
-	.options({
-		test: 'string',
-		force: {
-			alias: ['f'],
-			type: 'boolean',
-			description: 'Force the action',
-			required: false,
-		}
-	})
+	},
+	options: {
+		force: 'boolean',
+		test: {
+			type: 'string',
+			description: 'A test option',
+			required: true,
+		},
+	}
+})
 	.handler((ctx, opts) => {
 		const test = opts.options.force
 		// Note: Functional handlers don't have access to this.io

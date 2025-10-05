@@ -159,7 +159,7 @@ describe('Cli', () => {
 
 			const resolver = vi.fn();
 
-			cli.setCommandResolver(resolver);
+			cli.withCommandResolver(resolver);
 
 			expect(resolver).not.toHaveBeenCalled();
 		});

@@ -1,275 +1,416 @@
-# BOB Core - Bash Operation Buddy Core
+<div align="center">
 
-## Introduction
+```
+  ____   ____  ____
+ | __ ) / __ \| __ )
+ |  _ \| |  | |  _ \
+ | |_) | |  | | |_) |
+ |____/ \____/|____/
+```
 
-BOB (Bash Operation Buddy) Core is a library that provides a set of functions to create your own CLI in TypeScript easily.
+# BOB Core
 
-## Usage
+**Your Bash Operation Buddy** 💪
+
+*Build powerful TypeScript CLIs with type-safe commands and beautiful interactive prompts*
+
+[![npm version](https://img.shields.io/npm/v/bob-core.svg)](https://www.npmjs.com/package/bob-core)
+[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue)](https://www.typescriptlang.org/)
+
+[Features](#features) • [Installation](#installation) • [Quick Start](#quick-start) • [Documentation](#documentation) • [Examples](#examples)
+
+</div>
+
+---
+
+## Features
+
+✨ **Type-Safe Commands** - Full TypeScript support with type inference for arguments and options  
+🎯 **Declarative API** - Define commands with simple schemas or string signatures  
+💬 **Interactive Prompts** - Built-in support for confirmations, selections, inputs, and more   
+🎨 **Beautiful Help** - Automatically generated, well-formatted help documentation  
+🔍 **Smart Suggestions** - Fuzzy matching suggests similar commands when you make typos  
+📦 **Zero Config** - Works out of the box with sensible defaults  
+🚀 **Dual Module Support** - Both CommonJS and ESM supported  
+⚡️ **Fast & Lightweight** - Minimal dependencies, maximum performance  
+
+---
+
+## Installation
 
 ```bash
 npm install bob-core
 ```
 
-Initialize the CLI:
+```bash
+yarn add bob-core
+```
+
+```bash
+pnpm add bob-core
+```
+
+---
+
+## Quick Start
+
+### Create your CLI
 
 ```typescript
-import { CLI } from 'bob-core';
+// cli.ts
+import { Cli } from 'bob-core';
 
-const cli = new CLI();
+const cli = new Cli({
+  name: 'my-cli',
+  version: '1.0.0'
+});
 
 await cli.withCommands('./commands');
 
-cli.run('commandName', 'arg1', 'arg2', 'arg3');
+const exitCode = await cli.runCommand(process.argv[2], ...process.argv.slice(3));
+process.exit(exitCode);
 ```
 
-Create a command in the `commands` folder:
+### Create a Command
+
+**Modern Schema-Based (Recommended):**
 
 ```typescript
-import { LegacyCommand } from 'bob-core';
+// commands/greet.ts
+import { Command } from 'bob-core';
 
-export default class MyCommand extends LegacyCommand {
-  public name = 'my-command {arg1} {--option1}';
-  public description = 'This is my command';
-  
-  /**
-   * Define the arguments and options help
-   *
-   * Optional
-   */
-  helpDefinition = {
-      arg1: 'This is the first argument',
-      '--option1': 'This is the first option'
+export default new Command('greet', {
+  description: 'Greet a user',
+  arguments: {
+    name: 'string'
+  },
+  options: {
+    enthusiastic: {
+      type: 'boolean',
+      alias: ['e'],
+      default: false,
+      description: 'Add enthusiasm!'
+    }
+  }
+}).handler((ctx, { arguments: args, options }) => {
+  const greeting = `Hello, ${args.name}${options.enthusiastic ? '!' : '.'}`;
+  console.log(greeting);
+});
+```
+
+**Modern Class-Based:**
+
+```typescript
+// commands/greet.ts
+import { Command, CommandHandlerOptions, OptionsSchema } from 'bob-core';
+
+const GreetOptions = {
+  enthusiastic: {
+    type: 'boolean',
+    alias: ['e'],
+    default: false,
+    description: 'Add enthusiasm!'
+  }
+} satisfies OptionsSchema;
+type GreetOptions = typeof GreetOptions;
+
+const GreetArguments = {
+  name: 'string'
+} satisfies OptionsSchema;
+type GreetArguments = typeof GreetArguments;
+
+export default class GreetCommand extends Command<any, GreetOptions, GreetArguments> {
+  constructor() {
+    super('greet', {
+      description: 'Greet a user',
+      options: GreetOptions,
+      arguments: GreetArguments
+    });
   }
 
-  /**
-   * Provide examples of how to use the command
-   *
-   * Optional
-   */
-  commandsExamples = [
-      {
-            command: 'my-command value1 --option1',
-            description: 'This is an example'
-      }
-  ]
-
-  public async handle() {
-    console.log('Hello World');
-    console.log('Arguments:', this.argument('arg1'));
-    console.log('Options:', this.option('option1'));
+  handle(ctx: any, opts: CommandHandlerOptions<GreetOptions, GreetArguments>) {
+    const greeting = `Hello, ${opts.arguments.name}${opts.options.enthusiastic ? '!' : '.'}`;
+    console.log(greeting);
   }
 }
 ```
 
-## Cli Help
+**Signature-Based:**
 
-The CLI provides a help command that displays all available commands and their descriptions.
+```typescript
+// commands/greet.ts
+import { CommandWithSignature } from 'bob-core';
 
-```bash
-node cli.js help
+export default class GreetCommand extends CommandWithSignature {
+  signature = 'greet {name} {--enthusiastic|-e}';
+  description = 'Greet a user';
+
+  protected async handle() {
+    const name = this.argument<string>('name');
+    const enthusiastic = this.option<boolean>('enthusiastic');
+
+    const greeting = `Hello, ${name}${enthusiastic ? '!' : '.'}`;
+    console.log(greeting);
+  }
+}
 ```
 
-## Commands
+### Run It
 
 ```bash
-Bob CLI x.x.x 💪
+$ node cli.js greet John
+Hello, John.
 
-Usage:
-  command [options] [arguments]
+$ node cli.js greet Jane --enthusiastic
+Hello, Jane!
 
-Available commands:
-
-help         Show help
-test         test description
-sub:
-  sub        sub command description
-  sub:sub    sub:sub command description
-
-```
-
-## LegacyCommand help
-
-You can also display the help of a specific command.
-
-```bash
-node cli.js test -h
-```
-
-```bash
+$ node cli.js help greet
 Description:
-  test description
+  Greet a user
 
 Usage:
-  test <user> [options]
+  greet <name> [options]
 
 Arguments:
-  user                  user description
-  test                  test description [default: null]
-  test2                 [default: []] (variadic)
+  name                 (string)
 
 Options:
-  --option, -o, -b      option description (boolean) [default: false]
-  --flag                flag description (string) [default: null]
-  --arr                 arr description (array) [default: null]
-  --flag2               flag2 description (string) [default: 2]
-  --help, -h            Display help for the given command. When no command is given display help for the list command (boolean)
-
-Examples:
-  Example description 1
-
-    node cli.js test yayo --option
-
-  Example description 2
-
-    node cli.js test anothervalue --flag=2
+  --enthusiastic, -e   Add enthusiasm! (boolean) [default: false]
+  --help, -h          Display help for the given command
 ```
 
-Depending on the command, the help will display the command signature, description, arguments, options and examples. 
+---
 
+## Interactive Prompts
 
-## Commands signature
+Build beautiful interactive CLIs with built-in prompts:
 
-The command signature is a string that defines the command name, arguments and options.
-
-Example:    
 ```typescript
-    signature = 'my-command {arg1} {arg2} {arg3} {--option1} {--option2}';
+import { Command } from 'bob-core';
+
+export default new Command('setup', {
+  description: 'Interactive project setup'
+}).handler(async () => {
+  // Text input
+  const name = await this.io.askForInput('Project name:');
+
+  // Confirmation
+  const useTypeScript = await this.io.askForConfirmation('Use TypeScript?', true);
+
+  // Selection
+  const framework = await this.io.askForSelect('Framework:', [
+    { title: 'React', value: 'react' },
+    { title: 'Vue', value: 'vue' },
+    { title: 'Svelte', value: 'svelte' }
+  ]);
+
+  // Multi-select
+  const features = await this.io.askForSelect(
+    'Features:',
+    ['ESLint', 'Prettier', 'Testing'],
+    { type: 'multiselect' }
+  );
+
+  // Spinner/loader
+  using loader = this.io.newLoader('Creating project...');
+  await createProject({ name, framework, features });
+  loader.stop();
+
+  this.io.info('✅ Project created!');
+});
 ```
 
-### Arguments
+---
 
-All user supplied arguments and options are wrapped in curly braces. 
-In the following example, the command defines three **required** arguments `arg1`, `arg2` and `arg3`.
+## Context Injection
+
+Pass shared dependencies and configuration to your commands:
 
 ```typescript
-    signature = 'my-command {arg1} {arg2} {arg3}';
+interface AppContext {
+  config: Config;
+  database: Database;
+  logger: Logger;
+}
+
+const context: AppContext = {
+  config: loadConfig(),
+  database: new Database(),
+  logger: new Logger()
+};
+
+const cli = new Cli<AppContext>({
+  ctx: context,
+  name: 'my-app',
+  version: '1.0.0'
+});
+
+// Access context in commands
+export default new Command<AppContext>('users:list', {
+  description: 'List users'
+}).handler(async (ctx) => {
+  const users = await ctx.database.getUsers();
+  users.forEach(user => console.log(user.name));
+});
 ```
 
-You may want to make an argument optional by adding a `?` after the argument name or by providing a default value with `=`.
+---
+
+## Documentation
+
+📚 **[Getting Started](./docs/getting-started.md)** - Installation and first CLI  
+🔨 **[Creating Commands](./docs/creating-commands.md)** - Schema-based and signature-based approaches  
+⚙️ **[Arguments & Options](./docs/arguments-and-options.md)** - Type-safe parameters  
+💬 **[Interactive Prompts](./docs/interactive-prompts.md)** - Build interactive CLIs  
+🚀 **[Advanced Topics](./docs/advanced.md)** - Context, resolvers, error handling  
+❓ **[Help System](./docs/help-system.md)** - Customize help output  
+📖 **[API Reference](./docs/api-reference.md)** - Complete API documentation  
+💡 **[Examples](./docs/examples.md)** - Real-world examples
+
+---
+
+## Examples
+
+### Type-Safe Arguments
 
 ```typescript
-    signature = 'my-command {arg1} {arg2?} {arg3=defaultValue}';
-
-    handle() {
-        this.argument('arg1'); // 'value' or throw an error if not provided
-        this.argument('arg2'); // 'value' or null if not provided
-        this.argument('arg3'); // 'value' or 'defaultValue' if not provided
+export default new Command('deploy', {
+  arguments: {
+    environment: 'string',           // Required
+    region: {                        // Optional with default
+      type: 'string',
+      default: 'us-east-1',
+      required: false
     }
+  }
+}).handler((ctx, { arguments: args }) => {
+  // args.environment is string
+  // args.region is string | null
+});
 ```
 
-You can also define a variadic argument by adding `*` after the argument name.
-Variadic arguments are stored in an array.
+### Variadic Arguments
 
 ```typescript
-    signature = 'my-command {arg1} {arg2*}';
+export default new Command('delete', {
+  arguments: {
+    files: ['string']  // Array of strings
+  }
+}).handler((ctx, { arguments: args }) => {
+  // args.files is string[]
+  args.files.forEach(file => deleteFile(file));
+});
+```
 
-    handle() {
-        this.argument('arg1'); // 'value1'
-        this.argument('arg2'); // ['value2', 'value3']
+### Options with Aliases
+
+```typescript
+export default new Command('serve', {
+  options: {
+    port: {
+      type: 'number',
+      alias: ['p'],
+      default: 3000
+    },
+    verbose: {
+      type: 'boolean',
+      alias: ['v', 'V'],
+      default: false
     }
+  }
+});
+
+// Usage: serve --port=8080 -v
+// Usage: serve -p 8080 --verbose
 ```
 
-Variadic arguments can also be optional.
+### Pre-Handlers for Validation
 
 ```typescript
-    signature = 'my-command {arg1} {arg2*?}';
-```
-
-### Options
-
-Options are defined by `{--optionName}`.
-
-```typescript
-    signature = 'my-command {--option1} {--option2} {--option3}';
-```
-
-By default options are boolean with a default value of `false`.
-You can also change the option type to string by adding `=` to the option definition.
-You can also provide a default value by adding `=value`.
-
-If the value is 'true' or 'false', the option will be converted to a boolean.
-
-```typescript
-    signature = 'my-command {--option1} {--option2=true} {--option3=} {--option4=defaultValue} {--option5=}';
-
-    handle() {
-        this.option('option1'); // by default `false` and can be set to `true` by the user 
-        this.option('option2'); // by default `true` and can be set to `false` by the user
-        this.option('option3'); // by default `null` and can be set to "value" by the user
-        this.option('option4'); // by default "defaultValue" and can be set to "value" by the user
+export default new Command('deploy')
+  .preHandler(async (ctx) => {
+    if (!ctx.isAuthenticated) {
+      console.error('Not authenticated');
+      return 1;  // Stop execution
     }
+  })
+  .handler(async (ctx) => {
+    // Only runs if authenticated
+  });
 ```
 
-You can also define a variadic option by adding `*` as option value. (e.g. `{--option2=*}`)
-Variadic options are stored in an array.
+### Command Groups
 
 ```typescript
-    signature = 'my-command {--option1} {--option2=*}';
+// commands/db/migrate.ts
+export default new Command('db:migrate', {
+  description: 'Run migrations',
+  group: 'Database'
+});
 
-    handle() {
-        this.option('option1'); // 'value1' 
-        this.option('option2'); // ['value2', 'value3'] // or [] if not provided
-    }
+// commands/db/seed.ts
+export default new Command('db:seed', {
+  description: 'Seed database',
+  group: 'Database'
+});
+
+// Displayed as:
+// Database:
+//   db:migrate    Run migrations
+//   db:seed       Seed database
 ```
 
-## Commands I/O
+---
 
-### Arguments
+## Why BOB Core?
 
-```typescript
-    this.argument('arg1');
-```
+BOB Core makes CLI development in TypeScript a breeze:
 
-You can also provide a default value if the argument is optional.
+- **No Boilerplate** - Define commands declaratively, not imperatively
+- **Type Safety** - Catch errors at compile time, not runtime
+- **Great DX** - Intelligent auto-complete, clear error messages
+- **User Friendly** - Beautiful help, smart suggestions, interactive prompts
+- **Flexible** - Multiple command styles, extend anything
+- **Well Tested** - Comprehensive test suite with Vitest
 
-```typescript
-    this.argument('arg1', 'defaultValue');
-```
+---
 
-If you always need a boolean value, you can use the `argumentBoolean` method.
+## Supported Types
 
-```typescript
-    this.argumentBoolean('arg1');
-```
+| Type | Description | Example |
+|------|-------------|---------|
+| `'string'` | Text value | `'hello'` |
+| `'number'` | Numeric value | `42` |
+| `'boolean'` | True/false | `true` |
+| `'secret'` | Masked input | `'****'` |
+| `['string']` | String array | `['a', 'b']` |
+| `['number']` | Number array | `[1, 2, 3]` |
 
-If you always need a number value, you can use the `argumentNumber` method.
+---
 
-```typescript
-    this.argumentNumber('arg1');
-```
+## Contributing
 
-If you always need a array value, you can use the `argumentArray` method.
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-```typescript
-    this.argumentArray('arg1');
-```
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-### Options
+---
 
-```typescript
-    this.option('option1');
-```
+## License
 
-You can also provide a default value if the option is optional.
+[ISC](LICENSE) © Léo Hubert
 
-```typescript
-    this.option('option1', 'defaultValue');
-```
+---
 
-If you always need a boolean value, you can use the `optionBoolean` method.
+<div align="center">
 
-```typescript
-    this.optionBoolean('option1');
-```
+**[⬆ back to top](#bob-core)**
 
-If you always need a number value, you can use the `optionNumber` method.
+Made with ❤️ by developers, for developers
 
-```typescript
-    this.optionNumber('option1');
-```
-
-If you always need a array value, you can use the `optionArray` method.
-
-```typescript
-    this.optionArray('option1'); 
-```
+</div>

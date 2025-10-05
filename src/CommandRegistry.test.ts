@@ -169,7 +169,7 @@ describe('CommandRegistry', () => {
 	describe('Custom command resolver', () => {
 		it('should use custom resolver for loading commands', () => {
 			const customResolver = vi.fn().mockResolvedValue(new Command('custom'));
-			registry.setCommandResolver(customResolver);
+			registry.withCommandResolver(customResolver);
 
 			expect(customResolver).not.toHaveBeenCalled();
 		});

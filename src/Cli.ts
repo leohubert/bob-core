@@ -1,4 +1,4 @@
-import {CommandRegistry} from "@/src/CommandRegistry.js";
+import {CommandRegistry, CommandResolver, FileImporter} from "@/src/CommandRegistry.js";
 import HelpCommand, {HelpCommandOptions} from "@/src/commands/HelpCommand.js";
 import {ExceptionHandler} from "@/src/ExceptionHandler.js";
 import {Command} from "@/src/Command.js";
@@ -53,8 +53,14 @@ export class Cli<C = any> {
 		});
 	}
 
-	setCommandResolver(resolver: (path: string) => Promise<Command<C>>) {
-		this.commandRegistry.setCommandResolver(resolver);
+	withCommandResolver(resolver: CommandResolver) {
+		this.commandRegistry.withCommandResolver(resolver);
+		return this;
+	}
+
+	withFileImporter(importer: FileImporter) {
+		this.commandRegistry.withFileImporter(importer);
+		return this;
 	}
 
 	async withCommands(...commands: Array<Command<C, any, any> | { new(): Command<C> } | string>) {

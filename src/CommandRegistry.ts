@@ -8,7 +8,8 @@ import {CommandIO} from "@/src/CommandIO.js";
 import {Command} from "@/src/Command.js";
 import {Logger} from "@/src/Logger.js";
 
-export type CommandResolver = (path: string) => Promise<Command>;
+export type CommandResolver = (path: string) => Promise<Command | null>;
+export type FileImporter = (filePath: string) => Promise<any>;
 
 export class CommandRegistry {
     private readonly commands: Record<string, Command> = {};
@@ -32,9 +33,12 @@ export class CommandRegistry {
         return Object.values(this.commands)
     }
 
+	private importFile: FileImporter = async (filePath: string): Promise<any> => {
+		return (await import(filePath)).default;
+	}
 
     private commandResolver: CommandResolver = async (path: string)=> {
-        let defaultImport = (await import(path)).default
+        let defaultImport = await this.importFile(path);
         if (!defaultImport) {
 			throw new Error(`The command at path ${path} does not have a default export.`)
 	    }
@@ -43,21 +47,24 @@ export class CommandRegistry {
 			defaultImport = defaultImport.default
 		}
 
-        let command: Command
         if (typeof defaultImport === 'function') {
-			command = new defaultImport();
+			return new defaultImport();
 	    } else if (defaultImport instanceof Command) {
-			command = defaultImport;
-        } else {
-			throw new Error(`The command at path ${path} is not a valid command class.`)
+			return defaultImport;
         }
 
-        return command;
+        return null
     }
 
-    setCommandResolver(resolver: CommandResolver) {
+    withCommandResolver(resolver: CommandResolver) {
         this.commandResolver = resolver;
+		return this;
     }
+
+	withFileImporter(importer: FileImporter) {
+		this.importFile = importer;
+		return this;
+	}
 
     registerCommand(command: Command<any, any, any>, force: boolean = false) {
 		const commandName = command.command;
@@ -76,7 +83,9 @@ export class CommandRegistry {
             try {
                 const command = await this.commandResolver(file);
 
-                this.registerCommand(command)
+				if (command instanceof Command) {
+					this.registerCommand(command);
+				}
 
             } catch (e) {
                 throw new Error(`Command ${file} failed to load. ${e}`, {
@@ -142,7 +151,7 @@ export class CommandRegistry {
     }
 
     private async* listCommandsFiles(
-        basePath: string
+        basePath: string,
     ): AsyncIterableIterator<string> {
         const dirEntry = fs.readdirSync(basePath, { withFileTypes: true })
         for (const dirent of dirEntry) {
@@ -150,7 +159,7 @@ export class CommandRegistry {
             if (dirent.isDirectory()) {
                 yield* this.listCommandsFiles(path.resolve(basePath, dirent.name));
             } else {
-                if (!direntPath.endsWith(`.ts`) && !direntPath.endsWith(`.js`)) {
+                if (!direntPath.endsWith(`.ts`) && !direntPath.endsWith(`.js`) && !direntPath.endsWith(`.mjs`) && !direntPath.endsWith(`.cjs`)) {
                     continue
                 }
                 yield direntPath;

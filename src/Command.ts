@@ -85,19 +85,21 @@ export class Command<C = any, Options extends OptionsSchema = {}, Arguments exte
 
 	constructor(command: string, opts?: {
 		description?: string,
-		group?: string
+		group?: string,
+		options?: Options,
+		arguments?: Arguments
 	}) {
 		this._command = command;
 		this.description = opts?.description ?? '';
 		this.group = opts?.group;
+		this.tmp = {
+			options: opts?.options ?? {} as Options,
+			arguments: opts?.arguments ?? {} as Arguments
+		}
 
 		const defaultOptions = this.defaultOptions();
 
 		if (defaultOptions.length > 0) {
-			this.tmp = {
-				options: {} as Options,
-				arguments: {} as Arguments
-			}
 
 			for (const option of defaultOptions) {
 				this.tmp.options[option.option as keyof Options] = option as any;
