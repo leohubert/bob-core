@@ -8,6 +8,6 @@ export class CommandNotFoundError extends BobError {
     }
 
     pretty(io: any): void {
-	    io.log(chalk`{bgRed  ERROR } Command {yellow ${this.command}} not found.`)
+	    io.log(`${chalk.bgRed(' ERROR ')} Command ${chalk.yellow(this.command)} not found.`)
 	}
 }

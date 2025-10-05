@@ -17,7 +17,7 @@ export class InvalidOption extends BobError {
 		const options = Object.entries(this.optionsSchema);
 
         if (options.length > 0) {
-            io.log(chalk`\n{yellow Available options}:`)
+            io.log(`\n${chalk.yellow('Available options')}:`)
 
 			for (const [name, definition] of options) {
 				const details = getOptionDetails(definition);
@@ -26,11 +26,11 @@ export class InvalidOption extends BobError {
                 const nameWithAlias = `--${name}${alias.length > 0 ? alias.map(a => `, -${a}`).join('') : ''}`;
                 const spaces = ' '.repeat(30 - nameWithAlias.length);
 
-                io.log(chalk`  {green ${nameWithAlias}} ${spaces} ${details.description || '\b'} {white (${typeDisplay})}`);
+                io.log(`  ${chalk.green(nameWithAlias)} ${spaces} ${details.description || '\b'} ${chalk.white(`(${typeDisplay})`)}`);
             }
             io.log('');
         }
 
-        io.log(chalk`{white.bgRed  ERROR } Option {bold.yellow ${this.option}} is not recognized.`);
+        io.log(`${chalk.white.bgRed(' ERROR ')} Option ${chalk.bold.yellow(this.option)} is not recognized.`);
     }
 }

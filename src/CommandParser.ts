@@ -337,14 +337,14 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 			return null;
 		}
 
-		let promptText = chalk`{yellow.bold ${argumentName}} is required`;
+		let promptText = `${chalk.yellow.bold(argumentName)} is required`;
 		if (argDef.description) {
-			promptText += chalk`: {gray (${argDef.description})}`;
+			promptText += `: ${chalk.gray(`(${argDef.description})`)}`;
 		}
 		promptText += '\n';
 
 		if (Array.isArray(argDef.type)) {
-			promptText += chalk`Please provide one or more values, separated by commas:\n`;
+			promptText += 'Please provide one or more values, separated by commas:\n';
 
 			return await this.io.askForList(
 				promptText,

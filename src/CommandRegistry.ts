@@ -130,10 +130,10 @@ export class CommandRegistry {
         }
 
 		if (similarCommands.length) {
-			this.io.error(chalk`{bgRed  ERROR } Command {yellow ${command}} not found.\n`)
+			this.io.error(`${chalk.bgRed(' ERROR ')} Command ${chalk.yellow(command)} not found.\n`)
 
 			const commandToRun = await this.io.askForSelect(
-				chalk`{green Did you mean to run one of these commands instead?}`,
+				chalk.green('Did you mean to run one of these commands instead?'),
 				similarCommands,
 			);
 			if (commandToRun) {
@@ -145,9 +145,9 @@ export class CommandRegistry {
     }
 
     private async askRunSimilarCommand(command: string, commandToAsk: string): Promise<boolean> {
-	    this.io.error(chalk`{bgRed  ERROR } Command {yellow ${command}} not found.\n`)
+	    this.io.error(`${chalk.bgRed(' ERROR ')} Command ${chalk.yellow(command)} not found.\n`)
 
-	    return this.io.askForConfirmation(chalk`{green Do you want to run {yellow ${commandToAsk}} instead?} `);
+	    return this.io.askForConfirmation(`${chalk.green(`Do you want to run ${chalk.yellow(commandToAsk)} instead?`)} `);
     }
 
     private async* listCommandsFiles(

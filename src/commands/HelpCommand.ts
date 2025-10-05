@@ -25,12 +25,12 @@ export default class HelpCommand extends Command {
 
         const coreVersion = (await import('../../package.json'))?.default?.version ?? '0.0.0'
 
-        this.io.log(chalk`${cliName} {green ${version}} (core: {yellow ${coreVersion}})
+        this.io.log(`${cliName} ${chalk.green(version)} (core: ${chalk.yellow(coreVersion)})
 
-{yellow Usage}:
+${chalk.yellow('Usage')}:
   command [options] [arguments]
 
-{yellow Available commands}:
+${chalk.yellow('Available commands')}:
 `)
 
         const maxCommandLength = Math.max(...commands.map(command => command.command.length)) ?? 0
@@ -54,7 +54,7 @@ export default class HelpCommand extends Command {
             const isGrouped = groupCommands.length > 1
 
             if (isGrouped) {
-                this.io.log(chalk`{yellow ${group}}:`)
+                this.io.log(chalk.yellow(`${group}:`))
             }
 
             const sortedGroupCommands = groupCommands.sort((a, b) => a.command.toLowerCase().localeCompare(b.command.toLowerCase()))
@@ -64,7 +64,7 @@ export default class HelpCommand extends Command {
                 if (isGrouped) {
                     spaces = spaces.slice(2)
                 }
-                this.io.log(chalk`${isGrouped ? '  ' : ''}{green ${command.command}} ${spaces} ${command.description}`)
+                this.io.log(`${isGrouped ? '  ' : ''}${chalk.green(command.command)} ${spaces} ${command.description}`)
             }
         }
     }

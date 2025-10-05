@@ -20,17 +20,17 @@ export class BadCommandParameter extends BobError {
     }
 
     pretty(io: any): void {
-        io.log(chalk`  {white.bgRed  ERROR } Argument {bold.yellow ${this.param.param}} value is invalid. `)
+        io.log(`  ${chalk.white.bgRed(' ERROR ')} Argument ${chalk.bold.yellow(this.param.param)} value is invalid. `)
 
         if (this.param.value || this.param.reason) {
             io.log('')
         }
 
         if (this.param.value) {
-            io.log(chalk`  {blue Value}: ${this.param.value}`)
+            io.log(`  ${chalk.blue('Value')}: ${this.param.value}`)
         }
         if (this.param.reason) {
-            io.log(chalk`  {yellow Reason}: ${this.param.reason}`)
+            io.log(`  ${chalk.yellow('Reason')}: ${this.param.reason}`)
         }
     }
 }

@@ -1,7 +1,6 @@
 import chalk from "chalk";
 
 import {BobError} from "@/src/errors/BobError.js";
-import {OptionDefinition} from "@/src/lib/types.js";
 
 export class MissingRequiredOptionValue extends BobError {
     constructor(
@@ -11,6 +10,6 @@ export class MissingRequiredOptionValue extends BobError {
     }
 
     pretty(io: any): void {
-        io.log(chalk`{white.bgRed  ERROR } Option {bold.yellow ${this.option}} is required.`)
+        io.log(`${chalk.white.bgRed(' ERROR ')} Option ${chalk.bold.yellow(this.option)} is required.`)
     }
 }
