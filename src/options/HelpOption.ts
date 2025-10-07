@@ -97,7 +97,6 @@ export class HelpOption implements CommandOption<Command> {
 				binaryName += ' ' + process.argv[1].split('/').pop();
 			}
 
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			for (const [index, example] of (this as any).commandsExamples.entries()) {
 				if (index > 0) {
 					this.io.log('');

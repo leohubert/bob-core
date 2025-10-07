@@ -4,7 +4,7 @@ import { Logger } from '@/src/Logger.js';
 
 export type SelectOption = {
 	title: string;
-	value?: unknown;
+	value?: any;
 	disabled?: boolean | undefined;
 	selected?: boolean | undefined;
 	description?: string | undefined;
@@ -21,23 +21,23 @@ export class CommandIO {
 	 * Logger methods
 	 */
 
-	log(...args: unknown[]): void {
+	log(...args: any[]): void {
 		this.logger.log(...args);
 	}
 
-	info(...args: unknown[]): void {
+	info(...args: any[]): void {
 		this.logger.info(...args);
 	}
 
-	warn(...args: unknown[]): void {
+	warn(...args: any[]): void {
 		this.logger.warn(...args);
 	}
 
-	error(...args: unknown[]): void {
+	error(...args: any[]): void {
 		this.logger.error(...args);
 	}
 
-	debug(...args: unknown[]): void {
+	debug(...args: any[]): void {
 		this.logger.debug(...args);
 	}
 

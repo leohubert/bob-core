@@ -26,29 +26,29 @@ export class Logger implements LoggerContract {
 		return this.level;
 	}
 
-	log(...args: unknown[]): void {
+	log(...args: any[]): void {
 		console.log(...args);
 	}
 
-	info(...args: unknown[]): void {
+	info(...args: any[]): void {
 		if (this.shouldLog('info')) {
 			console.log(...args);
 		}
 	}
 
-	warn(...args: unknown[]): void {
+	warn(...args: any[]): void {
 		if (this.shouldLog('warn')) {
 			console.warn(...args);
 		}
 	}
 
-	error(...args: unknown[]): void {
+	error(...args: any[]): void {
 		if (this.shouldLog('error')) {
 			console.error(...args);
 		}
 	}
 
-	debug(...args: unknown[]): void {
+	debug(...args: any[]): void {
 		if (this.shouldLog('debug')) {
 			console.log(...args);
 		}

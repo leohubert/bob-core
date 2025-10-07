@@ -254,6 +254,23 @@ describe('CommandParser', () => {
 
 			expect(result.options.tags).toEqual([]);
 		});
+
+		it('should default to empty array when no values provided', () => {
+			const parser = new CommandParser({
+				io,
+				options: {
+					tags: {
+						type: ['string'],
+						default: ['tag1', 'tag2'],
+					},
+				},
+				arguments: {},
+			});
+
+			const result = parser.init([]);
+
+			expect(result.options.tags).toEqual(['tag1', 'tag2']);
+		});
 	});
 
 	describe('Variadic arguments', () => {
@@ -316,7 +333,7 @@ describe('CommandParser', () => {
 			parser.init([]);
 
 			// Manually override to make it required for validate test
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 			(parser as any).options.name.required = true;
 
 			// validate() should check for required values
@@ -411,6 +428,104 @@ describe('CommandParser', () => {
 			});
 
 			expect(() => parser.argument('file')).toThrow('Arguments have not been parsed yet');
+		});
+
+		describe('Runtime default values', () => {
+			it('should return runtime default for empty array options', () => {
+				const parser = new CommandParser({
+					io,
+					options: { tags: ['string'] },
+					arguments: {},
+				});
+
+				parser.init([]);
+
+				expect(parser.option('tags', ['default1', 'default2'])).toEqual(['default1', 'default2']);
+			});
+
+			it('should not use runtime default for non-empty array options', () => {
+				const parser = new CommandParser({
+					io,
+					options: { tags: ['string'] },
+					arguments: {},
+				});
+
+				parser.init(['--tags', 'a', '--tags', 'b']);
+
+				expect(parser.option('tags', ['default1', 'default2'])).toEqual(['a', 'b']);
+			});
+
+			it('should not use runtime default for false boolean values', () => {
+				const parser = new CommandParser({
+					io,
+					options: { flag: 'boolean' },
+					arguments: {},
+				});
+
+				parser.init([]);
+
+				expect(parser.option('flag', true)).toBe(false);
+			});
+
+			it('should not use runtime default for zero number values', () => {
+				const parser = new CommandParser({
+					io,
+					options: { count: 'number' },
+					arguments: {},
+				});
+
+				parser.init(['--count', '0']);
+
+				expect(parser.option('count', 10)).toBe(0);
+			});
+
+			it('should not use runtime default for empty string values', () => {
+				const parser = new CommandParser({
+					io,
+					options: { message: 'string' },
+					arguments: {},
+				});
+
+				parser.init(['--message', '']);
+
+				expect(parser.option('message', 'default')).toBe('');
+			});
+
+			it('should use runtime default for null values', () => {
+				const parser = new CommandParser({
+					io,
+					options: { name: 'string' },
+					arguments: {},
+				});
+
+				parser.init([]);
+
+				expect(parser.option('name', 'default')).toBe('default');
+			});
+
+			it('should return runtime default for empty array arguments', () => {
+				const parser = new CommandParser({
+					io,
+					options: {},
+					arguments: { files: { type: ['string'], variadic: true } },
+				});
+
+				parser.init([]);
+
+				expect(parser.argument('files', ['default.txt'])).toEqual(['default.txt']);
+			});
+
+			it('should not use runtime default for non-empty array arguments', () => {
+				const parser = new CommandParser({
+					io,
+					options: {},
+					arguments: { files: { type: ['string'], variadic: true } },
+				});
+
+				parser.init(['a.txt', 'b.txt']);
+
+				expect(parser.argument('files', ['default.txt'])).toEqual(['a.txt', 'b.txt']);
+			});
 		});
 	});
 

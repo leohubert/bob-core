@@ -4,11 +4,11 @@ export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
  * Logger interface defining standard logging methods and level management
  */
 export interface LoggerContract {
-	log(message: string, ...args: unknown[]): void;
-	info(message: string, ...args: unknown[]): void;
-	warn(message: string, ...args: unknown[]): void;
-	error(message: string, ...args: unknown[]): void;
-	debug(message: string, ...args: unknown[]): void;
+	log(message: string, ...args: any[]): void;
+	info(message: string, ...args: any[]): void;
+	warn(message: string, ...args: any[]): void;
+	error(message: string, ...args: any[]): void;
+	debug(message: string, ...args: any[]): void;
 	setLevel(level: LogLevel): void;
 	getLevel(): LogLevel;
 }

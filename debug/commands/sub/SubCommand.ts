@@ -6,7 +6,7 @@ export default class SubCommand extends Command {
 
 	disablePromptingFlag = true;
 
-	protected handle(ctx: CommandContext, opts: unknown): Promise<void> {
+	protected handle(ctx: CommandContext, opts: any): Promise<void> {
 		this.io.info('Sub command executed', ctx, opts);
 		throw new Error('Method not implemented.');
 	}

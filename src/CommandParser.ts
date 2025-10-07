@@ -37,7 +37,7 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 	 * Parses raw command-line arguments into structured options and arguments
 	 * @param args - Raw command line arguments (typically from process.argv.slice(2))
 	 * @returns Object containing parsed options and arguments
-	 * @throws {InvalidOption} If an unknown option is provided
+	 * @throws {InvalidOption} If an naan option is provided
 	 * @throws {BadCommandOption} If a value cannot be converted to the expected type
 	 */
 	init(args: string[]): {
@@ -78,7 +78,6 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 					const newValue = await this.promptForArgument(key, argDetails);
 
 					if (newValue && this.parsedArguments) {
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						(this.parsedArguments as any)[key] = convertValue(newValue, argDetails.type, key);
 						continue;
 					}
@@ -93,7 +92,6 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 					const newValue = await this.promptForArgument(key, argDetails);
 
 					if (newValue && this.parsedArguments) {
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						(this.parsedArguments as any)[key] = convertValue(newValue, argDetails.type, key);
 						continue;
 					}
@@ -107,13 +105,19 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 	/**
 	 * Retrieves a parsed option value by name
 	 * @param name - The option name
+	 * @param defaultValue - Optional default value if option is not set
 	 * @returns The typed option value
 	 * @throws {Error} If init() has not been called yet
 	 */
-	option<OptsName extends keyof Options>(name: OptsName): OptionReturnType<Options[OptsName]> {
+	option<OptsName extends keyof Options>(name: OptsName, defaultValue?: OptionReturnType<Options[OptsName]>): OptionReturnType<Options[OptsName]> {
 		if (!this.parsedOptions) {
 			throw new Error('Options have not been parsed yet. Call init() first.');
 		}
+
+		if (this.isEmptyValue(this.parsedOptions[name]) && defaultValue !== undefined) {
+			return defaultValue;
+		}
+
 		return this.parsedOptions[name];
 	}
 
@@ -124,20 +128,26 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 		if (!(name in this.options)) {
 			throw new InvalidOption(name as string, this.options);
 		}
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 		(this.parsedOptions as any)[name] = value;
 	}
 
 	/**
 	 * Retrieves a parsed argument value by name
 	 * @param name - The argument name
+	 * @param defaultValue - Optional default value if argument is not set
 	 * @returns The typed argument value
 	 * @throws {Error} If init() has not been called yet
 	 */
-	argument<ArgName extends keyof Arguments>(name: ArgName): OptionReturnType<Arguments[ArgName]> {
+	argument<ArgName extends keyof Arguments>(name: ArgName, defaultValue?: OptionReturnType<Arguments[ArgName]>): OptionReturnType<Arguments[ArgName]> {
 		if (!this.parsedArguments) {
 			throw new Error('Arguments have not been parsed yet. Call init() first.');
 		}
+
+		if (this.isEmptyValue(this.parsedArguments[name]) && defaultValue !== undefined) {
+			return defaultValue;
+		}
+
 		return this.parsedArguments[name];
 	}
 
@@ -148,17 +158,26 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 		if (!(name in this.arguments)) {
 			throw new InvalidOption(name as string, this.arguments);
 		}
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 		(this.parsedArguments as any)[name] = value;
 	}
 
 	// === PRIVATE HELPERS ===
 
 	/**
+	 * Checks if a value should be considered "empty" for default value purposes
+	 * @param value - The value to check
+	 * @returns true if the value is null, undefined, or an empty array
+	 */
+	private isEmptyValue(value: any): boolean {
+		return value === null || value === undefined || (Array.isArray(value) && value.length === 0);
+	}
+
+	/**
 	 * Validates that all provided options are recognized
 	 * @throws {InvalidOption} If an unknown option is found
 	 */
-	private validateUnknownOptions(optionValues: Record<string, unknown>): void {
+	private validateUnknownOptions(optionValues: Record<string, any>): void {
 		const validOptionNames = new Set<string>();
 
 		// Collect all valid option names and their aliases
@@ -217,7 +236,7 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 	/**
 	 * Handles variadic arguments that consume all remaining positional values
 	 */
-	private handleVariadicArgument(key: string, definition: OptionDetails, remainingArgs: string[]): unknown {
+	private handleVariadicArgument(key: string, definition: OptionDetails, remainingArgs: string[]): any {
 		// Variadic arguments are always arrays - convert each element if present, otherwise return default
 		return remainingArgs.length ? convertValue(remainingArgs, definition.type, key, definition.default) : definition.default;
 	}
@@ -226,7 +245,7 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 	 * Resolves a single positional argument value with defaults and type conversion
 	 * Note: Does not validate required arguments - validation happens in subclass validate() methods
 	 */
-	private resolveArgumentValue(key: string, definition: OptionDetails, argValue: string | undefined): unknown {
+	private resolveArgumentValue(key: string, definition: OptionDetails, argValue: string | undefined): any {
 		// If no value provided, return default (validation happens later)
 		if (argValue === undefined) {
 			return definition.default;
@@ -240,8 +259,8 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 	 * Resolves an option value from the parsed option values object
 	 * Handles alias resolution, defaults, and type conversion
 	 */
-	private resolveOptionValue(key: string, definition: OptionDetails, optionValues: Record<string, unknown>): unknown {
-		let rawValue: unknown = undefined;
+	private resolveOptionValue(key: string, definition: OptionDetails, optionValues: Record<string, unknown>): any {
+		let rawValue: any = undefined;
 
 		// Search through option name and its aliases
 		const allNames = [key, ...definition.alias];

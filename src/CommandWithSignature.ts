@@ -12,6 +12,7 @@ export abstract class CommandWithSignature<
 	abstract description: string;
 
 	protected helperDefinitions: { [key: string]: string } = {};
+	declare protected parser: CommandSignatureParser<Opts, Args>;
 
 	get command(): string {
 		if (this.parser) {
@@ -19,8 +20,6 @@ export abstract class CommandWithSignature<
 		}
 		return this.signature.split(' ')[0];
 	}
-
-	declare parser: CommandSignatureParser<Opts, Args>;
 
 	protected newCommandParser(opts: { io: CommandIO; options: Opts; arguments: Args }): CommandSignatureParser<Opts, Args> {
 		return new CommandSignatureParser({
@@ -39,19 +38,13 @@ export abstract class CommandWithSignature<
 	protected option<T = string>(key: string): T | null;
 	protected option<T = string>(key: string, defaultValue: T): NoInfer<T>;
 	protected option<T = string>(key: string, defaultValue: T | null = null): NoInfer<T> | null {
-		if (this.parser instanceof CommandSignatureParser) {
-			return (this.parser.option(key) as T) ?? defaultValue;
-		}
-		return defaultValue;
+		return this.parser.option(key, defaultValue as any) as any;
 	}
 
 	protected argument<T = string>(key: string): T | null;
 	protected argument<T = string>(key: string, defaultValue: T): NoInfer<T>;
 	protected argument<T = string>(key: string, defaultValue: T | null = null): NoInfer<T> | null {
-		if (this.parser instanceof CommandSignatureParser) {
-			return (this.parser.argument(key) as T) ?? defaultValue;
-		}
-		return defaultValue;
+		return this.parser.argument(key, defaultValue as any) as any;
 	}
 
 	// Prompt utils

@@ -12,15 +12,15 @@ export function getOptionPrimitiveDefaultValue<Opts extends Option>(type: Opts):
 }
 
 export function getOptionDefaultValue<Opts extends Option>(option: Opts): OptionReturnType<Opts> | null {
-	if (!Array.isArray(option) && typeof option === 'object' && option.type) {
-		if (option.default !== undefined) {
-			return option.default as OptionReturnType<Opts>;
-		}
-
-		return getOptionPrimitiveDefaultValue(option.type) as OptionReturnType<Opts>;
+	if (typeof option === 'string' || Array.isArray(option)) {
+		return getOptionPrimitiveDefaultValue(option) as OptionReturnType<Opts>;
 	}
 
-	return getOptionPrimitiveDefaultValue(option);
+	if (option.default !== undefined) {
+		return option.default as OptionReturnType<Opts>;
+	}
+
+	return getOptionPrimitiveDefaultValue(option.type) as OptionReturnType<Opts>;
 }
 
 export type OptionDetails = Required<OptionDefinition>;

@@ -4,7 +4,7 @@ import { LoggerVerboseOption } from './options/LoggerVerboseOption.js';
 
 export type CommandContext = {
 	bambooClient: {
-		getProjects: () => Promise<unknown>;
+		getProjects: () => Promise<any>;
 	};
 	logger: {
 		verbose: boolean;

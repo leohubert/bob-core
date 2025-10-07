@@ -38,7 +38,7 @@ export class Command<
 	Arguments extends ArgumentsSchema = ArgumentsSchema,
 > {
 	public readonly _command: string;
-	public readonly description: string = '';
+	public readonly description: string;
 	public readonly group?: string;
 	protected commandsExamples: CommandExample[] = [];
 
@@ -101,7 +101,6 @@ export class Command<
 
 		if (defaultOptions.length > 0) {
 			for (const option of defaultOptions) {
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				this.tmp.options[option.option as keyof Options] = option as any;
 			}
 		}
@@ -130,7 +129,7 @@ export class Command<
 			},
 			arguments: this.tmp?.arguments ?? ({} as Arguments),
 		};
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 		return this as any;
 	}
 
@@ -142,7 +141,7 @@ export class Command<
 				...args,
 			},
 		};
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 		return this as any;
 	}
 
@@ -163,7 +162,6 @@ export class Command<
 			const options = this.tmp?.options ?? ({} as Options);
 			for (const option of this.defaultOptions()) {
 				if (!(option.option in options)) {
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					(options as any)[option.option] = option as any;
 				}
 			}

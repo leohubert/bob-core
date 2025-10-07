@@ -9,7 +9,7 @@ import { OptionPrimitive } from '@/src/lib/types.js';
  * @param defaultValue - Optional default value if value is null/undefined
  * @returns The converted value
  */
-export function convertValue(value: unknown, type: OptionPrimitive, name: string, defaultValue?: unknown): unknown {
+export function convertValue(value: any, type: OptionPrimitive, name: string, defaultValue?: any): any {
 	if (value === null || value === undefined) {
 		return defaultValue ?? null;
 	}

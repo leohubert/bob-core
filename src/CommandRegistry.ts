@@ -45,7 +45,7 @@ export class CommandRegistry {
 		}
 
 		if (defaultImport && typeof defaultImport === 'object' && 'default' in defaultImport) {
-			defaultImport = (defaultImport as { default: unknown }).default;
+			defaultImport = (defaultImport as { default: any }).default;
 		}
 
 		if (typeof defaultImport === 'function') {

@@ -16,7 +16,6 @@ describe('CommandRegistry', () => {
 			error: vi.fn(),
 			debug: vi.fn(),
 			verbose: vi.fn(),
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		} as any;
 
 		registry = new CommandRegistry(mockLogger);
