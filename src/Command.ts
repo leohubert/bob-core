@@ -1,43 +1,42 @@
 import { CommandIO } from '@/src/CommandIO.js';
 import { CommandParser } from '@/src/CommandParser.js';
-import { CommandSignatureParser } from '@/src/CommandSignatureParser.js';
 import { Logger } from '@/src/Logger.js';
 import { CommandOption } from '@/src/contracts/index.js';
-import { ArgumentsObject, ArgumentsSchema, OptionsObject, OptionsSchema } from '@/src/lib/types.js';
+import { ArgumentsObject, ArgumentsSchema, ContextDefinition, OptionsObject, OptionsSchema } from '@/src/lib/types.js';
 import { HelpOption } from '@/src/options/index.js';
 
 export type CommandHandlerOptions<Options extends OptionsSchema, Arguments extends ArgumentsSchema> = {
 	options: OptionsObject<Options>;
 	arguments: ArgumentsObject<Arguments>;
 };
-export type CommandHandler<C, Options extends OptionsSchema, Arguments extends ArgumentsSchema> = (
+export type CommandHandler<C extends ContextDefinition, Options extends OptionsSchema, Arguments extends ArgumentsSchema> = (
 	ctx: C,
 	opts: CommandHandlerOptions<Options, Arguments>,
 ) => Promise<number | void> | number | void;
 
-type BaseCommandRunOption<C> = {
+export type CommandRunOption<C, Options extends OptionsSchema, Arguments extends ArgumentsSchema> = {
 	logger: Logger;
 	ctx: C;
-};
-
-export type CommandRunArgsOption<C> = {
-	args: string[];
-} & BaseCommandRunOption<C>;
-export type CommandRunParsedOption<C, Options extends OptionsSchema, Arguments extends ArgumentsSchema> = {
-	options: OptionsObject<Options>;
-	arguments: ArgumentsObject<Arguments>;
-} & BaseCommandRunOption<C>;
-
-export type CommandRunOption<C, Options extends OptionsSchema, Arguments extends ArgumentsSchema> =
-	| CommandRunArgsOption<C>
-	| CommandRunParsedOption<C, Options, Arguments>;
+} & (
+	| {
+			args: string[];
+	  }
+	| {
+			options: OptionsObject<Options>;
+			arguments: ArgumentsObject<Arguments>;
+	  }
+);
 
 export type CommandExample = {
 	description: string;
 	command: string;
 };
 
-export class Command<C = any, Options extends OptionsSchema = {}, Arguments extends ArgumentsSchema = {}> {
+export class Command<
+	C extends ContextDefinition = ContextDefinition,
+	Options extends OptionsSchema = OptionsSchema,
+	Arguments extends ArgumentsSchema = ArgumentsSchema,
+> {
 	public readonly _command: string;
 	public readonly description: string = '';
 	public readonly group?: string;
@@ -47,7 +46,7 @@ export class Command<C = any, Options extends OptionsSchema = {}, Arguments exte
 		return this._command;
 	}
 
-	protected ctx!: C;
+	protected ctx!: C | undefined;
 	protected io!: CommandIO;
 	protected logger!: Logger;
 	protected parser!: CommandParser<Options, Arguments>;
@@ -65,7 +64,7 @@ export class Command<C = any, Options extends OptionsSchema = {}, Arguments exte
 		arguments: Arguments;
 	};
 
-	protected defaultOptions(): CommandOption<Command<any, any, any>>[] {
+	protected defaultOptions(): CommandOption<Command>[] {
 		return [new HelpOption()];
 	}
 
@@ -102,6 +101,7 @@ export class Command<C = any, Options extends OptionsSchema = {}, Arguments exte
 
 		if (defaultOptions.length > 0) {
 			for (const option of defaultOptions) {
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				this.tmp.options[option.option as keyof Options] = option as any;
 			}
 		}
@@ -130,6 +130,7 @@ export class Command<C = any, Options extends OptionsSchema = {}, Arguments exte
 			},
 			arguments: this.tmp?.arguments ?? ({} as Arguments),
 		};
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		return this as any;
 	}
 
@@ -141,6 +142,7 @@ export class Command<C = any, Options extends OptionsSchema = {}, Arguments exte
 				...args,
 			},
 		};
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		return this as any;
 	}
 
@@ -161,6 +163,7 @@ export class Command<C = any, Options extends OptionsSchema = {}, Arguments exte
 			const options = this.tmp?.options ?? ({} as Options);
 			for (const option of this.defaultOptions()) {
 				if (!(option.option in options)) {
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					(options as any)[option.option] = option as any;
 				}
 			}
@@ -174,7 +177,7 @@ export class Command<C = any, Options extends OptionsSchema = {}, Arguments exte
 
 			for (const option of this.defaultOptions()) {
 				if (handlerOptions.options[option.option] === true) {
-					const code = await option.handler.call(this);
+					const code = await option.handler.call(this as Command);
 					if (code && code !== 0) {
 						return code;
 					}

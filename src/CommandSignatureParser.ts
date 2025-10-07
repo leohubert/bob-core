@@ -1,16 +1,17 @@
+import { Command } from '@/src/Command.js';
 import { CommandIO } from '@/src/CommandIO.js';
 import { CommandParser } from '@/src/CommandParser.js';
 import { CommandOption } from '@/src/contracts/index.js';
-import { OptionDefinition, OptionsObject, OptionsSchema } from '@/src/lib/types.js';
+import { OptionDefinition, OptionsSchema } from '@/src/lib/types.js';
 
 /**
  * Extends CommandParser to parse command signatures like "command {arg} {--option}"
  * Handles interactive prompting for missing required arguments via CommandIO
  */
-export class CommandSignatureParser<Opts extends OptionsSchema = any, Args extends OptionsSchema = any> extends CommandParser<Opts, Args> {
+export class CommandSignatureParser<Opts extends OptionsSchema = OptionsSchema, Args extends OptionsSchema = OptionsSchema> extends CommandParser<Opts, Args> {
 	public readonly command: string;
 
-	constructor(opts: { io: CommandIO; signature: string; helperDefinitions: { [key: string]: string }; defaultOptions: CommandOption<any>[] }) {
+	constructor(opts: { io: CommandIO; signature: string; helperDefinitions: { [key: string]: string }; defaultOptions: CommandOption<Command>[] }) {
 		// Parse signature to extract command name and parameter schemas
 		const parseResult = CommandSignatureParser.parseSignature<Opts, Args>(opts.signature, opts.helperDefinitions, opts.defaultOptions);
 
@@ -32,7 +33,7 @@ export class CommandSignatureParser<Opts extends OptionsSchema = any, Args exten
 	private static parseSignature<Opts extends OptionsSchema, Args extends OptionsSchema>(
 		signature: string,
 		helperDefinitions: { [key: string]: string },
-		defaultCommandOptions: CommandOption<any>[],
+		defaultCommandOptions: CommandOption<Command>[],
 	): { command: string; options: Opts; arguments: Args } {
 		const [command, ...signatureParams] = signature
 			.split(/\{(.*?)\}/g)
@@ -115,7 +116,7 @@ export class CommandSignatureParser<Opts extends OptionsSchema = any, Args exten
 			definition.required = false;
 
 			// Handle special default values
-			if (!definition.default.length) {
+			if (typeof definition.default === 'string' && !definition.default.length) {
 				definition.default = null;
 			} else if (definition.default === 'true') {
 				definition.default = true;

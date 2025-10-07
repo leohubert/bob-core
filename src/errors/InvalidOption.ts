@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 
+import { Logger } from '@/src/Logger.js';
 import { BobError } from '@/src/errors/BobError.js';
 import { getOptionDetails } from '@/src/lib/optionHelpers.js';
 import { OptionsSchema } from '@/src/lib/types.js';
@@ -12,7 +13,7 @@ export class InvalidOption extends BobError {
 		super(`Invalid option ${option} in not recognized`);
 	}
 
-	pretty(io: any): void {
+	pretty(io: Logger): void {
 		const options = Object.entries(this.optionsSchema);
 
 		if (options.length > 0) {

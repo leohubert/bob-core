@@ -2,12 +2,13 @@ import { faker } from '@faker-js/faker';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Command, CommandRunOption } from '@/src/Command.js';
+import { ContextDefinition, OptionsSchema } from '@/src/lib/types.js';
 import { TestLogger, newTestLogger } from '@/src/testFixtures.js';
 
 describe('Command', () => {
 	let logger: TestLogger;
 	let command: Command;
-	let commandRunOption: CommandRunOption<any, any, any>;
+	let commandRunOption: CommandRunOption<ContextDefinition, OptionsSchema, OptionsSchema>;
 
 	beforeEach(() => {
 		logger = newTestLogger();
@@ -82,7 +83,7 @@ describe('Command', () => {
 		});
 
 		it('should parse args when provided', async () => {
-			command = command.options<{}>({ verbose: 'boolean' }).arguments<{}>({ file: 'string' });
+			command = command.options<OptionsSchema>({ verbose: 'boolean' }).arguments<OptionsSchema>({ file: 'string' });
 			commandRunOption = {
 				...commandRunOption,
 				args: ['test.txt', '--verbose'],
@@ -100,7 +101,7 @@ describe('Command', () => {
 		});
 
 		it('should accept pre-parsed options and arguments when parser available', async () => {
-			command = command.options<{}>({ verbose: 'boolean' }).arguments<{}>({ file: 'string' });
+			command = command.options<OptionsSchema>({ verbose: 'boolean' }).arguments<OptionsSchema>({ file: 'string' });
 
 			// When using pre-parsed, the command flow bypasses parser init
 			// This test verifies pre-parsed values are passed through
@@ -222,7 +223,7 @@ describe('Command', () => {
 				})
 				.handler(() => 0);
 
-			await expect(command.run(commandRunOption)).rejects.toThrow();
+			await expect(command.run({ ...commandRunOption, args: [] })).rejects.toThrow();
 		});
 
 		it('should validate required arguments', async () => {
@@ -233,7 +234,7 @@ describe('Command', () => {
 				})
 				.handler(() => 0);
 
-			await expect(command.run(commandRunOption)).rejects.toThrow();
+			await expect(command.run({ ...commandRunOption, args: [] })).rejects.toThrow();
 		});
 
 		it('should pass validation with all required values', async () => {
@@ -269,11 +270,11 @@ describe('Command', () => {
 				return 0;
 			});
 
-			commandRunOption.ctx = { userId: '123' };
+			const contextRunOption = { ...commandRunOption, ctx: { userId: '123' }, args: [] };
 
-			await command.run(commandRunOption);
+			await command.run(contextRunOption);
 
-			expect(commandRunOption.ctx).toHaveProperty('userId', '123');
+			expect(contextRunOption.ctx).toHaveProperty('userId', '123');
 		});
 
 		it('should maintain type safety through arguments chain', async () => {

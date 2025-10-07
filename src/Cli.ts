@@ -3,15 +3,16 @@ import { CommandRegistry, CommandResolver, FileImporter } from '@/src/CommandReg
 import { ExceptionHandler } from '@/src/ExceptionHandler.js';
 import { Logger } from '@/src/Logger.js';
 import HelpCommand, { HelpCommandOptions } from '@/src/commands/HelpCommand.js';
+import { ContextDefinition, OptionsSchema } from '@/src/lib/types.js';
 
-export type CliOptions<C = any> = {
+export type CliOptions<C extends ContextDefinition = ContextDefinition> = {
 	ctx?: C;
 	name?: string;
 	version?: string;
 	logger?: Logger;
 };
 
-export class Cli<C = any> {
+export class Cli<C extends ContextDefinition = ContextDefinition> {
 	private readonly ctx?: C;
 	private readonly logger: Logger;
 
@@ -58,7 +59,7 @@ export class Cli<C = any> {
 		return this;
 	}
 
-	async withCommands(...commands: Array<Command<C, any, any> | { new (): Command<C> } | string>) {
+	async withCommands(...commands: Array<Command<C, OptionsSchema, OptionsSchema> | { new (): Command<C> } | string>) {
 		for (const command of commands) {
 			if (typeof command === 'string') {
 				await this.commandRegistry.loadCommandsPath(command);
@@ -72,19 +73,19 @@ export class Cli<C = any> {
 		}
 	}
 
-	async runCommand(command: string | Command | undefined, ...args: any[]): Promise<number> {
+	async runCommand(command: string | Command | undefined, ...args: string[]): Promise<number> {
 		if (!command) {
 			return await this.runHelpCommand();
 		}
 
-		return await this.commandRegistry.runCommand(this.ctx, command, ...args).catch(this.exceptionHandler.handle.bind(this.exceptionHandler));
+		return await this.commandRegistry.runCommand(this.ctx ?? {}, command, ...args).catch(this.exceptionHandler.handle.bind(this.exceptionHandler));
 	}
 
 	async runHelpCommand(): Promise<number> {
 		return await this.runCommand(this.helpCommand);
 	}
 
-	protected registerCommand(command: Command<C>) {
+	protected registerCommand(command: Command<C, OptionsSchema, OptionsSchema>) {
 		this.commandRegistry.registerCommand(command);
 	}
 }

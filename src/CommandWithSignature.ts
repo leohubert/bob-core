@@ -1,9 +1,13 @@
 import { Command, CommandHandlerOptions } from '@/src/Command.js';
 import { CommandIO } from '@/src/CommandIO.js';
 import { CommandSignatureParser } from '@/src/CommandSignatureParser.js';
-import { OptionsSchema } from '@/src/lib/types.js';
+import { ContextDefinition, OptionsSchema } from '@/src/lib/types.js';
 
-export abstract class CommandWithSignature<C = any, Opts extends OptionsSchema = {}, Args extends OptionsSchema = {}> extends Command<C, Opts, Args> {
+export abstract class CommandWithSignature<
+	C extends ContextDefinition = ContextDefinition,
+	Opts extends OptionsSchema = OptionsSchema,
+	Args extends OptionsSchema = OptionsSchema,
+> extends Command<C, Opts, Args> {
 	abstract signature: string;
 	abstract description: string;
 

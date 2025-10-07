@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 
+import { Logger } from '@/src/Logger.js';
 import { BobError } from '@/src/errors/BobError.js';
 
 export class MissingRequiredOptionValue extends BobError {
@@ -7,7 +8,7 @@ export class MissingRequiredOptionValue extends BobError {
 		super(`Argument "${option}" is required.`);
 	}
 
-	pretty(io: any): void {
+	pretty(io: Logger): void {
 		io.log(`${chalk.white.bgRed(' ERROR ')} Option ${chalk.bold.yellow(this.option)} is required.`);
 	}
 }

@@ -316,6 +316,7 @@ describe('CommandParser', () => {
 			parser.init([]);
 
 			// Manually override to make it required for validate test
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			(parser as any).options.name.required = true;
 
 			// validate() should check for required values

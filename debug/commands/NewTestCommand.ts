@@ -34,14 +34,21 @@ export default new Command('test-new', {
 			required: true,
 		},
 	},
-}).handler((ctx, opts) => {
-	const test = opts.options.force;
-	// Note: Functional handlers don't have access to this.io
-	// For logging in handlers, you can either:
-	// 1. Pass io/logger through the context
-	// 2. Use console.log directly (not recommended for library code)
-	console.log('test command', {
-		options: opts.options,
-		arguments: opts.arguments,
+})
+	.options({
+		anotherTest: {
+			type: 'boolean',
+			alias: 'f',
+		},
+	})
+	.handler((ctx, opts) => {
+		const _test = opts.options.anotherTest || opts.options.force;
+		// Note: Functional handlers don't have access to this.io
+		// For logging in handlers, you can either:
+		// 1. Pass io/logger through the context
+		// 2. Use console.log directly (not recommended for library code)
+		console.log('test command', {
+			options: opts.options,
+			arguments: opts.arguments,
+		});
 	});
-});

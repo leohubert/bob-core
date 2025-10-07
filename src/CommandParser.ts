@@ -78,6 +78,7 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 					const newValue = await this.promptForArgument(key, argDetails);
 
 					if (newValue && this.parsedArguments) {
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						(this.parsedArguments as any)[key] = convertValue(newValue, argDetails.type, key);
 						continue;
 					}
@@ -92,6 +93,7 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 					const newValue = await this.promptForArgument(key, argDetails);
 
 					if (newValue && this.parsedArguments) {
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						(this.parsedArguments as any)[key] = convertValue(newValue, argDetails.type, key);
 						continue;
 					}
@@ -122,6 +124,7 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 		if (!(name in this.options)) {
 			throw new InvalidOption(name as string, this.options);
 		}
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		(this.parsedOptions as any)[name] = value;
 	}
 
@@ -145,6 +148,7 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 		if (!(name in this.arguments)) {
 			throw new InvalidOption(name as string, this.arguments);
 		}
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		(this.parsedArguments as any)[name] = value;
 	}
 
@@ -154,7 +158,7 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 	 * Validates that all provided options are recognized
 	 * @throws {InvalidOption} If an unknown option is found
 	 */
-	private validateUnknownOptions(optionValues: Record<string, any>): void {
+	private validateUnknownOptions(optionValues: Record<string, unknown>): void {
 		const validOptionNames = new Set<string>();
 
 		// Collect all valid option names and their aliases
@@ -177,12 +181,12 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 	/**
 	 * Processes named options from minimist output
 	 */
-	private handleOptions(optionValues: Record<string, any>): OptionsObject<Options> {
+	private handleOptions(optionValues: Record<string, unknown>): OptionsObject<Options> {
 		const parsedOptions = {} as OptionsObject<Options>;
 
 		for (const key in this.options) {
 			const optionDetails = getOptionDetails(this.options[key]);
-			parsedOptions[key] = this.resolveOptionValue(key, optionDetails, optionValues);
+			parsedOptions[key] = this.resolveOptionValue(key, optionDetails, optionValues) as OptionReturnType<Options[typeof key]>;
 		}
 
 		return parsedOptions;
@@ -200,11 +204,11 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 
 			// Handle variadic arguments (consumes all remaining values)
 			if (argDefinition.variadic) {
-				parsedArgs[key] = this.handleVariadicArgument(key, argDefinition, remainingArgs);
+				parsedArgs[key] = this.handleVariadicArgument(key, argDefinition, remainingArgs) as OptionReturnType<Arguments[typeof key]>;
 				continue;
 			}
 
-			parsedArgs[key] = this.resolveArgumentValue(key, argDefinition, remainingArgs.shift());
+			parsedArgs[key] = this.resolveArgumentValue(key, argDefinition, remainingArgs.shift()) as OptionReturnType<Arguments[typeof key]>;
 		}
 
 		return parsedArgs;
@@ -213,7 +217,7 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 	/**
 	 * Handles variadic arguments that consume all remaining positional values
 	 */
-	private handleVariadicArgument(key: string, definition: OptionDetails, remainingArgs: string[]): any {
+	private handleVariadicArgument(key: string, definition: OptionDetails, remainingArgs: string[]): unknown {
 		// Variadic arguments are always arrays - convert each element if present, otherwise return default
 		return remainingArgs.length ? convertValue(remainingArgs, definition.type, key, definition.default) : definition.default;
 	}
@@ -222,7 +226,7 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 	 * Resolves a single positional argument value with defaults and type conversion
 	 * Note: Does not validate required arguments - validation happens in subclass validate() methods
 	 */
-	private resolveArgumentValue(key: string, definition: OptionDetails, argValue: string | undefined): any {
+	private resolveArgumentValue(key: string, definition: OptionDetails, argValue: string | undefined): unknown {
 		// If no value provided, return default (validation happens later)
 		if (argValue === undefined) {
 			return definition.default;
@@ -236,8 +240,8 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 	 * Resolves an option value from the parsed option values object
 	 * Handles alias resolution, defaults, and type conversion
 	 */
-	private resolveOptionValue(key: string, definition: OptionDetails, optionValues: Record<string, any>): any {
-		let rawValue: any = undefined;
+	private resolveOptionValue(key: string, definition: OptionDetails, optionValues: Record<string, unknown>): unknown {
+		let rawValue: unknown = undefined;
 
 		// Search through option name and its aliases
 		const allNames = [key, ...definition.alias];

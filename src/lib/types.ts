@@ -4,7 +4,7 @@ export type OptionDefinition = {
 	description?: string;
 	alias?: string | Array<string>;
 	required?: boolean;
-	default?: any;
+	default?: unknown;
 	variadic?: boolean;
 };
 
@@ -44,4 +44,8 @@ export type ArgumentsSchema = {
 
 export type ArgumentsObject<Arguments extends ArgumentsSchema> = {
 	[Key in keyof Arguments]: OptionReturnType<Arguments[Key]>;
+};
+
+export type ContextDefinition = {
+	[key: string]: unknown;
 };

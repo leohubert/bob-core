@@ -24,9 +24,9 @@ export default class TestCommand extends Command<Context, CommandOptions, Comman
 		});
 	}
 
-	handle(ctx: any, opts: CommandHandlerOptions<CommandOptions, CommandArguments>): void {
-		const test = opts.options.test;
-		const test2 = this.parser.option('test');
+	handle(ctx: Context, opts: CommandHandlerOptions<CommandOptions, CommandArguments>): void {
+		const _test = opts.options.test;
+		const _test2 = this.parser.option('test');
 
 		console.log('Test command executed', {
 			options: opts.options,

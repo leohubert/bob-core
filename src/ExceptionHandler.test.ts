@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ExceptionHandler } from '@/src/ExceptionHandler.js';
 import { Logger } from '@/src/Logger.js';
 import { BobError } from '@/src/errors/BobError.js';
+import { newTestLogger } from '@/src/testFixtures.js';
 
 class TestBobError extends BobError {
 	constructor(message: string) {
@@ -19,14 +20,7 @@ describe('ExceptionHandler', () => {
 	let handler: ExceptionHandler;
 
 	beforeEach(() => {
-		mockLogger = {
-			log: vi.fn(),
-			info: vi.fn(),
-			warn: vi.fn(),
-			error: vi.fn(),
-			debug: vi.fn(),
-			verbose: vi.fn(),
-		} as any;
+		mockLogger = newTestLogger();
 
 		handler = new ExceptionHandler(mockLogger);
 	});
@@ -86,6 +80,7 @@ describe('ExceptionHandler', () => {
 				error: vi.fn(),
 				debug: vi.fn(),
 				verbose: vi.fn(),
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			} as any;
 
 			const customHandler = new ExceptionHandler(customLogger);

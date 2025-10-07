@@ -29,13 +29,13 @@ describe('CommandParser', () => {
 		signature: string,
 		args: string[],
 		helperDefinition?: Record<string, string>,
-		defaultCommandOptions?: CommandOption<any>[],
+		defaultCommandOptions?: CommandOption<Command>[],
 	) => CommandSignatureParser;
 
 	beforeAll(() => {
 		logger = newTestLogger();
 		commandIO = vi.mockObject(new CommandIO(logger));
-		parseCommand = (signature: string, args: string[], helperDefinition: Record<string, string> = {}, defaultCommandOptions: CommandOption<any>[] = []) => {
+		parseCommand = (signature: string, args: string[], helperDefinition: Record<string, string> = {}, defaultCommandOptions: CommandOption<Command>[] = []) => {
 			const parser = new CommandSignatureParser({
 				io: commandIO,
 				signature,

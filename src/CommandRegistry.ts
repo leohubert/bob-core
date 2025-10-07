@@ -7,12 +7,13 @@ import { Command } from '@/src/Command.js';
 import { CommandIO } from '@/src/CommandIO.js';
 import { Logger } from '@/src/Logger.js';
 import { CommandNotFoundError } from '@/src/errors/CommandNotFoundError.js';
+import { ArgumentsSchema, ContextDefinition, OptionsSchema } from '@/src/lib/types.js';
 
 export type CommandResolver = (path: string) => Promise<Command | null>;
-export type FileImporter = (filePath: string) => Promise<any>;
+export type FileImporter = (filePath: string) => Promise<unknown>;
 
 export class CommandRegistry {
-	private readonly commands: Record<string, Command> = {};
+	private readonly commands: Record<string, Command<ContextDefinition, OptionsSchema, OptionsSchema>> = {};
 	protected readonly io!: CommandIO;
 	protected readonly logger: Logger;
 
@@ -33,7 +34,7 @@ export class CommandRegistry {
 		return Object.values(this.commands);
 	}
 
-	private importFile: FileImporter = async (filePath: string): Promise<any> => {
+	private importFile: FileImporter = async (filePath: string): Promise<unknown> => {
 		return (await import(filePath)).default;
 	};
 
@@ -43,12 +44,12 @@ export class CommandRegistry {
 			throw new Error(`The command at path ${path} does not have a default export.`);
 		}
 
-		if (defaultImport?.default) {
-			defaultImport = defaultImport.default;
+		if (defaultImport && typeof defaultImport === 'object' && 'default' in defaultImport) {
+			defaultImport = (defaultImport as { default: unknown }).default;
 		}
 
 		if (typeof defaultImport === 'function') {
-			return new defaultImport();
+			return new (defaultImport as new () => Command)();
 		} else if (defaultImport instanceof Command) {
 			return defaultImport;
 		}
@@ -66,7 +67,10 @@ export class CommandRegistry {
 		return this;
 	}
 
-	registerCommand(command: Command<any, any, any>, force: boolean = false) {
+	registerCommand<C extends ContextDefinition = ContextDefinition, Opts extends OptionsSchema = OptionsSchema, Args extends ArgumentsSchema = ArgumentsSchema>(
+		command: Command<C, Opts, Args>,
+		force: boolean = false,
+	) {
 		const commandName = command.command;
 		if (!commandName) {
 			throw new Error('Command signature is invalid, it must have a command name.');
@@ -75,7 +79,7 @@ export class CommandRegistry {
 		if (!force && this.commands[commandName]) {
 			throw new Error(`Command ${commandName} already registered.`);
 		}
-		this.commands[commandName] = command;
+		this.commands[commandName] = command as Command<ContextDefinition, OptionsSchema, OptionsSchema>;
 	}
 
 	async loadCommandsPath(commandsPath: string) {
@@ -94,7 +98,7 @@ export class CommandRegistry {
 		}
 	}
 
-	async runCommand(ctx: any, command: string | Command, ...args: any[]): Promise<number> {
+	async runCommand(ctx: ContextDefinition, command: string | Command, ...args: string[]): Promise<number> {
 		const commandToRun: Command = typeof command === 'string' ? this.commands[command] : command;
 		const commandSignature = typeof command === 'string' ? command : commandToRun.command;
 

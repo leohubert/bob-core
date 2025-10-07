@@ -3,8 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Cli, CliOptions } from '@/src/Cli.js';
 import { Command } from '@/src/Command.js';
-import { Logger } from '@/src/Logger.js';
-import { TestLogger, newFixtures, newTestLogger } from '@/src/testFixtures.js';
+import { TestLogger, newTestLogger } from '@/src/testFixtures.js';
 
 describe('Cli', () => {
 	let logger: TestLogger;

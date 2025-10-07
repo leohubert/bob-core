@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 
+import { Logger } from '@/src/Logger.js';
 import { BobError } from '@/src/errors/BobError.js';
 
 export class CommandNotFoundError extends BobError {
@@ -7,7 +8,7 @@ export class CommandNotFoundError extends BobError {
 		super(`Command "${command}" not found.`);
 	}
 
-	pretty(io: any): void {
+	pretty(io: Logger): void {
 		io.log(`${chalk.bgRed(' ERROR ')} Command ${chalk.yellow(this.command)} not found.`);
 	}
 }

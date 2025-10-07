@@ -1,4 +1,3 @@
-import { CommandIO } from '@/src/CommandIO.js';
 import { Logger } from '@/src/Logger.js';
 import { BobError } from '@/src/errors/index.js';
 

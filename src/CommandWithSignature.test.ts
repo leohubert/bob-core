@@ -54,7 +54,7 @@ describe('Command', () => {
 
 	it('should handle command with argument', async () => {
 		const result = await command.run({
-			ctx: undefined,
+			ctx: {},
 			logger: logger,
 			args: ['value'],
 		});
@@ -63,7 +63,7 @@ describe('Command', () => {
 
 	it('should handle command with argument', async () => {
 		const result = await command.run({
-			ctx: undefined,
+			ctx: {},
 			logger: logger,
 			args: ['badValue'],
 		});
@@ -73,7 +73,7 @@ describe('Command', () => {
 	it('should throw error if argument is missing', async () => {
 		await expect(
 			command.run({
-				ctx: undefined,
+				ctx: {},
 				logger: logger,
 				args: [],
 			}),
@@ -82,7 +82,7 @@ describe('Command', () => {
 
 	it('should handle command with option', async () => {
 		const result = await command.run({
-			ctx: undefined,
+			ctx: {},
 			logger: logger,
 			args: ['value', '--option'],
 		});

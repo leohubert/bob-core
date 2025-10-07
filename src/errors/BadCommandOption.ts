@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 
+import { Logger } from '@/src/Logger.js';
 import { BobError } from '@/src/errors/BobError.js';
 
 export type OptionProps = {
@@ -19,7 +20,7 @@ export class BadCommandOption extends BobError {
 		super(message);
 	}
 
-	pretty(io: any): void {
+	pretty(io: Logger): void {
 		io.log(`  ${chalk.white.bgRed(' ERROR ')} Option ${chalk.bold.yellow(this.param.option)} value is invalid. `);
 
 		if (this.param.value || this.param.reason) {
