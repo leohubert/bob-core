@@ -216,7 +216,8 @@ For sensitive input that should be masked:
 ```typescript
 options: {
   password: {
-    type: 'secret',
+    type: 'string',
+    secret: true,  // Masks input in interactive prompts
     required: true,
     description: 'User password'
   }
