@@ -46,7 +46,7 @@ export class Command<
 		return this._command;
 	}
 
-	protected ctx!: C | undefined;
+	protected ctx!: C;
 	protected io!: CommandIO;
 	protected logger!: Logger;
 	protected parser!: CommandParser<Options, Arguments>;
