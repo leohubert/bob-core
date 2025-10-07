@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
-import { getOptionDefaultValue, getOptionDetails, getOptionPrimitiveDefaultValue } from '@/src/lib/optionHelpers.js';
+import { OptionDetails, getOptionDefaultValue, getOptionDetails, getOptionPrimitiveDefaultValue } from '@/src/lib/optionHelpers.js';
 import { Option } from '@/src/lib/types.js';
 
 describe('optionHelpers', () => {
@@ -71,64 +71,65 @@ describe('optionHelpers', () => {
 	});
 
 	describe('getOptionDetails', () => {
+		let expectedOptionDetails: Required<OptionDetails>;
+
+		beforeEach(() => {
+			expectedOptionDetails = {
+				alias: [],
+				default: null,
+				description: '',
+				required: false,
+				secret: false,
+				type: 'string',
+				variadic: false,
+			};
+		});
+
 		it('should extract details from primitive string', () => {
 			const details = getOptionDetails('string');
 
-			expect(details).toEqual({
-				type: 'string',
-				default: null,
-				description: '',
-				alias: [],
-				required: false,
-				variadic: false,
-			});
+			expect(details).toEqual(expectedOptionDetails);
 		});
 
 		it('should extract details from primitive number', () => {
+			expectedOptionDetails.type = 'number';
+
 			const details = getOptionDetails('number');
 
-			expect(details).toEqual({
-				type: 'number',
-				default: null,
-				description: '',
-				alias: [],
-				required: false,
-				variadic: false,
-			});
+			expect(details).toEqual(expectedOptionDetails);
 		});
 
 		it('should extract details from primitive boolean', () => {
-			const details = getOptionDetails('boolean');
-
-			expect(details).toEqual({
+			expectedOptionDetails = {
+				...expectedOptionDetails,
 				type: 'boolean',
 				default: false,
-				description: '',
-				alias: [],
-				required: false,
-				variadic: false,
-			});
+			};
+
+			const details = getOptionDetails('boolean');
+
+			expect(details).toEqual(expectedOptionDetails);
 		});
 
 		it('should extract details from array type', () => {
-			const details = getOptionDetails(['string']);
-
-			expect(details).toEqual({
+			expectedOptionDetails = {
+				...expectedOptionDetails,
 				type: ['string'],
 				default: [],
-				description: '',
-				alias: [],
-				required: false,
-				variadic: false,
-			});
+			};
+
+			const details = getOptionDetails(['string']);
+
+			expect(details).toEqual(expectedOptionDetails);
 		});
 
 		it('should extract details from full option definition', () => {
 			const option: Option = {
 				type: 'string',
 				description: 'Test option',
-				alias: 'o',
+				alias: ['o'],
 				required: true,
+				secret: true,
 				default: 'test',
 				variadic: false,
 			};
@@ -140,6 +141,7 @@ describe('optionHelpers', () => {
 				description: 'Test option',
 				alias: ['o'],
 				required: true,
+				secret: true,
 				default: 'test',
 				variadic: false,
 			});

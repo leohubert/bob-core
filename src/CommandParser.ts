@@ -316,15 +316,24 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 		if (argDef.description) {
 			promptText += `: ${chalk.gray(`(${argDef.description})`)}`;
 		}
-		promptText += '\n';
+		promptText += ` ${chalk.green(`(${argDef.type}${argDef.variadic == true ? '[]' : ''})`)}\n`;
 
 		if (Array.isArray(argDef.type)) {
 			promptText += 'Please provide one or more values, separated by commas:\n';
 
 			return await this.io.askForList(promptText, undefined, {
-				validate: (value: string[]) => {
+				separator: ',',
+				validate: (value: string) => {
 					if (!value.length) {
 						return 'Please enter at least one value';
+					}
+
+					if (argDef.type[0] === 'number') {
+						for (const val of value.split(',')) {
+							if (isNaN(Number(val))) {
+								return `Please enter only valid numbers`;
+							}
+						}
 					}
 
 					return true;
@@ -333,8 +342,12 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 		}
 
 		return await this.io.askForInput(promptText, undefined, {
-			type: argDef.type === 'number' ? 'number' : argDef.type === 'secret' ? 'password' : 'text',
+			type: argDef.type === 'number' ? 'number' : argDef.secret ? 'password' : 'text',
 			validate: (value: string | number) => {
+				if (value === null || value === undefined || (typeof value === 'string' && !value.length)) {
+					return 'This value is required';
+				}
+
 				if (argDef.type === 'number') {
 					const num = Number(value);
 					if (isNaN(num)) {

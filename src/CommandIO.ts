@@ -104,7 +104,7 @@ export class CommandIO {
 		message: string,
 		defaultValue?: string | number,
 		opts?: {
-			validate?: (value: string[]) => boolean | string;
+			validate?: (value: string) => boolean | string;
 			format?: (value: string) => string;
 			separator?: string;
 		},

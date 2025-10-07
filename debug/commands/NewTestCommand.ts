@@ -15,7 +15,8 @@ export default new Command('test-new', {
 			description: 'Age argument',
 		},
 		tests: {
-			type: 'secret',
+			type: 'string',
+			secret: true,
 			required: true,
 			description: 'Age argument',
 		},
@@ -23,7 +24,7 @@ export default new Command('test-new', {
 			type: ['number'],
 			required: true,
 			variadic: true,
-			description: 'Tags (variadic)',
+			description: 'Tags',
 		},
 	},
 	options: {

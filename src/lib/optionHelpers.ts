@@ -1,7 +1,7 @@
 import { Option, OptionDefinition, OptionReturnType } from '@/src/lib/types.js';
 
 export function getOptionPrimitiveDefaultValue<Opts extends Option>(type: Opts): OptionReturnType<Opts> {
-	if (type === 'string' || type === 'secret') return null as OptionReturnType<Opts>;
+	if (type === 'string') return null as OptionReturnType<Opts>;
 	if (type === 'number') return null as OptionReturnType<Opts>;
 	if (type === 'boolean') return false as OptionReturnType<Opts>;
 	if (Array.isArray(type) && type.length === 1) {
@@ -28,21 +28,23 @@ export type OptionDetails = Required<OptionDefinition>;
 export function getOptionDetails(option: Option): OptionDetails {
 	if (typeof option === 'string' || Array.isArray(option)) {
 		return {
-			type: option,
+			alias: [],
 			default: getOptionDefaultValue(option),
 			description: '',
-			alias: [],
 			required: false,
+			secret: false,
+			type: option,
 			variadic: false,
 		};
 	}
 
 	return {
-		type: option.type,
+		alias: option.alias ? (Array.isArray(option.alias) ? option.alias : [option.alias]) : [],
 		default: option.default ?? getOptionDefaultValue(option.type),
 		description: option.description ?? '',
-		alias: option.alias ? (Array.isArray(option.alias) ? option.alias : [option.alias]) : [],
 		required: option.required ?? false,
+		secret: option.secret ?? false,
+		type: option.type,
 		variadic: option.variadic ?? false,
 	};
 }
