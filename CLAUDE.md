@@ -55,11 +55,11 @@ Commands can use string signatures parsed by CommandSignatureParser:
 ### Type System
 
 The type system (`src/lib/types.ts`) provides compile-time safety for command schemas:
-- `OptionDefinition` - Defines argument/option metadata (type, required, default, aliases)
+- `OptionDefinition` - Defines argument/option metadata (type, required, default, aliases, secret)
 - `OptionsSchema` / `ArgumentsSchema` - Maps parameter names to their definitions
 - `OptionsObject` / `ArgumentsObject` - Infers runtime types from schemas
-- Supported types: `string`, `number`, `boolean`, `['string']`, `['number']`
-- For masked/secret input, use `{ type: 'string', secret: true }` - the `secret` flag masks input in interactive prompts
+- **Supported types:** `'string'`, `'number'`, `'boolean'`, `['string']`, `['number']`
+- **Secret input:** For masked/password input, use `{ type: 'string', secret: true }`. Note: `secret` is a boolean flag on OptionDefinition, not a type itself. It masks input in interactive prompts.
 
 ### Module System
 

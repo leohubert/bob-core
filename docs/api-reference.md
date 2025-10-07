@@ -497,10 +497,11 @@ type OptionPrimitive =
   | 'string'
   | 'number'
   | 'boolean'
-  | 'secret'
   | ['string']
   | ['number']
 ```
+
+**Note:** For masked/secret input (like passwords), use `{ type: 'string', secret: true }` in the OptionDefinition.
 
 ### OptionDefinition
 
@@ -510,6 +511,7 @@ interface OptionDefinition {
   description?: string;
   alias?: string | string[];
   required?: boolean;
+  secret?: boolean;      // Masks input in interactive prompts (for passwords)
   default?: any;
   variadic?: boolean;
 }
@@ -632,6 +634,61 @@ type CommandResolver = (path: string) => Promise<Command | null>
 
 ```typescript
 type FileImporter = (filePath: string) => Promise<any>
+```
+
+---
+
+## StringSimilarity Class
+
+String similarity calculator using Dice's Coefficient algorithm. Used internally for fuzzy command matching.
+
+### Methods
+
+#### calculateSimilarity()
+
+Calculate similarity between two strings (returns 0-1 scale).
+
+```typescript
+calculateSimilarity(str1: string, str2: string): number
+```
+
+**Example:**
+```typescript
+import { StringSimilarity } from 'bob-core';
+
+const similarity = new StringSimilarity();
+const score = similarity.calculateSimilarity('deploy', 'deloy');
+// Returns: ~0.67
+```
+
+#### findBestMatch()
+
+Find best matching string and ratings for all candidates.
+
+```typescript
+findBestMatch(target: string, candidates: string[]): BestMatchResult
+```
+
+**Returns:**
+```typescript
+interface BestMatchResult {
+  bestMatch: SimilarityResult;
+  bestMatchIndex: number;
+  ratings: SimilarityResult[];
+}
+
+interface SimilarityResult {
+  rating: number;
+  target: string;
+}
+```
+
+**Example:**
+```typescript
+const similarity = new StringSimilarity();
+const result = similarity.findBestMatch('deloy', ['deploy', 'delete', 'dev']);
+// result.bestMatch.target = 'deploy'
+// result.bestMatch.rating = 0.67
 ```
 
 ---

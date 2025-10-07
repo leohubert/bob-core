@@ -4,29 +4,60 @@ BOB Core includes built-in support for interactive prompts using the `prompts` l
 
 ## Accessing CommandIO
 
-**In Modern Commands:**
-```typescript
-export default new Command('setup')
-  .handler(async (ctx, { options }) => {
-    // Access via this.io in Command class context
-  });
-```
+CommandIO provides interactive prompt utilities and is accessible in different ways depending on your command style.
 
-**In Signature-Based Commands:**
+**In Class-Based Commands (Extends Command):**
 ```typescript
-export default class SetupCommand extends CommandWithSignature {
-  protected async handle() {
-    // this.io is available
+export default class SetupCommand extends Command {
+  constructor() {
+    super('setup', {
+      description: 'Interactive setup'
+    });
+  }
+
+  async handle(ctx, opts) {
+    // this.io is available in the handle method
     const name = await this.io.askForInput('Your name:');
+    this.io.info(`Hello, ${name}!`);
   }
 }
 ```
 
-You can also use helper methods in `CommandWithSignature`:
+**In Signature-Based Commands (Extends CommandWithSignature):**
 ```typescript
-const name = await this.askForInput('Your name:');
-const confirmed = await this.askForConfirmation('Continue?');
+export default class SetupCommand extends CommandWithSignature {
+  signature = 'setup';
+  description = 'Interactive setup';
+
+  protected async handle() {
+    // this.io is available
+    const name = await this.io.askForInput('Your name:');
+
+    // Or use helper methods (shortcuts to this.io methods)
+    const confirmed = await this.askForConfirmation('Continue?');
+  }
+}
 ```
+
+**In Functional Handlers (.handler()):**
+```typescript
+// Option 1: Pass logger through context
+interface AppContext {
+  logger: Logger;
+}
+
+export default new Command<AppContext>('setup')
+  .handler(async (ctx, { options }) => {
+    // Use context logger or console.log
+    ctx.logger.log('Setting up...');
+    // For prompts, use class-based approach instead
+  });
+
+// Option 2: Use class-based Command for interactive features
+// See first example above
+```
+
+**Note:** For commands that need interactive prompts (`askForInput`, `askForConfirmation`, etc.), use class-based Command or CommandWithSignature, as functional handlers don't have access to `this.io`.
 
 ## Text Input
 
@@ -285,51 +316,57 @@ this.io.debug('Debug message');
 ## Complete Interactive Example
 
 ```typescript
-import { Command } from 'bob-core';
+import { Command, CommandHandlerOptions, OptionsSchema } from 'bob-core';
 
-export default new Command('init', {
-  description: 'Initialize a new project'
-}).handler(async (ctx, { options }) => {
-  // Get basic info
-  const name = await this.io.askForInput('Project name:');
-  const description = await this.io.askForInput('Description:', '');
-
-  // Select framework
-  const framework = await this.io.askForSelect('Choose framework:', [
-    { title: 'React', value: 'react' },
-    { title: 'Vue', value: 'vue' },
-    { title: 'Angular', value: 'angular' }
-  ]);
-
-  // Multi-select features
-  const features = await this.io.askForSelect(
-    'Select features:',
-    ['TypeScript', 'ESLint', 'Prettier', 'Testing', 'CI/CD'],
-    { type: 'multiselect' }
-  );
-
-  // Confirmation
-  const shouldInstall = await this.io.askForConfirmation(
-    'Install dependencies now?',
-    true
-  );
-
-  // Show progress
-  using loader = this.io.newLoader('Creating project...');
-
-  // Create project files
-  await createProject({ name, description, framework, features });
-
-  loader.updateText('Installing dependencies...');
-
-  if (shouldInstall) {
-    await installDependencies();
+export default class InitCommand extends Command<any, OptionsSchema, OptionsSchema> {
+  constructor() {
+    super('init', {
+      description: 'Initialize a new project'
+    });
   }
 
-  loader.stop();
+  async handle(ctx: any, opts: CommandHandlerOptions<OptionsSchema, OptionsSchema>) {
+    // Get basic info
+    const name = await this.io.askForInput('Project name:');
+    const description = await this.io.askForInput('Description:', '');
 
-  this.io.info(`✅ Project ${name} created successfully!`);
-});
+    // Select framework
+    const framework = await this.io.askForSelect('Choose framework:', [
+      { title: 'React', value: 'react' },
+      { title: 'Vue', value: 'vue' },
+      { title: 'Angular', value: 'angular' }
+    ]);
+
+    // Multi-select features
+    const features = await this.io.askForSelect(
+      'Select features:',
+      ['TypeScript', 'ESLint', 'Prettier', 'Testing', 'CI/CD'],
+      { type: 'multiselect' }
+    );
+
+    // Confirmation
+    const shouldInstall = await this.io.askForConfirmation(
+      'Install dependencies now?',
+      true
+    );
+
+    // Show progress
+    using loader = this.io.newLoader('Creating project...');
+
+    // Create project files
+    await createProject({ name, description, framework, features });
+
+    loader.updateText('Installing dependencies...');
+
+    if (shouldInstall) {
+      await installDependencies();
+    }
+
+    loader.stop();
+
+    this.io.info(`✅ Project ${name} created successfully!`);
+  }
+}
 ```
 
 ## Handling User Cancellation

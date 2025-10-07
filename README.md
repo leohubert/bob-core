@@ -187,38 +187,44 @@ Options:
 Build beautiful interactive CLIs with built-in prompts:
 
 ```typescript
-import { Command } from 'bob-core';
+import { Command, CommandHandlerOptions, OptionsSchema } from 'bob-core';
 
-export default new Command('setup', {
-  description: 'Interactive project setup'
-}).handler(async () => {
-  // Text input
-  const name = await this.io.askForInput('Project name:');
+export default class SetupCommand extends Command<any, OptionsSchema, OptionsSchema> {
+  constructor() {
+    super('setup', {
+      description: 'Interactive project setup'
+    });
+  }
 
-  // Confirmation
-  const useTypeScript = await this.io.askForConfirmation('Use TypeScript?', true);
+  async handle(ctx: any, opts: CommandHandlerOptions<OptionsSchema, OptionsSchema>) {
+    // Text input
+    const name = await this.io.askForInput('Project name:');
 
-  // Selection
-  const framework = await this.io.askForSelect('Framework:', [
-    { title: 'React', value: 'react' },
-    { title: 'Vue', value: 'vue' },
-    { title: 'Svelte', value: 'svelte' }
-  ]);
+    // Confirmation
+    const useTypeScript = await this.io.askForConfirmation('Use TypeScript?', true);
 
-  // Multi-select
-  const features = await this.io.askForSelect(
-    'Features:',
-    ['ESLint', 'Prettier', 'Testing'],
-    { type: 'multiselect' }
-  );
+    // Selection
+    const framework = await this.io.askForSelect('Framework:', [
+      { title: 'React', value: 'react' },
+      { title: 'Vue', value: 'vue' },
+      { title: 'Svelte', value: 'svelte' }
+    ]);
 
-  // Spinner/loader
-  using loader = this.io.newLoader('Creating project...');
-  await createProject({ name, framework, features });
-  loader.stop();
+    // Multi-select
+    const features = await this.io.askForSelect(
+      'Features:',
+      ['ESLint', 'Prettier', 'Testing'],
+      { type: 'multiselect' }
+    );
 
-  this.io.info('✅ Project created!');
-});
+    // Spinner/loader
+    using loader = this.io.newLoader('Creating project...');
+    await createProject({ name, framework, features });
+    loader.stop();
+
+    this.io.info('✅ Project created!');
+  }
+}
 ```
 
 ---
@@ -386,20 +392,24 @@ BOB Core makes CLI development in TypeScript a breeze:
 | `['string']` | String array | `['a', 'b']` |
 | `['number']` | Number array | `[1, 2, 3]` |
 
+**Note:** The `secret` flag is not a type but a property of OptionDefinition.
+
 ### Secret/Masked Input
 
-For sensitive input like passwords, use the `secret` flag with string type:
+For sensitive input like passwords, use the `secret: true` flag in the option definition:
 
 ```typescript
 options: {
   password: {
-    type: 'string',
-    secret: true,        // Masks input in interactive prompts
+    type: 'string',      // Type is still 'string'
+    secret: true,        // Flag to mask input in interactive prompts
     required: true,
     description: 'User password'
   }
 }
 ```
+
+The `secret` flag masks the input when prompting interactively, making it perfect for passwords and API keys.
 
 ---
 

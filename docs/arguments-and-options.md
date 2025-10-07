@@ -11,9 +11,10 @@ BOB Core supports the following parameter types:
 | `'string'` | Text value | `'hello'` |
 | `'number'` | Numeric value | `42` |
 | `'boolean'` | True/false | `true` |
-| `'secret'` | Masked password input | `'****'` |
 | `['string']` | Array of strings | `['a', 'b']` |
 | `['number']` | Array of numbers | `[1, 2, 3]` |
+
+**Note:** For masked/password input, use `{ type: 'string', secret: true }`. The `secret` flag is a property of OptionDefinition, not a type itself.
 
 ## Arguments
 
