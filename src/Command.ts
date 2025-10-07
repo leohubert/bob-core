@@ -1,4 +1,4 @@
-import { CommandIO } from '@/src/CommandIO.js';
+import { CommandIO, CommandIOOptions } from '@/src/CommandIO.js';
 import { CommandParser } from '@/src/CommandParser.js';
 import { Logger } from '@/src/Logger.js';
 import { CommandOption } from '@/src/contracts/index.js';
@@ -76,8 +76,8 @@ export class Command<
 		});
 	}
 
-	protected newCommandIO(opts: { logger: Logger }): CommandIO {
-		return new CommandIO(opts.logger);
+	protected newCommandIO(opts: CommandIOOptions): CommandIO {
+		return new CommandIO(opts);
 	}
 
 	constructor(

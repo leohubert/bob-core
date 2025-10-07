@@ -14,7 +14,9 @@ describe('CommandParser', () => {
 
 	beforeEach(() => {
 		logger = newTestLogger();
-		io = new CommandIO(logger);
+		io = new CommandIO({
+			logger: logger,
+		});
 	});
 
 	describe('Basic parsing', () => {

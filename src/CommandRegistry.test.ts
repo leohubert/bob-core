@@ -18,7 +18,9 @@ describe('CommandRegistry', () => {
 			verbose: vi.fn(),
 		} as any;
 
-		registry = new CommandRegistry(mockLogger);
+		registry = new CommandRegistry({
+			logger: mockLogger,
+		});
 	});
 
 	describe('Initialization', () => {
@@ -31,7 +33,7 @@ describe('CommandRegistry', () => {
 		});
 
 		it('should create default logger if none provided', () => {
-			const reg = new CommandRegistry();
+			const reg = new CommandRegistry({});
 			expect(reg).toBeInstanceOf(CommandRegistry);
 		});
 	});

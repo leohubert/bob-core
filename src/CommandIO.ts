@@ -10,11 +10,15 @@ export type SelectOption = {
 	description?: string | undefined;
 };
 
+export type CommandIOOptions = {
+	logger: Logger;
+};
+
 export class CommandIO {
 	private logger: Logger;
 
-	constructor(logger: Logger) {
-		this.logger = logger;
+	constructor(opts: CommandIOOptions) {
+		this.logger = opts.logger;
 	}
 
 	/**

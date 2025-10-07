@@ -56,7 +56,6 @@
   "dependencies": {
     "chalk": "^5.6.2",
     "minimist": "^1.2.8",
-    "prompts": "^2.4.2",
-    "string-similarity": "^4.0.4"
+    "prompts": "^2.4.2"
   }
 }

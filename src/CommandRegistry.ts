@@ -1,29 +1,38 @@
 import chalk from 'chalk';
 import * as fs from 'node:fs';
 import path from 'path';
-import * as SS from 'string-similarity';
 
 import { Command } from '@/src/Command.js';
-import { CommandIO } from '@/src/CommandIO.js';
+import { CommandIO, CommandIOOptions } from '@/src/CommandIO.js';
 import { Logger } from '@/src/Logger.js';
+import { StringSimilarity } from '@/src/StringSimilarity.js';
 import { CommandNotFoundError } from '@/src/errors/CommandNotFoundError.js';
 import { ArgumentsSchema, ContextDefinition, OptionsSchema } from '@/src/lib/types.js';
 
 export type CommandResolver = (path: string) => Promise<Command | null>;
 export type FileImporter = (filePath: string) => Promise<unknown>;
 
+export type CommandRegistryOptions = {
+	logger?: Logger;
+	stringSimilarity?: StringSimilarity;
+};
+
 export class CommandRegistry {
 	private readonly commands: Record<string, Command<ContextDefinition, OptionsSchema, OptionsSchema>> = {};
 	protected readonly io!: CommandIO;
 	protected readonly logger: Logger;
+	private readonly stringSimilarity: StringSimilarity;
 
-	protected get CommandIOClass(): typeof CommandIO {
-		return CommandIO;
+	protected newCommandIO(opts: CommandIOOptions): CommandIO {
+		return new CommandIO(opts);
 	}
 
-	constructor(logger?: Logger) {
-		this.logger = logger ?? new Logger();
-		this.io = new this.CommandIOClass(this.logger);
+	constructor(opts?: CommandRegistryOptions) {
+		this.logger = opts?.logger ?? new Logger();
+		this.io = this.newCommandIO({
+			logger: this.logger,
+		});
+		this.stringSimilarity = opts?.stringSimilarity ?? new StringSimilarity();
 	}
 
 	getAvailableCommands(): string[] {
@@ -121,7 +130,7 @@ export class CommandRegistry {
 
 	private async suggestCommand(command: string): Promise<string | null> {
 		const availableCommands = this.getAvailableCommands();
-		const { bestMatch, bestMatchIndex, ratings } = SS.findBestMatch(command, availableCommands);
+		const { bestMatch, bestMatchIndex, ratings } = this.stringSimilarity.findBestMatch(command, availableCommands);
 		const similarCommands = ratings.filter(r => r.rating > 0.3).map(r => r.target);
 
 		if ((bestMatch.rating > 0 && similarCommands.length <= 1) || (bestMatch.rating > 0.7 && similarCommands.length > 1)) {

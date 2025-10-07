@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { CommandIO } from '@/src/CommandIO.js';
+import { CommandIO, CommandIOOptions } from '@/src/CommandIO.js';
 import { CommandWithSignature } from '@/src/CommandWithSignature.js';
 import { MissingRequiredArgumentValue } from '@/src/errors/MissingRequiredArgumentValue.js';
 import { TestLogger, newTestLogger } from '@/src/testFixtures.js';
@@ -9,8 +9,8 @@ class MockCommand extends CommandWithSignature {
 	signature = 'mockCommand {argument} {--option}';
 	description = 'This is a mock command for testing';
 
-	protected newCommandIO(opts: { logger: TestLogger }): CommandIO {
-		return vi.mockObject(new CommandIO(opts.logger));
+	protected newCommandIO(opts: CommandIOOptions): CommandIO {
+		return vi.mockObject(new CommandIO(opts));
 	}
 
 	async handle(): Promise<number | void> {

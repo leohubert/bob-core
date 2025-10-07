@@ -7,6 +7,7 @@ export * from './CommandRegistry.js';
 export * from './Cli.js';
 export * from './Logger.js';
 export * from './ExceptionHandler.js';
+export * from './StringSimilarity.js';
 export * from './lib/types.js';
 export * from './errors/index.js';
 export * from './options/index.js';

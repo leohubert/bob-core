@@ -1,5 +1,5 @@
 import { Command } from '@/src/Command.js';
-import { CommandRegistry, CommandResolver, FileImporter } from '@/src/CommandRegistry.js';
+import { CommandRegistry, CommandRegistryOptions, CommandResolver, FileImporter } from '@/src/CommandRegistry.js';
 import { ExceptionHandler } from '@/src/ExceptionHandler.js';
 import { Logger } from '@/src/Logger.js';
 import HelpCommand, { HelpCommandOptions } from '@/src/commands/HelpCommand.js';
@@ -21,8 +21,8 @@ export class Cli<C extends ContextDefinition = ContextDefinition> {
 
 	private readonly helpCommand: Command;
 
-	protected newCommandRegistry(opts: { logger: Logger }) {
-		return new CommandRegistry(opts.logger);
+	protected newCommandRegistry(opts: CommandRegistryOptions) {
+		return new CommandRegistry(opts);
 	}
 
 	protected newHelpCommand(opts: HelpCommandOptions) {

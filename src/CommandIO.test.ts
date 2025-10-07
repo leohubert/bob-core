@@ -13,7 +13,7 @@ describe('CommandIO', () => {
 
 	beforeEach(() => {
 		logger = newTestLogger();
-		io = new CommandIO(logger);
+		io = new CommandIO({ logger });
 	});
 
 	describe('Logger delegation', () => {
