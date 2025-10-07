@@ -1,7 +1,8 @@
-import {describe, it, expect, vi, beforeEach} from 'vitest';
-import {ExceptionHandler} from '@/src/ExceptionHandler.js';
-import {BobError} from '@/src/errors/BobError.js';
-import {Logger} from '@/src/Logger.js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { ExceptionHandler } from '@/src/ExceptionHandler.js';
+import { Logger } from '@/src/Logger.js';
+import { BobError } from '@/src/errors/BobError.js';
 
 class TestBobError extends BobError {
 	constructor(message: string) {

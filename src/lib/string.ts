@@ -1,3 +1,3 @@
 export function generateSpace(nb: number) {
-    return new Array(nb + 5).join(' ')
+	return new Array(nb + 5).join(' ');
 }

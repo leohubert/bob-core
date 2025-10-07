@@ -1,6 +1,7 @@
-import {describe, it, expect} from 'vitest';
-import {convertValue} from '@/src/lib/valueConverter.js';
-import {BadCommandOption} from '@/src/errors/BadCommandOption.js';
+import { describe, expect, it } from 'vitest';
+
+import { BadCommandOption } from '@/src/errors/BadCommandOption.js';
+import { convertValue } from '@/src/lib/valueConverter.js';
 
 describe('valueConverter', () => {
 	describe('String conversion', () => {
@@ -39,8 +40,7 @@ describe('valueConverter', () => {
 		});
 
 		it('should throw error for invalid number', () => {
-			expect(() => convertValue('not-a-number', 'number', 'opt'))
-				.toThrow(BadCommandOption);
+			expect(() => convertValue('not-a-number', 'number', 'opt')).toThrow(BadCommandOption);
 		});
 
 		it('should return default for null/undefined', () => {
@@ -84,40 +84,33 @@ describe('valueConverter', () => {
 
 	describe('String array conversion', () => {
 		it('should convert array of strings', () => {
-			expect(convertValue(['a', 'b', 'c'], ['string'], 'opt'))
-				.toEqual(['a', 'b', 'c']);
+			expect(convertValue(['a', 'b', 'c'], ['string'], 'opt')).toEqual(['a', 'b', 'c']);
 		});
 
 		it('should convert single value to array', () => {
-			expect(convertValue('test', ['string'], 'opt'))
-				.toEqual(['test']);
+			expect(convertValue('test', ['string'], 'opt')).toEqual(['test']);
 		});
 
 		it('should convert numbers to strings in array', () => {
-			expect(convertValue([1, 2, 3], ['string'], 'opt'))
-				.toEqual(['1', '2', '3']);
+			expect(convertValue([1, 2, 3], ['string'], 'opt')).toEqual(['1', '2', '3']);
 		});
 	});
 
 	describe('Number array conversion', () => {
 		it('should convert array of numbers', () => {
-			expect(convertValue([1, 2, 3], ['number'], 'opt'))
-				.toEqual([1, 2, 3]);
+			expect(convertValue([1, 2, 3], ['number'], 'opt')).toEqual([1, 2, 3]);
 		});
 
 		it('should convert string numbers to number array', () => {
-			expect(convertValue(['1', '2', '3'], ['number'], 'opt'))
-				.toEqual([1, 2, 3]);
+			expect(convertValue(['1', '2', '3'], ['number'], 'opt')).toEqual([1, 2, 3]);
 		});
 
 		it('should convert single value to number array', () => {
-			expect(convertValue('42', ['number'], 'opt'))
-				.toEqual([42]);
+			expect(convertValue('42', ['number'], 'opt')).toEqual([42]);
 		});
 
 		it('should throw error for invalid number in array', () => {
-			expect(() => convertValue(['1', 'invalid', '3'], ['number'], 'opt'))
-				.toThrow(BadCommandOption);
+			expect(() => convertValue(['1', 'invalid', '3'], ['number'], 'opt')).toThrow(BadCommandOption);
 		});
 	});
 

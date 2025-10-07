@@ -1,11 +1,12 @@
-import {describe, it, expect, beforeEach} from 'vitest';
-import {CommandParser} from '@/src/CommandParser.js';
-import {CommandIO} from '@/src/CommandIO.js';
-import {InvalidOption} from '@/src/errors/InvalidOption.js';
-import {MissingRequiredOptionValue} from '@/src/errors/MissingRequiredOptionValue.js';
-import {MissingRequiredArgumentValue} from '@/src/errors/MissingRequiredArgumentValue.js';
-import {BadCommandOption} from '@/src/errors/BadCommandOption.js';
-import {newTestLogger, TestLogger} from "@/src/testFixtures.js";
+import { beforeEach, describe, expect, it } from 'vitest';
+
+import { CommandIO } from '@/src/CommandIO.js';
+import { CommandParser } from '@/src/CommandParser.js';
+import { BadCommandOption } from '@/src/errors/BadCommandOption.js';
+import { InvalidOption } from '@/src/errors/InvalidOption.js';
+import { MissingRequiredArgumentValue } from '@/src/errors/MissingRequiredArgumentValue.js';
+import { MissingRequiredOptionValue } from '@/src/errors/MissingRequiredOptionValue.js';
+import { TestLogger, newTestLogger } from '@/src/testFixtures.js';
 
 describe('CommandParser', () => {
 	let io: CommandIO;
@@ -21,7 +22,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				options: {},
-				arguments: {}
+				arguments: {},
 			});
 
 			const result = parser.init([]);
@@ -33,8 +34,8 @@ describe('CommandParser', () => {
 		it('should parse boolean options', () => {
 			const parser = new CommandParser({
 				io,
-				options: {verbose: 'boolean', debug: 'boolean'},
-				arguments: {}
+				options: { verbose: 'boolean', debug: 'boolean' },
+				arguments: {},
 			});
 
 			const result = parser.init(['--verbose', '--debug']);
@@ -46,8 +47,8 @@ describe('CommandParser', () => {
 		it('should default boolean options to false', () => {
 			const parser = new CommandParser({
 				io,
-				options: {verbose: 'boolean'},
-				arguments: {}
+				options: { verbose: 'boolean' },
+				arguments: {},
 			});
 
 			const result = parser.init([]);
@@ -58,8 +59,8 @@ describe('CommandParser', () => {
 		it('should parse string options', () => {
 			const parser = new CommandParser({
 				io,
-				options: {name: 'string', output: 'string'},
-				arguments: {}
+				options: { name: 'string', output: 'string' },
+				arguments: {},
 			});
 
 			const result = parser.init(['--name', 'test', '--output', 'file.txt']);
@@ -71,8 +72,8 @@ describe('CommandParser', () => {
 		it('should parse number options', () => {
 			const parser = new CommandParser({
 				io,
-				options: {count: 'number', limit: 'number'},
-				arguments: {}
+				options: { count: 'number', limit: 'number' },
+				arguments: {},
 			});
 
 			const result = parser.init(['--count', '42', '--limit', '100']);
@@ -85,7 +86,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				options: {},
-				arguments: {file: 'string', lines: 'number'}
+				arguments: { file: 'string', lines: 'number' },
 			});
 
 			const result = parser.init(['test.txt', '50']);
@@ -97,8 +98,8 @@ describe('CommandParser', () => {
 		it('should parse mixed options and arguments', () => {
 			const parser = new CommandParser({
 				io,
-				options: {verbose: 'boolean'},
-				arguments: {file: 'string'}
+				options: { verbose: 'boolean' },
+				arguments: { file: 'string' },
 			});
 
 			const result = parser.init(['test.txt', '--verbose']);
@@ -115,10 +116,10 @@ describe('CommandParser', () => {
 				options: {
 					verbose: {
 						type: 'boolean',
-						description: 'Enable verbose output'
-					}
+						description: 'Enable verbose output',
+					},
 				},
-				arguments: {}
+				arguments: {},
 			});
 
 			const result = parser.init(['--verbose']);
@@ -130,9 +131,9 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				options: {
-					name: {type: 'string', required: true}
+					name: { type: 'string', required: true },
 				},
-				arguments: {}
+				arguments: {},
 			});
 
 			const result = parser.init(['--name', 'test']);
@@ -144,10 +145,10 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				options: {
-					port: {type: 'number', default: 8080},
-					host: {type: 'string', default: 'localhost'}
+					port: { type: 'number', default: 8080 },
+					host: { type: 'string', default: 'localhost' },
 				},
-				arguments: {}
+				arguments: {},
 			});
 
 			const result = parser.init([]);
@@ -160,9 +161,9 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				options: {
-					port: {type: 'number', default: 8080}
+					port: { type: 'number', default: 8080 },
 				},
-				arguments: {}
+				arguments: {},
 			});
 
 			const result = parser.init(['--port', '3000']);
@@ -176,9 +177,9 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				options: {
-					verbose: {type: 'boolean', alias: 'v'}
+					verbose: { type: 'boolean', alias: 'v' },
 				},
-				arguments: {}
+				arguments: {},
 			});
 
 			const result = parser.init(['-v']);
@@ -190,9 +191,9 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				options: {
-					output: {type: 'string', alias: ['o', 'out']}
+					output: { type: 'string', alias: ['o', 'out'] },
 				},
-				arguments: {}
+				arguments: {},
 			});
 
 			const result1 = parser.init(['-o', 'file.txt']);
@@ -201,9 +202,9 @@ describe('CommandParser', () => {
 			const parser2 = new CommandParser({
 				io,
 				options: {
-					output: {type: 'string', alias: ['o', 'out']}
+					output: { type: 'string', alias: ['o', 'out'] },
 				},
-				arguments: {}
+				arguments: {},
 			});
 
 			const result2 = parser2.init(['--out', 'file.txt']);
@@ -216,9 +217,9 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				options: {
-					files: ['string']
+					files: ['string'],
 				},
-				arguments: {}
+				arguments: {},
 			});
 
 			const result = parser.init(['--files', 'a.txt', '--files', 'b.txt']);
@@ -230,9 +231,9 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				options: {
-					ports: ['number']
+					ports: ['number'],
 				},
-				arguments: {}
+				arguments: {},
 			});
 
 			const result = parser.init(['--ports', '8080', '--ports', '3000']);
@@ -244,9 +245,9 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				options: {
-					tags: ['string']
+					tags: ['string'],
 				},
-				arguments: {}
+				arguments: {},
 			});
 
 			const result = parser.init([]);
@@ -261,8 +262,8 @@ describe('CommandParser', () => {
 				io,
 				options: {},
 				arguments: {
-					files: {type: ['string'], variadic: true}
-				}
+					files: { type: ['string'], variadic: true },
+				},
 			});
 
 			const result = parser.init(['a.txt', 'b.txt', 'c.txt']);
@@ -276,8 +277,8 @@ describe('CommandParser', () => {
 				options: {},
 				arguments: {
 					command: 'string',
-					args: {type: ['string'], variadic: true}
-				}
+					args: { type: ['string'], variadic: true },
+				},
 			});
 
 			const result = parser.init(['run', 'arg1', 'arg2', 'arg3']);
@@ -291,8 +292,8 @@ describe('CommandParser', () => {
 				io,
 				options: {},
 				arguments: {
-					files: {type: ['string'], variadic: true}
-				}
+					files: { type: ['string'], variadic: true },
+				},
 			});
 
 			const result = parser.init([]);
@@ -306,9 +307,9 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				options: {
-					name: {type: 'string', required: false}
+					name: { type: 'string', required: false },
 				},
-				arguments: {}
+				arguments: {},
 			});
 
 			// Set up parser state manually to test validate() method
@@ -326,8 +327,8 @@ describe('CommandParser', () => {
 				io,
 				options: {},
 				arguments: {
-					file: {type: 'string', required: true}
-				}
+					file: { type: 'string', required: true },
+				},
 			}).disablePrompting();
 
 			parser.init([]);
@@ -339,11 +340,11 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				options: {
-					name: {type: 'string', required: true}
+					name: { type: 'string', required: true },
 				},
 				arguments: {
-					file: {type: 'string', required: true}
-				}
+					file: { type: 'string', required: true },
+				},
 			});
 
 			parser.init(['test.txt', '--name', 'value']);
@@ -355,9 +356,9 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				options: {
-					verbose: 'boolean'
+					verbose: 'boolean',
 				},
-				arguments: {}
+				arguments: {},
 			});
 
 			expect(() => parser.init(['--unknown'])).toThrow(InvalidOption);
@@ -368,8 +369,8 @@ describe('CommandParser', () => {
 		it('should retrieve option values', () => {
 			const parser = new CommandParser({
 				io,
-				options: {verbose: 'boolean', name: 'string'},
-				arguments: {}
+				options: { verbose: 'boolean', name: 'string' },
+				arguments: {},
 			});
 
 			parser.init(['--verbose', '--name', 'test']);
@@ -382,7 +383,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				options: {},
-				arguments: {file: 'string', count: 'number'}
+				arguments: { file: 'string', count: 'number' },
 			});
 
 			parser.init(['test.txt', '42']);
@@ -394,8 +395,8 @@ describe('CommandParser', () => {
 		it('should throw error when accessing options before init', () => {
 			const parser = new CommandParser({
 				io,
-				options: {verbose: 'boolean'},
-				arguments: {}
+				options: { verbose: 'boolean' },
+				arguments: {},
 			});
 
 			expect(() => parser.option('verbose')).toThrow('Options have not been parsed yet');
@@ -405,7 +406,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				options: {},
-				arguments: {file: 'string'}
+				arguments: { file: 'string' },
 			});
 
 			expect(() => parser.argument('file')).toThrow('Arguments have not been parsed yet');
@@ -418,9 +419,9 @@ describe('CommandParser', () => {
 				io,
 				options: {
 					verbose: 'boolean',
-					count: {type: 'number', default: 10}
+					count: { type: 'number', default: 10 },
 				},
-				arguments: {}
+				arguments: {},
 			});
 
 			const defs = parser.optionDefinitions();
@@ -436,8 +437,8 @@ describe('CommandParser', () => {
 				options: {},
 				arguments: {
 					file: 'string',
-					lines: {type: 'number', required: true}
-				}
+					lines: { type: 'number', required: true },
+				},
 			});
 
 			const defs = parser.argumentDefinitions();
@@ -450,8 +451,8 @@ describe('CommandParser', () => {
 		it('should return available option names', () => {
 			const parser = new CommandParser({
 				io,
-				options: {verbose: 'boolean', output: 'string'},
-				arguments: {}
+				options: { verbose: 'boolean', output: 'string' },
+				arguments: {},
 			});
 
 			const names = parser.availableOptions();
@@ -463,7 +464,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				options: {},
-				arguments: {file: 'string', count: 'number'}
+				arguments: { file: 'string', count: 'number' },
 			});
 
 			const names = parser.availableArguments();
@@ -476,8 +477,8 @@ describe('CommandParser', () => {
 		it('should handle empty string values', () => {
 			const parser = new CommandParser({
 				io,
-				options: {message: 'string'},
-				arguments: {}
+				options: { message: 'string' },
+				arguments: {},
 			});
 
 			const result = parser.init(['--message', '']);
@@ -488,8 +489,8 @@ describe('CommandParser', () => {
 		it('should handle negative numbers with double dash', () => {
 			const parser = new CommandParser({
 				io,
-				options: {offset: 'number'},
-				arguments: {}
+				options: { offset: 'number' },
+				arguments: {},
 			});
 
 			const result = parser.init(['--', '--offset', '-42']);
@@ -500,8 +501,8 @@ describe('CommandParser', () => {
 		it('should handle floating point numbers', () => {
 			const parser = new CommandParser({
 				io,
-				options: {ratio: 'number'},
-				arguments: {}
+				options: { ratio: 'number' },
+				arguments: {},
 			});
 
 			const result = parser.init(['--ratio', '3.14']);
@@ -512,8 +513,8 @@ describe('CommandParser', () => {
 		it('should handle options with equals sign syntax', () => {
 			const parser = new CommandParser({
 				io,
-				options: {name: 'string'},
-				arguments: {}
+				options: { name: 'string' },
+				arguments: {},
 			});
 
 			const result = parser.init(['--name=test']);
@@ -524,8 +525,8 @@ describe('CommandParser', () => {
 		it('should handle mixed positional and option ordering', () => {
 			const parser = new CommandParser({
 				io,
-				options: {verbose: 'boolean'},
-				arguments: {file: 'string', lines: 'number'}
+				options: { verbose: 'boolean' },
+				arguments: { file: 'string', lines: 'number' },
 			});
 
 			const result = parser.init(['test.txt', '100', '--verbose']);
@@ -540,8 +541,8 @@ describe('CommandParser', () => {
 		it('should handle invalid number conversion', () => {
 			const parser = new CommandParser({
 				io,
-				options: {count: 'number'},
-				arguments: {}
+				options: { count: 'number' },
+				arguments: {},
 			});
 
 			expect(() => parser.init(['--count', 'not-a-number'])).toThrow(BadCommandOption);

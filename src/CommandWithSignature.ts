@@ -1,10 +1,9 @@
-import {Command, CommandHandlerOptions} from "@/src/Command.js";
-import {CommandIO} from "@/src/CommandIO.js";
-import {CommandSignatureParser} from "@/src/CommandSignatureParser.js";
-import {OptionsSchema} from "@/src/lib/types.js";
+import { Command, CommandHandlerOptions } from '@/src/Command.js';
+import { CommandIO } from '@/src/CommandIO.js';
+import { CommandSignatureParser } from '@/src/CommandSignatureParser.js';
+import { OptionsSchema } from '@/src/lib/types.js';
 
 export abstract class CommandWithSignature<C = any, Opts extends OptionsSchema = {}, Args extends OptionsSchema = {}> extends Command<C, Opts, Args> {
-
 	abstract signature: string;
 	abstract description: string;
 
@@ -19,43 +18,37 @@ export abstract class CommandWithSignature<C = any, Opts extends OptionsSchema =
 
 	declare parser: CommandSignatureParser<Opts, Args>;
 
-	protected newCommandParser(opts: {
-		io: CommandIO;
-		options: Opts;
-		arguments: Args;
-	}): CommandSignatureParser<Opts, Args> {
+	protected newCommandParser(opts: { io: CommandIO; options: Opts; arguments: Args }): CommandSignatureParser<Opts, Args> {
 		return new CommandSignatureParser({
 			io: opts.io,
 			signature: this.signature,
 			helperDefinitions: this.helperDefinitions,
-			defaultOptions: this.defaultOptions()
+			defaultOptions: this.defaultOptions(),
 		});
 	}
 	constructor() {
-		super('')
+		super('');
 	}
 
-	protected abstract handle(ctx: C, opts: CommandHandlerOptions<Opts, Args>): Promise<number | void>
+	protected abstract handle(ctx: C, opts: CommandHandlerOptions<Opts, Args>): Promise<number | void>;
 
-
-	protected option<T = string>(key: string): T | null
-	protected option<T = string>(key: string, defaultValue: T): NoInfer<T>
+	protected option<T = string>(key: string): T | null;
+	protected option<T = string>(key: string, defaultValue: T): NoInfer<T>;
 	protected option<T = string>(key: string, defaultValue: T | null = null): NoInfer<T> | null {
 		if (this.parser instanceof CommandSignatureParser) {
-			return this.parser.option(key) as T ?? defaultValue;
+			return (this.parser.option(key) as T) ?? defaultValue;
 		}
 		return defaultValue;
 	}
 
-	protected argument<T = string>(key: string): T | null
-	protected argument<T = string>(key: string, defaultValue: T): NoInfer<T>
+	protected argument<T = string>(key: string): T | null;
+	protected argument<T = string>(key: string, defaultValue: T): NoInfer<T>;
 	protected argument<T = string>(key: string, defaultValue: T | null = null): NoInfer<T> | null {
 		if (this.parser instanceof CommandSignatureParser) {
-			return this.parser.argument(key) as T ?? defaultValue;
+			return (this.parser.argument(key) as T) ?? defaultValue;
 		}
 		return defaultValue;
 	}
-
 
 	// Prompt utils
 

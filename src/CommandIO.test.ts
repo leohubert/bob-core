@@ -1,8 +1,9 @@
-import {describe, it, expect, beforeEach, vi, afterEach} from 'vitest';
-import {CommandIO} from '@/src/CommandIO.js';
-import {newTestLogger, TestLogger} from '@/src/testFixtures.js';
-import {faker} from '@faker-js/faker';
+import { faker } from '@faker-js/faker';
 import prompts from 'prompts';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { CommandIO } from '@/src/CommandIO.js';
+import { TestLogger, newTestLogger } from '@/src/testFixtures.js';
 
 vi.mock('prompts');
 
@@ -57,9 +58,8 @@ describe('CommandIO', () => {
 			expect(logger.debug).toHaveBeenCalledWith(message);
 		});
 
-
 		it('should pass multiple arguments to logger methods', () => {
-			const args = ['msg1', 'msg2', {key: 'value'}, 123];
+			const args = ['msg1', 'msg2', { key: 'value' }, 123];
 
 			io.info(...args);
 
@@ -74,7 +74,7 @@ describe('CommandIO', () => {
 
 		describe('askForConfirmation()', () => {
 			it('should prompt for confirmation with default message', async () => {
-				const mockResult = {value: true};
+				const mockResult = { value: true };
 				vi.mocked(prompts).mockResolvedValue(mockResult);
 
 				const result = await io.askForConfirmation();
@@ -90,7 +90,7 @@ describe('CommandIO', () => {
 
 			it('should prompt for confirmation with custom message', async () => {
 				const message = faker.lorem.sentence();
-				const mockResult = {value: false};
+				const mockResult = { value: false };
 				vi.mocked(prompts).mockResolvedValue(mockResult);
 
 				const result = await io.askForConfirmation(message);
@@ -105,7 +105,7 @@ describe('CommandIO', () => {
 			});
 
 			it('should use default value when provided', async () => {
-				const mockResult = {value: true};
+				const mockResult = { value: true };
 				vi.mocked(prompts).mockResolvedValue(mockResult);
 
 				await io.askForConfirmation('Confirm?', true);
@@ -123,7 +123,7 @@ describe('CommandIO', () => {
 			it('should prompt for text input', async () => {
 				const message = faker.lorem.sentence();
 				const value = faker.lorem.word();
-				vi.mocked(prompts).mockResolvedValue({value});
+				vi.mocked(prompts).mockResolvedValue({ value });
 
 				const result = await io.askForInput(message);
 
@@ -138,20 +138,20 @@ describe('CommandIO', () => {
 
 			it('should use default value when provided', async () => {
 				const defaultValue = faker.lorem.word();
-				vi.mocked(prompts).mockResolvedValue({value: defaultValue});
+				vi.mocked(prompts).mockResolvedValue({ value: defaultValue });
 
 				await io.askForInput('Enter name', defaultValue);
 
 				expect(prompts).toHaveBeenCalledWith(
 					expect.objectContaining({
 						initial: defaultValue,
-					})
+					}),
 				);
 			});
 
 			it('should pass custom options', async () => {
 				const validate = vi.fn();
-				vi.mocked(prompts).mockResolvedValue({value: 'test'});
+				vi.mocked(prompts).mockResolvedValue({ value: 'test' });
 
 				await io.askForInput('Enter', undefined, {
 					type: 'password',
@@ -166,7 +166,7 @@ describe('CommandIO', () => {
 						validate,
 						min: 5,
 						max: 10,
-					})
+					}),
 				);
 			});
 
@@ -182,7 +182,7 @@ describe('CommandIO', () => {
 		describe('askForToggle()', () => {
 			it('should prompt for toggle', async () => {
 				const message = faker.lorem.sentence();
-				vi.mocked(prompts).mockResolvedValue({value: true});
+				vi.mocked(prompts).mockResolvedValue({ value: true });
 
 				const result = await io.askForToggle(message);
 
@@ -196,19 +196,19 @@ describe('CommandIO', () => {
 			});
 
 			it('should use default value when provided', async () => {
-				vi.mocked(prompts).mockResolvedValue({value: false});
+				vi.mocked(prompts).mockResolvedValue({ value: false });
 
 				await io.askForToggle('Enable?', true);
 
 				expect(prompts).toHaveBeenCalledWith(
 					expect.objectContaining({
 						initial: true,
-					})
+					}),
 				);
 			});
 
 			it('should pass custom active/inactive labels', async () => {
-				vi.mocked(prompts).mockResolvedValue({value: true});
+				vi.mocked(prompts).mockResolvedValue({ value: true });
 
 				await io.askForToggle('Enable?', false, {
 					active: 'Yes',
@@ -219,7 +219,7 @@ describe('CommandIO', () => {
 					expect.objectContaining({
 						active: 'Yes',
 						inactive: 'No',
-					})
+					}),
 				);
 			});
 
@@ -236,7 +236,7 @@ describe('CommandIO', () => {
 			it('should prompt for selection with string options', async () => {
 				const message = faker.lorem.sentence();
 				const options = ['Option 1', 'Option 2', 'Option 3'];
-				vi.mocked(prompts).mockResolvedValue({value: 'Option 1'});
+				vi.mocked(prompts).mockResolvedValue({ value: 'Option 1' });
 
 				const result = await io.askForSelect(message, options);
 
@@ -245,9 +245,9 @@ describe('CommandIO', () => {
 					name: 'value',
 					message,
 					choices: [
-						{title: 'Option 1', value: 'Option 1'},
-						{title: 'Option 2', value: 'Option 2'},
-						{title: 'Option 3', value: 'Option 3'},
+						{ title: 'Option 1', value: 'Option 1' },
+						{ title: 'Option 2', value: 'Option 2' },
+						{ title: 'Option 3', value: 'Option 3' },
 					],
 				});
 				expect(result).toBe('Option 1');
@@ -255,50 +255,45 @@ describe('CommandIO', () => {
 
 			it('should prompt for selection with SelectOption objects', async () => {
 				const options = [
-					{title: 'First', value: 1},
-					{title: 'Second', value: 2, disabled: true},
+					{ title: 'First', value: 1 },
+					{ title: 'Second', value: 2, disabled: true },
 				];
-				vi.mocked(prompts).mockResolvedValue({value: 1});
+				vi.mocked(prompts).mockResolvedValue({ value: 1 });
 
 				const result = await io.askForSelect('Choose', options);
 
 				expect(prompts).toHaveBeenCalledWith(
 					expect.objectContaining({
 						choices: options,
-					})
+					}),
 				);
 				expect(result).toBe(1);
 			});
 
 			it('should handle mixed string and object options', async () => {
-				const options = [
-					'String option',
-					{title: 'Object option', value: 'obj'},
-				];
-				vi.mocked(prompts).mockResolvedValue({value: 'String option'});
+				const options = ['String option', { title: 'Object option', value: 'obj' }];
+				vi.mocked(prompts).mockResolvedValue({ value: 'String option' });
 
 				await io.askForSelect('Choose', options);
 
 				expect(prompts).toHaveBeenCalledWith(
 					expect.objectContaining({
 						choices: [
-							{title: 'String option', value: 'String option'},
-							{title: 'Object option', value: 'obj'},
+							{ title: 'String option', value: 'String option' },
+							{ title: 'Object option', value: 'obj' },
 						],
-					})
+					}),
 				);
 			});
 
 			it('should throw error when no options provided', async () => {
-				await expect(io.askForSelect('Choose', [])).rejects.toThrow(
-					'No options provided'
-				);
+				await expect(io.askForSelect('Choose', [])).rejects.toThrow('No options provided');
 			});
 
 			it('should pass custom options', async () => {
 				const suggest = vi.fn();
 				const validate = vi.fn();
-				vi.mocked(prompts).mockResolvedValue({value: 'test'});
+				vi.mocked(prompts).mockResolvedValue({ value: 'test' });
 
 				await io.askForSelect('Choose', ['Option 1'], {
 					type: 'autocomplete',
@@ -313,7 +308,7 @@ describe('CommandIO', () => {
 						initial: 0,
 						validate,
 						suggest,
-					})
+					}),
 				);
 			});
 
@@ -356,9 +351,7 @@ describe('CommandIO', () => {
 			vi.advanceTimersByTime(100);
 
 			expect(process.stdout.write).toHaveBeenCalled();
-			expect(stdoutSpy.mock.calls[0][0]).toEqual(
-				expect.any(Uint8Array)
-			);
+			expect(stdoutSpy.mock.calls[0][0]).toEqual(expect.any(Uint8Array));
 
 			loader.stop();
 		});

@@ -1,7 +1,7 @@
-import {defineConfig} from 'vite'
-import {resolve} from 'path'
-import dts from 'vite-plugin-dts'
-import {writeFileSync, mkdirSync} from 'fs'
+import { mkdirSync, writeFileSync } from 'fs';
+import { resolve } from 'path';
+import { defineConfig } from 'vite';
+import dts from 'vite-plugin-dts';
 
 export default defineConfig({
 	plugins: [
@@ -9,21 +9,21 @@ export default defineConfig({
 			include: ['src/**/*'],
 			exclude: ['src/**/*.test.ts'],
 			outDir: 'dist/cjs',
-			insertTypesEntry: true
+			insertTypesEntry: true,
 		}),
 		dts({
 			include: ['src/**/*'],
 			exclude: ['src/**/*.test.ts'],
 			outDir: 'dist/esm',
-			insertTypesEntry: true
+			insertTypesEntry: true,
 		}),
 		{
 			name: 'create-package-json',
 			writeBundle() {
-				mkdirSync('dist/cjs', { recursive: true })
-				writeFileSync('dist/cjs/package.json', JSON.stringify({ type: 'commonjs' }, null, 2))
-			}
-		}
+				mkdirSync('dist/cjs', { recursive: true });
+				writeFileSync('dist/cjs/package.json', JSON.stringify({ type: 'commonjs' }, null, 2));
+			},
+		},
 	],
 	build: {
 		lib: {
@@ -42,13 +42,13 @@ export default defineConfig({
 					format: 'cjs',
 					dir: 'dist/cjs',
 					entryFileNames: 'index.js',
-				}
-			]
-		}
+				},
+			],
+		},
 	},
 	resolve: {
 		alias: {
-			'@/src': resolve(__dirname, './src')
-		}
-	}
-})
+			'@/src': resolve(__dirname, './src'),
+		},
+	},
+});

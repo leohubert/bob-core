@@ -1,5 +1,5 @@
-import {OptionPrimitive} from "@/src/lib/types.js";
-import {BadCommandOption} from "@/src/errors/index.js";
+import { BadCommandOption } from '@/src/errors/index.js';
+import { OptionPrimitive } from '@/src/lib/types.js';
 
 /**
  * Converts a value to the specified type with validation
@@ -9,12 +9,7 @@ import {BadCommandOption} from "@/src/errors/index.js";
  * @param defaultValue - Optional default value if value is null/undefined
  * @returns The converted value
  */
-export function convertValue(
-	value: any,
-	type: OptionPrimitive,
-	name: string,
-	defaultValue?: any
-): any {
+export function convertValue(value: any, type: OptionPrimitive, name: string, defaultValue?: any): any {
 	if (value === null || value === undefined) {
 		return defaultValue ?? null;
 	}

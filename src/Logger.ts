@@ -1,9 +1,8 @@
-import {LoggerContract, LogLevel} from "@/src/contracts/index.js";
-
+import { LogLevel, LoggerContract } from '@/src/contracts/index.js';
 
 export type LoggerOptions = {
 	level?: LogLevel;
-}
+};
 
 export class Logger implements LoggerContract {
 	private level: LogLevel;

@@ -1,6 +1,7 @@
-import {Mocked, vi} from 'vitest';
-import {Logger} from '@/src/Logger.js';
-import {LoggerContract} from "@/src/contracts/index.js";
+import { Mocked, vi } from 'vitest';
+
+import { Logger } from '@/src/Logger.js';
+import { LoggerContract } from '@/src/contracts/index.js';
 
 export type TestLogger = Mocked<Logger>;
 export function newTestLogger(): TestLogger {
@@ -14,7 +15,6 @@ export function newTestLogger(): TestLogger {
 		getLevel: vi.fn().mockReturnValue('info'),
 	} satisfies LoggerContract as unknown as TestLogger;
 }
-
 
 /**
  * Creates test fixtures with a mocked logger

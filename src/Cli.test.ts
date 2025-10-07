@@ -1,14 +1,15 @@
-import {describe, it, expect, vi, beforeEach} from 'vitest';
-import {Cli, CliOptions} from '@/src/Cli.js';
-import {Command} from '@/src/Command.js';
-import {Logger} from '@/src/Logger.js';
-import {newFixtures, newTestLogger, TestLogger} from '@/src/testFixtures.js';
 import { faker } from '@faker-js/faker';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { Cli, CliOptions } from '@/src/Cli.js';
+import { Command } from '@/src/Command.js';
+import { Logger } from '@/src/Logger.js';
+import { TestLogger, newFixtures, newTestLogger } from '@/src/testFixtures.js';
 
 describe('Cli', () => {
 	let logger: TestLogger;
-	let cli: Cli
-	let cliOptions: CliOptions = {}
+	let cli: Cli;
+	let cliOptions: CliOptions = {};
 
 	beforeEach(() => {
 		logger = newTestLogger();
@@ -27,7 +28,6 @@ describe('Cli', () => {
 
 	describe('Command loading', () => {
 		it('should load command from instance', async () => {
-
 			const command = new Command('test').handler(() => 0);
 
 			await cli.withCommands(command);
@@ -36,8 +36,6 @@ describe('Cli', () => {
 		});
 
 		it('should load command from class', async () => {
-
-
 			class TestCommand extends Command {
 				constructor() {
 					super('test-class');
@@ -54,7 +52,6 @@ describe('Cli', () => {
 		});
 
 		it('should load multiple commands', async () => {
-
 			const cmd1 = new Command('cmd1').handler(() => 0);
 			const cmd2 = new Command('cmd2').handler(() => 0);
 
@@ -71,13 +68,12 @@ describe('Cli', () => {
 		let expectedResult: number;
 
 		beforeEach(async () => {
-			expectedResult = faker.number.int({min: 1, max: 100});
+			expectedResult = faker.number.int({ min: 1, max: 100 });
 			handlerFn = vi.fn().mockResolvedValue(expectedResult);
 			command = new Command('test').handler(handlerFn);
 
 			await cli.withCommands(command);
-		})
-
+		});
 
 		it('should run command by name', async () => {
 			const result = await cli.runCommand('test');
@@ -94,30 +90,27 @@ describe('Cli', () => {
 		});
 
 		it('should pass context to command', async () => {
-			const ctx = {user: 'test'};
-			const cli = new Cli({ctx, logger});
+			const ctx = { user: 'test' };
+			const cli = new Cli({ ctx, logger });
 			const handlerFn = vi.fn().mockResolvedValue(0);
 			const command = new Command<typeof ctx>('test').handler(handlerFn);
 
 			await cli.withCommands(command);
 			await cli.runCommand('test');
 
-			expect(handlerFn).toHaveBeenCalledWith(
-				ctx,
-				expect.any(Object)
-			);
+			expect(handlerFn).toHaveBeenCalledWith(ctx, expect.any(Object));
 		});
 
 		it('should pass arguments to command', async () => {
-			command.arguments({file: 'string'})
+			command.arguments({ file: 'string' });
 
 			await cli.runCommand('test', 'test.txt');
 
 			expect(handlerFn).toHaveBeenCalledExactlyOnceWith(
 				cliOptions.ctx,
 				expect.objectContaining({
-					arguments: expect.objectContaining({file: 'test.txt'})
-				})
+					arguments: expect.objectContaining({ file: 'test.txt' }),
+				}),
 			);
 		});
 
@@ -141,7 +134,7 @@ describe('Cli', () => {
 
 			expect(result).toBe(-1);
 			expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('not found.'));
-		})
+		});
 
 		it('should handle errors through exception handler', async () => {
 			command.handler(() => {
@@ -150,13 +143,10 @@ describe('Cli', () => {
 
 			await expect(cli.runCommand(command.command)).rejects.toThrow('Test error');
 		});
-
 	});
-
 
 	describe('Command resolver', () => {
 		it('should allow setting custom command resolver', () => {
-
 			const resolver = vi.fn();
 
 			cli.withCommandResolver(resolver);
@@ -168,11 +158,11 @@ describe('Cli', () => {
 	describe('Type safety', () => {
 		it('should maintain context type through CLI', async () => {
 			type AppContext = { userId: string; isAdmin: boolean };
-			const ctx: AppContext = {userId: '123', isAdmin: true};
+			const ctx: AppContext = { userId: '123', isAdmin: true };
 
-			const cli = new Cli<AppContext>({ctx, logger});
+			const cli = new Cli<AppContext>({ ctx, logger });
 
-			const command = new Command<AppContext>('test').handler((c) => {
+			const command = new Command<AppContext>('test').handler(c => {
 				// Type checking
 				const _userId: string = c.userId;
 				const _isAdmin: boolean = c.isAdmin;

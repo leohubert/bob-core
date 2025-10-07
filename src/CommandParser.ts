@@ -1,26 +1,20 @@
-import minimist from "minimist";
-import {
-	OptionsSchema,
-	OptionReturnType,
-	OptionsObject,
-	ArgumentsObject,
-	OptionDefinition
-} from "@/src/lib/types.js";
-import {BadCommandOption} from "@/src/errors/index.js";
-import {InvalidOption} from "@/src/errors/InvalidOption.js";
-import {getOptionDetails, OptionDetails} from "@/src/lib/optionHelpers.js";
-import {convertValue} from "@/src/lib/valueConverter.js";
-import {CommandIO} from "@/src/CommandIO.js";
-import {MissingRequiredArgumentValue} from "@/src/errors/MissingRequiredArgumentValue.js";
-import {MissingRequiredOptionValue} from "@/src/errors/MissingRequiredOptionValue.js";
-import chalk from "chalk";
+import chalk from 'chalk';
+import minimist from 'minimist';
+
+import { CommandIO } from '@/src/CommandIO.js';
+import { InvalidOption } from '@/src/errors/InvalidOption.js';
+import { MissingRequiredArgumentValue } from '@/src/errors/MissingRequiredArgumentValue.js';
+import { MissingRequiredOptionValue } from '@/src/errors/MissingRequiredOptionValue.js';
+import { BadCommandOption } from '@/src/errors/index.js';
+import { OptionDetails, getOptionDetails } from '@/src/lib/optionHelpers.js';
+import { ArgumentsObject, OptionDefinition, OptionReturnType, OptionsObject, OptionsSchema } from '@/src/lib/types.js';
+import { convertValue } from '@/src/lib/valueConverter.js';
 
 /**
  * Parses command-line arguments into typed options and arguments
  * Handles validation, type conversion, and default values
  */
 export class CommandParser<Options extends OptionsSchema, Arguments extends OptionsSchema> {
-
 	protected options: Options;
 	protected parsedOptions: OptionsObject<Options> | null = null;
 
@@ -31,11 +25,7 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 
 	protected shouldPromptForMissingOptions = true;
 
-	constructor(opts: {
-		io: CommandIO,
-		options: Options,
-		arguments: Arguments,
-	}) {
+	constructor(opts: { io: CommandIO; options: Options; arguments: Arguments }) {
 		this.options = opts.options;
 		this.arguments = opts.arguments;
 		this.io = opts.io;
@@ -50,8 +40,11 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 	 * @throws {InvalidOption} If an unknown option is provided
 	 * @throws {BadCommandOption} If a value cannot be converted to the expected type
 	 */
-	init(args: string[]): { options: OptionsObject<Options>, arguments: OptionsObject<Arguments> } {
-		const {_: positionalArgs, ...optionValues} = minimist(args)
+	init(args: string[]): {
+		options: OptionsObject<Options>;
+		arguments: OptionsObject<Arguments>;
+	} {
+		const { _: positionalArgs, ...optionValues } = minimist(args);
 
 		this.validateUnknownOptions(optionValues);
 		this.parsedOptions = this.handleOptions(optionValues);
@@ -60,7 +53,7 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 		return {
 			options: this.parsedOptions,
 			arguments: this.parsedArguments,
-		}
+		};
 	}
 
 	/**
@@ -71,7 +64,7 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 		for (const key in this.options) {
 			const optionDetails = getOptionDetails(this.options[key]);
 			if (optionDetails.required && (this.parsedOptions?.[key] === undefined || this.parsedOptions?.[key] === null)) {
-				throw new MissingRequiredOptionValue(key)
+				throw new MissingRequiredOptionValue(key);
 			}
 		}
 
@@ -94,8 +87,7 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 			}
 
 			// Additional validation for variadic arguments
-			if (argDetails.required && argDetails.variadic  && Array.isArray(value) && value.length === 0) {
-
+			if (argDetails.required && argDetails.variadic && Array.isArray(value) && value.length === 0) {
 				if (this.shouldPromptForMissingOptions) {
 					const newValue = await this.promptForArgument(key, argDetails);
 
@@ -190,11 +182,7 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 
 		for (const key in this.options) {
 			const optionDetails = getOptionDetails(this.options[key]);
-			parsedOptions[key] = this.resolveOptionValue(
-				key,
-				optionDetails,
-				optionValues
-			);
+			parsedOptions[key] = this.resolveOptionValue(key, optionDetails, optionValues);
 		}
 
 		return parsedOptions;
@@ -225,26 +213,16 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 	/**
 	 * Handles variadic arguments that consume all remaining positional values
 	 */
-	private handleVariadicArgument(
-		key: string,
-		definition: OptionDetails,
-		remainingArgs: string[]
-	): any {
+	private handleVariadicArgument(key: string, definition: OptionDetails, remainingArgs: string[]): any {
 		// Variadic arguments are always arrays - convert each element if present, otherwise return default
-		return remainingArgs.length
-			? convertValue(remainingArgs, definition.type, key, definition.default)
-			: definition.default;
+		return remainingArgs.length ? convertValue(remainingArgs, definition.type, key, definition.default) : definition.default;
 	}
 
 	/**
 	 * Resolves a single positional argument value with defaults and type conversion
 	 * Note: Does not validate required arguments - validation happens in subclass validate() methods
 	 */
-	private resolveArgumentValue(
-		key: string,
-		definition: OptionDetails,
-		argValue: string | undefined
-	): any {
+	private resolveArgumentValue(key: string, definition: OptionDetails, argValue: string | undefined): any {
 		// If no value provided, return default (validation happens later)
 		if (argValue === undefined) {
 			return definition.default;
@@ -258,11 +236,7 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 	 * Resolves an option value from the parsed option values object
 	 * Handles alias resolution, defaults, and type conversion
 	 */
-	private resolveOptionValue(
-		key: string,
-		definition: OptionDetails,
-		optionValues: Record<string, any>,
-	): any {
+	private resolveOptionValue(key: string, definition: OptionDetails, optionValues: Record<string, any>): any {
 		let rawValue: any = undefined;
 
 		// Search through option name and its aliases
@@ -329,10 +303,7 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 	 * @param argDef - The argument's definition for type and description
 	 * @returns The user-provided value, or null if none given
 	 */
-	protected async promptForArgument(
-		argumentName: string,
-		argDef: OptionDefinition
-	): Promise<string | number | string[] | null> {
+	protected async promptForArgument(argumentName: string, argDef: OptionDefinition): Promise<string | number | string[] | null> {
 		if (!Array.isArray(argDef.type) && !['string', 'number', 'secret'].includes(argDef.type)) {
 			return null;
 		}
@@ -346,40 +317,32 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 		if (Array.isArray(argDef.type)) {
 			promptText += 'Please provide one or more values, separated by commas:\n';
 
-			return await this.io.askForList(
-				promptText,
-				undefined,
-				{
-					validate: (value: string[]) => {
-						if (!value.length) {
-							return 'Please enter at least one value';
-						}
-
-						return true;
+			return await this.io.askForList(promptText, undefined, {
+				validate: (value: string[]) => {
+					if (!value.length) {
+						return 'Please enter at least one value';
 					}
-				}
-			);
+
+					return true;
+				},
+			});
 		}
 
-		return await this.io.askForInput(
-			promptText,
-			undefined,
-			{
-				type: argDef.type === 'number' ? 'number' : argDef.type === 'secret' ? 'password' : 'text',
-				validate: (value: string | number) => {
-					if (argDef.type === 'number') {
-						const num = Number(value);
-						if (isNaN(num)) {
-							return 'Please enter a valid number';
-						}
-					} else if (argDef.type === 'string') {
-						if (typeof value !== 'string' || !value.length) {
-							return 'Please enter a valid text';
-						}
+		return await this.io.askForInput(promptText, undefined, {
+			type: argDef.type === 'number' ? 'number' : argDef.type === 'secret' ? 'password' : 'text',
+			validate: (value: string | number) => {
+				if (argDef.type === 'number') {
+					const num = Number(value);
+					if (isNaN(num)) {
+						return 'Please enter a valid number';
 					}
-					return true;
+				} else if (argDef.type === 'string') {
+					if (typeof value !== 'string' || !value.length) {
+						return 'Please enter a valid text';
+					}
 				}
-			}
-		);
+				return true;
+			},
+		});
 	}
 }

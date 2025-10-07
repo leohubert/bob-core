@@ -1,5 +1,6 @@
-import {describe, it, expect} from 'vitest';
-import {generateSpace} from '@/src/lib/string.js';
+import { describe, expect, it } from 'vitest';
+
+import { generateSpace } from '@/src/lib/string.js';
 
 describe('string utilities', () => {
 	describe('generateSpace', () => {

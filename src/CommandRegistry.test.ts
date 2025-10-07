@@ -1,7 +1,8 @@
-import {describe, it, expect, beforeEach, vi} from 'vitest';
-import {CommandRegistry} from '@/src/CommandRegistry.js';
-import {Command} from '@/src/Command.js';
-import {Logger} from '@/src/Logger.js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { Command } from '@/src/Command.js';
+import { CommandRegistry } from '@/src/CommandRegistry.js';
+import { Logger } from '@/src/Logger.js';
 
 describe('CommandRegistry', () => {
 	let registry: CommandRegistry;
@@ -128,24 +129,19 @@ describe('CommandRegistry', () => {
 		});
 
 		it('should pass context to command', async () => {
-			const ctx = {user: 'test'};
+			const ctx = { user: 'test' };
 			const handlerFn = vi.fn().mockResolvedValue(0);
 			const command = new Command('test').handler(handlerFn);
 
 			registry.registerCommand(command);
 			await registry.runCommand(ctx, 'test');
 
-			expect(handlerFn).toHaveBeenCalledWith(
-				ctx,
-				expect.any(Object)
-			);
+			expect(handlerFn).toHaveBeenCalledWith(ctx, expect.any(Object));
 		});
 
 		it('should pass arguments to command', async () => {
 			const handlerFn = vi.fn().mockResolvedValue(0);
-			const command = new Command('test')
-				.arguments({file: 'string'})
-				.handler(handlerFn);
+			const command = new Command('test').arguments({ file: 'string' }).handler(handlerFn);
 
 			registry.registerCommand(command);
 			await registry.runCommand({}, 'test', 'test.txt');
@@ -153,16 +149,15 @@ describe('CommandRegistry', () => {
 			expect(handlerFn).toHaveBeenCalledWith(
 				expect.any(Object),
 				expect.objectContaining({
-					arguments: expect.objectContaining({file: 'test.txt'})
-				})
+					arguments: expect.objectContaining({ file: 'test.txt' }),
+				}),
 			);
 		});
 	});
 
 	describe('Command not found handling', () => {
 		it('should throw error when command not found and no suggestions', async () => {
-			await expect(registry.runCommand({}, 'nonexistent'))
-				.rejects.toThrow();
+			await expect(registry.runCommand({}, 'nonexistent')).rejects.toThrow();
 		});
 	});
 

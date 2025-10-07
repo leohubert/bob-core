@@ -1,10 +1,7 @@
-import {describe, it, expect} from 'vitest';
-import {
-	getOptionDetails,
-	getOptionDefaultValue,
-	getOptionPrimitiveDefaultValue
-} from '@/src/lib/optionHelpers.js';
-import {Option} from '@/src/lib/types.js';
+import { describe, expect, it } from 'vitest';
+
+import { getOptionDefaultValue, getOptionDetails, getOptionPrimitiveDefaultValue } from '@/src/lib/optionHelpers.js';
+import { Option } from '@/src/lib/types.js';
 
 describe('optionHelpers', () => {
 	describe('getOptionPrimitiveDefaultValue', () => {
@@ -47,23 +44,29 @@ describe('optionHelpers', () => {
 		});
 
 		it('should use custom default from option definition', () => {
-			expect(getOptionDefaultValue({
-				type: 'string',
-				default: 'custom'
-			})).toBe('custom');
+			expect(
+				getOptionDefaultValue({
+					type: 'string',
+					default: 'custom',
+				}),
+			).toBe('custom');
 		});
 
 		it('should use custom numeric default', () => {
-			expect(getOptionDefaultValue({
-				type: 'number',
-				default: 42
-			})).toBe(42);
+			expect(
+				getOptionDefaultValue({
+					type: 'number',
+					default: 42,
+				}),
+			).toBe(42);
 		});
 
 		it('should use primitive default when no custom default', () => {
-			expect(getOptionDefaultValue({
-				type: 'boolean'
-			})).toBe(false);
+			expect(
+				getOptionDefaultValue({
+					type: 'boolean',
+				}),
+			).toBe(false);
 		});
 	});
 
@@ -77,7 +80,7 @@ describe('optionHelpers', () => {
 				description: '',
 				alias: [],
 				required: false,
-				variadic: false
+				variadic: false,
 			});
 		});
 
@@ -90,7 +93,7 @@ describe('optionHelpers', () => {
 				description: '',
 				alias: [],
 				required: false,
-				variadic: false
+				variadic: false,
 			});
 		});
 
@@ -103,7 +106,7 @@ describe('optionHelpers', () => {
 				description: '',
 				alias: [],
 				required: false,
-				variadic: false
+				variadic: false,
 			});
 		});
 
@@ -116,7 +119,7 @@ describe('optionHelpers', () => {
 				description: '',
 				alias: [],
 				required: false,
-				variadic: false
+				variadic: false,
 			});
 		});
 
@@ -127,7 +130,7 @@ describe('optionHelpers', () => {
 				alias: 'o',
 				required: true,
 				default: 'test',
-				variadic: false
+				variadic: false,
 			};
 
 			const details = getOptionDetails(option);
@@ -138,14 +141,14 @@ describe('optionHelpers', () => {
 				alias: ['o'],
 				required: true,
 				default: 'test',
-				variadic: false
+				variadic: false,
 			});
 		});
 
 		it('should convert string alias to array', () => {
 			const option: Option = {
 				type: 'string',
-				alias: 'o'
+				alias: 'o',
 			};
 
 			const details = getOptionDetails(option);
@@ -156,7 +159,7 @@ describe('optionHelpers', () => {
 		it('should keep array alias as is', () => {
 			const option: Option = {
 				type: 'string',
-				alias: ['o', 'opt', 'option']
+				alias: ['o', 'opt', 'option'],
 			};
 
 			const details = getOptionDetails(option);
@@ -166,7 +169,7 @@ describe('optionHelpers', () => {
 
 		it('should handle empty alias', () => {
 			const option: Option = {
-				type: 'string'
+				type: 'string',
 			};
 
 			const details = getOptionDetails(option);
@@ -177,7 +180,7 @@ describe('optionHelpers', () => {
 		it('should use primitive default when option has no default', () => {
 			const option: Option = {
 				type: 'boolean',
-				description: 'Test'
+				description: 'Test',
 			};
 
 			const details = getOptionDetails(option);
@@ -188,7 +191,7 @@ describe('optionHelpers', () => {
 		it('should use option default over primitive default', () => {
 			const option: Option = {
 				type: 'boolean',
-				default: true
+				default: true,
 			};
 
 			const details = getOptionDetails(option);
@@ -199,7 +202,7 @@ describe('optionHelpers', () => {
 		it('should handle variadic flag', () => {
 			const option: Option = {
 				type: ['string'],
-				variadic: true
+				variadic: true,
 			};
 
 			const details = getOptionDetails(option);
@@ -209,7 +212,7 @@ describe('optionHelpers', () => {
 
 		it('should default variadic to false', () => {
 			const option: Option = {
-				type: 'string'
+				type: 'string',
 			};
 
 			const details = getOptionDetails(option);
@@ -219,7 +222,7 @@ describe('optionHelpers', () => {
 
 		it('should default required to false', () => {
 			const option: Option = {
-				type: 'string'
+				type: 'string',
 			};
 
 			const details = getOptionDetails(option);
@@ -229,7 +232,7 @@ describe('optionHelpers', () => {
 
 		it('should handle empty description', () => {
 			const option: Option = {
-				type: 'string'
+				type: 'string',
 			};
 
 			const details = getOptionDetails(option);

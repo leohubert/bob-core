@@ -1,31 +1,25 @@
-import {CommandOption} from "@/src/contracts/index.js";
-import {CommandIO} from "@/src/CommandIO.js";
-import {OptionDefinition, OptionsObject, OptionsSchema} from "@/src/lib/types.js";
-import {CommandParser} from "@/src/CommandParser.js";
+import { CommandIO } from '@/src/CommandIO.js';
+import { CommandParser } from '@/src/CommandParser.js';
+import { CommandOption } from '@/src/contracts/index.js';
+import { OptionDefinition, OptionsObject, OptionsSchema } from '@/src/lib/types.js';
 
 /**
  * Extends CommandParser to parse command signatures like "command {arg} {--option}"
  * Handles interactive prompting for missing required arguments via CommandIO
  */
 export class CommandSignatureParser<Opts extends OptionsSchema = any, Args extends OptionsSchema = any> extends CommandParser<Opts, Args> {
-
 	public readonly command: string;
 
-	constructor(opts: {
-		io: CommandIO,
-		signature: string,
-		helperDefinitions: { [key: string]: string },
-		defaultOptions: CommandOption<any>[],
-	}) {
+	constructor(opts: { io: CommandIO; signature: string; helperDefinitions: { [key: string]: string }; defaultOptions: CommandOption<any>[] }) {
 		// Parse signature to extract command name and parameter schemas
-		const parseResult = CommandSignatureParser.parseSignature<Opts, Args>(
-			opts.signature,
-			opts.helperDefinitions,
-			opts.defaultOptions
-		);
+		const parseResult = CommandSignatureParser.parseSignature<Opts, Args>(opts.signature, opts.helperDefinitions, opts.defaultOptions);
 
 		// Initialize parent with schemas
-		super({io: opts.io, options: parseResult.options, arguments: parseResult.arguments });
+		super({
+			io: opts.io,
+			options: parseResult.options,
+			arguments: parseResult.arguments,
+		});
 
 		// Store parsed definitions for later access
 		this.command = parseResult.command;
@@ -38,10 +32,10 @@ export class CommandSignatureParser<Opts extends OptionsSchema = any, Args exten
 	private static parseSignature<Opts extends OptionsSchema, Args extends OptionsSchema>(
 		signature: string,
 		helperDefinitions: { [key: string]: string },
-		defaultCommandOptions: CommandOption<any>[]
-	): { command: string, options: Opts, arguments: Args } {
-
-		const [command, ...signatureParams] = signature.split(/\{(.*?)\}/g)
+		defaultCommandOptions: CommandOption<any>[],
+	): { command: string; options: Opts; arguments: Args } {
+		const [command, ...signatureParams] = signature
+			.split(/\{(.*?)\}/g)
 			.map(param => param.trim())
 			.filter(Boolean);
 
@@ -50,10 +44,7 @@ export class CommandSignatureParser<Opts extends OptionsSchema = any, Args exten
 
 		// Parse each {param} from signature
 		for (const paramSignature of signatureParams) {
-			const {name, isOption, definition} = CommandSignatureParser.parseParamSignature(
-				paramSignature,
-				helperDefinitions
-			);
+			const { name, isOption, definition } = CommandSignatureParser.parseParamSignature(paramSignature, helperDefinitions);
 
 			if (isOption) {
 				optionsSchema[name] = definition;
@@ -70,11 +61,15 @@ export class CommandSignatureParser<Opts extends OptionsSchema = any, Args exten
 				alias: option.alias,
 				variadic: option.variadic ?? false,
 				description: option.description,
-				default: option.default ?? null
+				default: option.default ?? null,
 			};
 		}
 
-		return { command, options: optionsSchema as Opts, arguments: argumentsSchema as Args };
+		return {
+			command,
+			options: optionsSchema as Opts,
+			arguments: argumentsSchema as Args,
+		};
 	}
 
 	/**
@@ -93,8 +88,8 @@ export class CommandSignatureParser<Opts extends OptionsSchema = any, Args exten
 	 */
 	private static parseParamSignature(
 		paramSignature: string,
-		helperDefinitions: { [key: string]: string }
-	): { name: string, isOption: boolean, definition: OptionDefinition } {
+		helperDefinitions: { [key: string]: string },
+	): { name: string; isOption: boolean; definition: OptionDefinition } {
 		let name = paramSignature;
 		let isOption = false;
 		const definition: OptionDefinition = {
@@ -102,78 +97,76 @@ export class CommandSignatureParser<Opts extends OptionsSchema = any, Args exten
 			type: 'string',
 			description: undefined,
 			default: null,
-			variadic: false
-		}
+			variadic: false,
+		};
 
 		// Extract description {arg:description}
 		if (name.includes(':')) {
-			const [paramName, description] = name.split(':')
-			name = paramName.trim()
-			definition.description = description.trim()
+			const [paramName, description] = name.split(':');
+			name = paramName.trim();
+			definition.description = description.trim();
 		}
 
 		// Extract default value {arg=default}
 		if (name.includes('=')) {
-			const [paramName, defaultValue] = name.split('=')
-			name = paramName.trim()
-			definition.default = defaultValue.trim()
-			definition.required = false
+			const [paramName, defaultValue] = name.split('=');
+			name = paramName.trim();
+			definition.default = defaultValue.trim();
+			definition.required = false;
 
 			// Handle special default values
 			if (!definition.default.length) {
-				definition.default = null
+				definition.default = null;
 			} else if (definition.default === 'true') {
-				definition.default = true
-				definition.type = 'boolean'
+				definition.default = true;
+				definition.type = 'boolean';
 			} else if (definition.default === 'false') {
-				definition.default = false
-				definition.type = 'boolean'
+				definition.default = false;
+				definition.type = 'boolean';
 			}
 		} else if (name.startsWith('--')) {
 			// Boolean option without explicit default
-			definition.required = false
-			definition.default = false
-			definition.type = 'boolean'
+			definition.required = false;
+			definition.default = false;
+			definition.type = 'boolean';
 		}
 
 		// Extract aliases {arg|a|alias}
 		if (name.includes('|')) {
-			const [paramName, ...aliases] = name.split('|')
-			name = paramName.trim()
-			definition.alias = aliases.map(a => a.trim())
+			const [paramName, ...aliases] = name.split('|');
+			name = paramName.trim();
+			definition.alias = aliases.map(a => a.trim());
 		}
 
 		// Detect if it's an option {--option}
 		if (name.startsWith('--')) {
-			isOption = true
-			name = name.slice(2)
+			isOption = true;
+			name = name.slice(2);
 		}
 
 		// Handle variadic/array default {arg=*}
 		if (definition.default === '*') {
-			definition.default = []
-			definition.type = ['string']
+			definition.default = [];
+			definition.type = ['string'];
 		}
 
 		// Optional marker {arg?}
 		if (name.endsWith('?')) {
-			definition.required = false
-			name = name.slice(0, -1)
+			definition.required = false;
+			name = name.slice(0, -1);
 		}
 
 		// Variadic marker {arg*}
 		if (name.endsWith('*')) {
-			definition.type = ['string']
-			definition.variadic = true
-			definition.default = []
-			name = name.slice(0, -1)
+			definition.type = ['string'];
+			definition.variadic = true;
+			definition.default = [];
+			name = name.slice(0, -1);
 		}
 
 		// Fallback to helper definitions for description
-		definition.description = definition.description
-			?? helperDefinitions[name]
-			?? helperDefinitions[`--${name}`]
+		definition.description = definition.description ?? helperDefinitions[name] ?? helperDefinitions[`--${name}`];
 
-		return { name, isOption, definition }
+		return { name, isOption, definition };
 	}
 }
