@@ -31,7 +31,7 @@ export default defineConfig({
 			name: 'BobCore',
 		},
 		rollupOptions: {
-			external: ['minimist', 'prompts', 'string-similarity', 'node:fs', 'path', 'fs'],
+			external: ['minimist', 'prompts', 'string-similarity', 'chalk', 'node:fs', 'path', 'fs'],
 			output: [
 				{
 					format: 'es',
