@@ -7,7 +7,7 @@ const CommandOptions = {
 type CommandOptions = typeof CommandOptions;
 
 const CommandArguments = {
-	bite: 'number',
+	test: 'number',
 } satisfies OptionsSchema;
 type CommandArguments = typeof CommandArguments;
 
