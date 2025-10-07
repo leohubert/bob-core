@@ -58,7 +58,8 @@ The type system (`src/lib/types.ts`) provides compile-time safety for command sc
 - `OptionDefinition` - Defines argument/option metadata (type, required, default, aliases)
 - `OptionsSchema` / `ArgumentsSchema` - Maps parameter names to their definitions
 - `OptionsObject` / `ArgumentsObject` - Infers runtime types from schemas
-- Supported types: `string`, `number`, `boolean`, `secret`, `['string']`, `['number']`
+- Supported types: `string`, `number`, `boolean`, `['string']`, `['number']`
+- For masked/secret input, use `{ type: 'string', secret: true }` - the `secret` flag masks input in interactive prompts
 
 ### Module System
 

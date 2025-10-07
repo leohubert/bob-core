@@ -383,9 +383,23 @@ BOB Core makes CLI development in TypeScript a breeze:
 | `'string'` | Text value | `'hello'` |
 | `'number'` | Numeric value | `42` |
 | `'boolean'` | True/false | `true` |
-| `'secret'` | Masked input | `'****'` |
 | `['string']` | String array | `['a', 'b']` |
 | `['number']` | Number array | `[1, 2, 3]` |
+
+### Secret/Masked Input
+
+For sensitive input like passwords, use the `secret` flag with string type:
+
+```typescript
+options: {
+  password: {
+    type: 'string',
+    secret: true,        // Masks input in interactive prompts
+    required: true,
+    description: 'User password'
+  }
+}
+```
 
 ---
 
