@@ -76,4 +76,4 @@ Custom error classes in `src/errors/` provide specific error types for validatio
 - Uses Vitest (not Jest) for testing
 - Tests are located alongside source files with `.test.ts` suffix
 - Run all tests: `npm test`
-- Test fixtures available in `src/testFixtures.ts`
+- Test fixtures available in `src/fixtures.test.ts`

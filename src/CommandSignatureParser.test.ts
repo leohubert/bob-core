@@ -6,7 +6,7 @@ import { CommandIO } from '@/src/CommandIO.js';
 import { CommandSignatureParser } from '@/src/CommandSignatureParser.js';
 import { CommandOption } from '@/src/contracts/index.js';
 import { MissingRequiredArgumentValue } from '@/src/errors/MissingRequiredArgumentValue.js';
-import { TestLogger, newTestLogger } from '@/src/testFixtures.js';
+import { TestLogger, newTestLogger } from '@/src/fixtures.test.js';
 
 class TestCommandOptions implements CommandOption<Command> {
 	option = 'testOption';

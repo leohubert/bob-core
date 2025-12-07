@@ -20,18 +20,18 @@ export class BadCommandOption extends BobError {
 		super(message);
 	}
 
-	pretty(io: Logger): void {
-		io.log(`  ${chalk.white.bgRed(' ERROR ')} Option ${chalk.bold.yellow(this.param.option)} value is invalid. `);
+	pretty(logger: Logger): void {
+		logger.log(`  ${chalk.white.bgRed(' ERROR ')} Option ${chalk.bold.yellow(this.param.option)} value is invalid. `);
 
 		if (this.param.value || this.param.reason) {
-			io.log('');
+			logger.log('');
 		}
 
 		if (this.param.value) {
-			io.log(`  ${chalk.blue('Value')}: ${this.param.value}`);
+			logger.log(`  ${chalk.blue('Value')}: ${this.param.value}`);
 		}
 		if (this.param.reason) {
-			io.log(`  ${chalk.yellow('Reason')}: ${this.param.reason}`);
+			logger.log(`  ${chalk.yellow('Reason')}: ${this.param.reason}`);
 		}
 	}
 }

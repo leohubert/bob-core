@@ -8,7 +8,7 @@ export class MissingRequiredOptionValue extends BobError {
 		super(`Argument "${option}" is required.`);
 	}
 
-	pretty(io: Logger): void {
-		io.log(`${chalk.white.bgRed(' ERROR ')} Option ${chalk.bold.yellow(this.option)} is required.`);
+	pretty(logger: Logger): void {
+		logger.log(`${chalk.white.bgRed(' ERROR ')} Option ${chalk.bold.yellow(this.option)} is required.`);
 	}
 }

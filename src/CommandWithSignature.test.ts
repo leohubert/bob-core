@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CommandIO, CommandIOOptions } from '@/src/CommandIO.js';
 import { CommandWithSignature } from '@/src/CommandWithSignature.js';
 import { MissingRequiredArgumentValue } from '@/src/errors/MissingRequiredArgumentValue.js';
-import { TestLogger, newTestLogger } from '@/src/testFixtures.js';
+import { TestLogger, newTestLogger } from '@/src/fixtures.test.js';
 
 class MockCommand extends CommandWithSignature {
 	signature = 'mockCommand {argument} {--option}';

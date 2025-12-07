@@ -8,7 +8,7 @@ export class CommandNotFoundError extends BobError {
 		super(`Command "${command}" not found.`);
 	}
 
-	pretty(io: Logger): void {
-		io.log(`${chalk.bgRed(' ERROR ')} Command ${chalk.yellow(this.command)} not found.`);
+	pretty(logger: Logger): void {
+		logger.log(`${chalk.bgRed(' ERROR ')} Command ${chalk.yellow(this.command)} not found.`);
 	}
 }

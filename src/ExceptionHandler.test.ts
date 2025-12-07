@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ExceptionHandler } from '@/src/ExceptionHandler.js';
 import { Logger } from '@/src/Logger.js';
 import { BobError } from '@/src/errors/BobError.js';
-import { newTestLogger } from '@/src/testFixtures.js';
+import { newTestLogger } from '@/src/fixtures.test.js';
 
 class TestBobError extends BobError {
 	constructor(message: string) {

@@ -6,7 +6,7 @@ import { BadCommandOption } from '@/src/errors/BadCommandOption.js';
 import { InvalidOption } from '@/src/errors/InvalidOption.js';
 import { MissingRequiredArgumentValue } from '@/src/errors/MissingRequiredArgumentValue.js';
 import { MissingRequiredOptionValue } from '@/src/errors/MissingRequiredOptionValue.js';
-import { TestLogger, newTestLogger } from '@/src/testFixtures.js';
+import { TestLogger, newTestLogger } from '@/src/fixtures.test.js';
 
 describe('CommandParser', () => {
 	let io: CommandIO;

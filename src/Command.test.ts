@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Command, CommandRunOption } from '@/src/Command.js';
 import { ContextDefinition, OptionsSchema } from '@/src/lib/types.js';
-import { TestLogger, newTestLogger } from '@/src/testFixtures.js';
+import { TestLogger, newTestLogger } from '@/src/fixtures.test.js';
 
 describe('Command', () => {
 	let logger: TestLogger;

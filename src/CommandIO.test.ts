@@ -3,7 +3,7 @@ import prompts from 'prompts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CommandIO } from '@/src/CommandIO.js';
-import { TestLogger, newTestLogger } from '@/src/testFixtures.js';
+import { TestLogger, newTestLogger } from '@/src/fixtures.test.js';
 
 vi.mock('prompts');
 
