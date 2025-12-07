@@ -9,13 +9,11 @@ export default defineConfig({
 			include: ['src/**/*'],
 			exclude: ['src/**/*.test.ts'],
 			outDir: 'dist/cjs',
-			insertTypesEntry: true,
 		}),
 		dts({
 			include: ['src/**/*'],
 			exclude: ['src/**/*.test.ts'],
 			outDir: 'dist/esm',
-			insertTypesEntry: true,
 		}),
 		{
 			name: 'create-package-json',
@@ -36,12 +34,12 @@ export default defineConfig({
 				{
 					format: 'es',
 					dir: 'dist/esm',
-					entryFileNames: 'index.js',
+					entryFileNames: 'src/index.js',
 				},
 				{
 					format: 'cjs',
 					dir: 'dist/cjs',
-					entryFileNames: 'index.js',
+					entryFileNames: 'src/index.js',
 				},
 			],
 		},
