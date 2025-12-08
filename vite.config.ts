@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
 import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
+import { configDefaults } from 'vitest/config';
 
 export default defineConfig({
 	plugins: [
@@ -48,5 +49,8 @@ export default defineConfig({
 		alias: {
 			'@/src': resolve(__dirname, './src'),
 		},
+	},
+	test: {
+		exclude: [...configDefaults.exclude, './**/fixtures.test.ts'],
 	},
 });
