@@ -48,7 +48,6 @@ export class Command<
 
 	protected ctx!: C;
 	protected io!: CommandIO;
-	protected logger!: Logger;
 	protected parser!: CommandParser<Options, Arguments>;
 
 	protected disablePromptingFlag = false;
@@ -153,7 +152,6 @@ export class Command<
 		let handlerOptions: CommandHandlerOptions<Options, Arguments>;
 
 		this.ctx = opts.ctx;
-		this.logger = opts.logger;
 		this.io = this.newCommandIO({
 			logger: opts.logger,
 		});
@@ -194,9 +192,15 @@ export class Command<
 			};
 		}
 
-		const preHandleResult = this.preHandle ? await this.preHandle() : null;
-		if (preHandleResult && preHandleResult !== 0) {
-			return preHandleResult;
+		if (!this._preHandler && this.preHandle) {
+			this._preHandler = this.preHandle.bind(this);
+		}
+
+		if (this._preHandler) {
+			const preHandlerResult = await this._preHandler(opts.ctx, handlerOptions);
+			if (preHandlerResult && preHandlerResult !== 0) {
+				return preHandlerResult;
+			}
 		}
 
 		if (!this._handler && this.handle) {

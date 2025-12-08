@@ -30,7 +30,7 @@ export default defineConfig({
 			name: 'BobCore',
 		},
 		rollupOptions: {
-			external: ['minimist', 'prompts', 'chalk', 'node:fs', 'path', 'fs'],
+			external: ['minimist', 'chalk', 'prompts', 'node:fs', 'node:path'],
 			output: [
 				{
 					format: 'es',

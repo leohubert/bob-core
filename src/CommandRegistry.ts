@@ -1,6 +1,6 @@
 import chalk from 'chalk';
-import * as fs from 'node:fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 
 import { Command } from '@/src/Command.js';
 import { CommandIO, CommandIOOptions } from '@/src/CommandIO.js';
@@ -50,7 +50,7 @@ export class CommandRegistry {
 	private commandResolver: CommandResolver = async (path: string) => {
 		let defaultImport = await this.importFile(path);
 		if (!defaultImport) {
-			throw new Error(`The command at path ${path} does not have a default export.`);
+			return null;
 		}
 
 		if (defaultImport && typeof defaultImport === 'object' && 'default' in defaultImport) {
