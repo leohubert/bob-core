@@ -1,16 +1,14 @@
-import chalk from "chalk";
+import chalk from 'chalk';
 
-import {BobError} from "@/src/errors/BobError.js";
-import {ArgSignature} from "@/src/CommandParser.js";
+import { Logger } from '@/src/Logger.js';
+import { BobError } from '@/src/errors/BobError.js';
 
 export class MissingRequiredArgumentValue extends BobError {
-    constructor(public readonly paramSignature: ArgSignature) {
-        super(`Argument "${paramSignature.name}" is required.`)
-    }
+	constructor(public readonly argument: string) {
+		super(`Argument "${argument}" is required.`);
+	}
 
-    pretty(): void {
-        const log = console.log
-
-        log(chalk`{white.bgRed  ERROR } Argument {bold.yellow ${this.paramSignature.name}} is required.`)
-    }
+	pretty(logger: Logger): void {
+		logger.log(`${chalk.white.bgRed(' ERROR ')} Argument ${chalk.bold.yellow(this.argument)} is required.`);
+	}
 }

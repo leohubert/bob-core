@@ -1,252 +1,669 @@
-import {describe, it, expect, beforeEach, vi} from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+
+import { CommandIO } from '@/src/CommandIO.js';
 import { CommandParser } from '@/src/CommandParser.js';
-import {MissingRequiredArgumentValue} from "@/src/errors/MissingRequiredArgumentValue.js";
-import {CommandOption} from "@/src/contracts/index.js";
-import {Command} from "@/src/Command.js";
-import {CommandIO} from "@/src/CommandIO.js";
-import {MaybeMockedDeep} from "@vitest/spy";
-import {before} from "node:test";
-
-
-class TestCommandOptions implements CommandOption<Command>{
-    option = 'testOption';
-    description = 'Test option';
-
-    defaultValue: string|null = 'default';
-
-    alias = ['t'];
-
-    async handler() {
-        return 0;
-    }
-}
+import { BadCommandOption } from '@/src/errors/BadCommandOption.js';
+import { InvalidOption } from '@/src/errors/InvalidOption.js';
+import { MissingRequiredArgumentValue } from '@/src/errors/MissingRequiredArgumentValue.js';
+import { MissingRequiredOptionValue } from '@/src/errors/MissingRequiredOptionValue.js';
+import { TestLogger, newTestLogger } from '@/src/fixtures.test.js';
 
 describe('CommandParser', () => {
-    let commandParser: CommandParser;
-	let commandIO: MaybeMockedDeep<CommandIO>;
-	let parseCommand: (signature: string, args: string[], helperDefinition?: Record<string, string>, defaultCommandOptions?: CommandOption<any>[]) => CommandParser;
-
-	before(() => {
-		commandIO = vi.mockObject(new CommandIO())
-		parseCommand = (signature: string, args: string[], helperDefinition: Record<string, string> = {}, defaultCommandOptions: CommandOption<any>[] = []) => {
-			return new CommandParser(commandIO, signature, helperDefinition, defaultCommandOptions , ...args);
-		}
-	})
+	let io: CommandIO;
+	let logger: TestLogger;
 
 	beforeEach(() => {
-		vi.resetAllMocks();
-	})
+		logger = newTestLogger();
+		io = new CommandIO({
+			logger: logger,
+		});
+	});
 
-    it('should parse signature without arguments & options', () => {
-        commandParser = parseCommand('test', []);
-        expect(commandParser.command).toBe('test');
-    })
+	describe('Basic parsing', () => {
+		it('should parse empty arguments', () => {
+			const parser = new CommandParser({
+				io,
+				options: {},
+				arguments: {},
+			});
 
-    describe('Arguments', () => {
+			const result = parser.init([]);
 
-        it('should parse signature with arguments', () => {
-            commandParser = parseCommand('test {arg1} {arg2}', ['value1', 'value2']);
-            expect(commandParser.argument('arg1')).toBe('value1');
-            expect(commandParser.argument('arg2')).toBe('value2');
-        })
+			expect(result.options).toEqual({});
+			expect(result.arguments).toEqual({});
+		});
 
-        it('should parse signature with optional arguments', () => {
-            commandParser = parseCommand('test {arg1?} {arg2?}', ['value1']);
-            expect(commandParser.argument('arg1')).toBe('value1');
-            expect(commandParser.argument('arg2')).toBeNull();
-        })
+		it('should parse boolean options', () => {
+			const parser = new CommandParser({
+				io,
+				options: { verbose: 'boolean', debug: 'boolean' },
+				arguments: {},
+			});
 
-        it('should parse signature with optional arguments with default value', () => {
-            commandParser = parseCommand('test {arg1?} {arg2=defaultValue1}', ['value1']);
-            expect(commandParser.argument('arg1')).toBe('value1');
-            expect(commandParser.argument('arg2')).toBe('defaultValue1');
-        })
+			const result = parser.init(['--verbose', '--debug']);
 
-        it('should parse signature with variadic arguments', () => {
-            commandParser = parseCommand('test {arg1*}', ['value1', 'value2']);
-            expect(commandParser.argument('arg1')).toEqual(['value1', 'value2']);
-        })
+			expect(result.options.verbose).toBe(true);
+			expect(result.options.debug).toBe(true);
+		});
 
-        it('should parse signature with optional variadic arguments', () => {
-            commandParser = parseCommand('test {arg1*?}', ['value1', 'value2']);
-            expect(commandParser.argument('arg1')).toEqual(['value1', 'value2']);
-        })
+		it('should default boolean options to false', () => {
+			const parser = new CommandParser({
+				io,
+				options: { verbose: 'boolean' },
+				arguments: {},
+			});
 
-        it('should parse signature with optional variadic arguments without value', () => {
-            commandParser = parseCommand('test {arg1*?}', []);
-            expect(commandParser.argument('arg1')).toEqual([]);
-        })
+			const result = parser.init([]);
 
-        it('should set argument value', () => {
-            commandParser = parseCommand('test {arg1}', ['value1']);
-            commandParser.setArgument('arg1', 'newValue');
-            expect(commandParser.argument('arg1')).toBe('newValue');
-        })
+			expect(result.options.verbose).toBe(false);
+		});
 
-        it('should throw error when argument is missing with setArgument', () => {
-            commandParser = parseCommand('test {arg1}', []);
-            expect(() => commandParser.setArgument('arg2', 'newValue')).toThrowError(Error);
-        })
+		it('should parse string options', () => {
+			const parser = new CommandParser({
+				io,
+				options: { name: 'string', output: 'string' },
+				arguments: {},
+			});
 
-	    it('should ask for input when argument is missing and CommandIO is provided', async () => {
-			commandIO.askForInput.mockResolvedValue('inputValue');
+			const result = parser.init(['--name', 'test', '--output', 'file.txt']);
 
-		    commandParser = parseCommand('test {arg1}', []);
+			expect(result.options.name).toBe('test');
+			expect(result.options.output).toBe('file.txt');
+		});
 
-			await commandParser.validate()
+		it('should parse number options', () => {
+			const parser = new CommandParser({
+				io,
+				options: { count: 'number', limit: 'number' },
+				arguments: {},
+			});
 
-		    expect(commandParser.argument('arg1')).toBe('inputValue');
-	    })
+			const result = parser.init(['--count', '42', '--limit', '100']);
 
-	    it('should throw error when argument is missing and CommandIO returns null', async () => {
-		    commandIO.askForInput.mockResolvedValue(null);
+			expect(result.options.count).toBe(42);
+			expect(result.options.limit).toBe(100);
+		});
 
-		    commandParser = parseCommand('test {arg1}', []);
+		it('should parse positional arguments', () => {
+			const parser = new CommandParser({
+				io,
+				options: {},
+				arguments: { file: 'string', lines: 'number' },
+			});
 
-		    await expect(commandParser.validate()).rejects.toThrowError(MissingRequiredArgumentValue);
-	    })
+			const result = parser.init(['test.txt', '50']);
 
-        it('calling validate method should throw error when argument is missing', async () => {
-            commandParser = parseCommand('test {arg1}', []);
-	        await expect(commandParser.validate()).rejects.toThrowError(MissingRequiredArgumentValue);
-        })
+			expect(result.arguments.file).toBe('test.txt');
+			expect(result.arguments.lines).toBe(50);
+		});
 
-        it('calling validate should throw with variadic argument is missing', async () => {
-            commandParser = parseCommand('test {arg1*}', []);
+		it('should parse mixed options and arguments', () => {
+			const parser = new CommandParser({
+				io,
+				options: { verbose: 'boolean' },
+				arguments: { file: 'string' },
+			});
 
-            await expect(commandParser.validate()).rejects.toThrowError(MissingRequiredArgumentValue);
-        })
-    })
+			const result = parser.init(['test.txt', '--verbose']);
 
-    describe('Options', () => {
+			expect(result.options.verbose).toBe(true);
+			expect(result.arguments.file).toBe('test.txt');
+		});
+	});
 
-        it('boolean option should be false when not provided', () => {
-            commandParser = parseCommand('test {--option}', []);
-            expect(commandParser.option('option')).toBeFalsy()
-        })
+	describe('Option definitions', () => {
+		it('should handle options with descriptions', () => {
+			const parser = new CommandParser({
+				io,
+				options: {
+					verbose: {
+						type: 'boolean',
+						description: 'Enable verbose output',
+					},
+				},
+				arguments: {},
+			});
 
-        it('boolean option should be true when provided', () => {
-            commandParser = parseCommand('test {--option}', ['--option']);
-            expect(commandParser.option('option')).toBeTruthy()
-        })
+			const result = parser.init(['--verbose']);
 
-        it('boolean option should be true when provided with value', () => {
-            commandParser = parseCommand('test {--option}', ['--option=true']);
-            expect(commandParser.option('option')).toBeTruthy()
-        })
+			expect(result.options.verbose).toBe(true);
+		});
 
-        it('boolean option should be false when provided with value', () => {
-            commandParser = parseCommand('test {--option}', ['--option=false']);
-            expect(commandParser.option('option')).toBeFalsy()
-        })
+		it('should handle required options', () => {
+			const parser = new CommandParser({
+				io,
+				options: {
+					name: { type: 'string', required: true },
+				},
+				arguments: {},
+			});
 
-        it('string option should be null when not provided', () => {
-            commandParser = parseCommand('test {--option=}', []);
-            expect(commandParser.option('option')).toBeNull()
-        })
+			const result = parser.init(['--name', 'test']);
 
-        it('string option should be value when provided', () => {
-            commandParser = parseCommand('test {--option=}', ['--option=value']);
-            expect(commandParser.option('option')).toBe('value')
-        })
+			expect(result.options.name).toBe('test');
+		});
 
-        it('string option should take the default value when not provided', () => {
-            commandParser = parseCommand('test {--option=default}', []);
-            expect(commandParser.option('option')).toBe('default')
-        })
+		it('should handle default values', () => {
+			const parser = new CommandParser({
+				io,
+				options: {
+					port: { type: 'number', default: 8080 },
+					host: { type: 'string', default: 'localhost' },
+				},
+				arguments: {},
+			});
 
-        it('string option should take the provided value with default value', () => {
-            commandParser = parseCommand('test {--option=default}', ['--option=value']);
-            expect(commandParser.option('option')).toBe('value')
-        })
+			const result = parser.init([]);
 
-        it('array option should be empty when not provided', () => {
-            commandParser = parseCommand('test {--option=*}', []);
-            expect(commandParser.option('option')).toEqual([])
-        })
+			expect(result.options.port).toBe(8080);
+			expect(result.options.host).toBe('localhost');
+		});
 
-        it('array option should be value when provided', () => {
-            commandParser = parseCommand('test {--option=*}', ['--option=value1', '--option=value2']);
-            expect(commandParser.option('option')).toEqual(['value1', 'value2'])
-        })
-    })
+		it('should override default values when provided', () => {
+			const parser = new CommandParser({
+				io,
+				options: {
+					port: { type: 'number', default: 8080 },
+				},
+				arguments: {},
+			});
 
-    describe('Mixed', () => {
-        it('should parse signature with arguments and options', () => {
-            commandParser = parseCommand('test {arg1} {arg2} {--option}', ['value1', 'value2', '--option']);
-            expect(commandParser.argument('arg1')).toBe('value1');
-            expect(commandParser.argument('arg2')).toBe('value2');
-            expect(commandParser.option('option')).toBeTruthy()
-        })
+			const result = parser.init(['--port', '3000']);
 
-        it('should parse signature with optional arguments and options', () => {
-            commandParser = parseCommand('test {arg1?} {arg2?} {--option}', ['value1', '--option']);
-            expect(commandParser.argument('arg1')).toBe('value1');
-            expect(commandParser.argument('arg2')).toBeNull();
-            expect(commandParser.option('option')).toBeTruthy()
-        })
-    })
+			expect(result.options.port).toBe(3000);
+		});
+	});
 
-    describe('Helper', () => {
-        it('should parse help signature', () => {
-            commandParser = parseCommand('test {arg1} {arg2:help 1} {--option : option help 2 }', ['value1', 'value2', '--option']);
-            expect(commandParser.argumentHelp('arg1')).toBeUndefined()
-            expect(commandParser.argumentHelp('arg2')).toBe('help 1')
-            expect(commandParser.optionHelp('option')).toBe('option help 2')
-        })
+	describe('Option aliases', () => {
+		it('should handle single character aliases', () => {
+			const parser = new CommandParser({
+				io,
+				options: {
+					verbose: { type: 'boolean', alias: 'v' },
+				},
+				arguments: {},
+			});
 
-        it('should define help with helperDefinition', () => {
-            commandParser = parseCommand('test {arg1} {arg2} {--option} {--option2}', ['value1', 'value2', '--option'], {
-                arg1: 'arg1 help',
-                arg2: 'arg2 help',
-                '--option': 'option help'
-            });
-            expect(commandParser.argumentHelp('arg1')).toBe('arg1 help')
-            expect(commandParser.argumentHelp('arg2')).toBe('arg2 help')
-            expect(commandParser.optionHelp('option')).toBe('option help')
-            expect(commandParser.optionHelp('option2')).toBeUndefined()
-        })
+			const result = parser.init(['-v']);
 
+			expect(result.options.verbose).toBe(true);
+		});
 
-        it('should define help with helperDefinition with default value', () => {
-            commandParser = parseCommand('test {arg1:arg1 help} {arg2} {--option=default}', ['value1', 'value2'], {
-                arg2: 'arg2 help',
-                '--option': 'option help'
-            });
-            expect(commandParser.argumentHelp('arg1')).toBe('arg1 help')
-            expect(commandParser.argumentHelp('arg2')).toBe('arg2 help')
-            expect(commandParser.optionHelp('option')).toBe('option help')
-        })
+		it('should handle multiple aliases', () => {
+			const parser = new CommandParser({
+				io,
+				options: {
+					output: { type: 'string', alias: ['o', 'out'] },
+				},
+				arguments: {},
+			});
 
-    })
+			const result1 = parser.init(['-o', 'file.txt']);
+			expect(result1.options.output).toBe('file.txt');
 
-    describe('DefaultCommandOptions', () => {
+			const parser2 = new CommandParser({
+				io,
+				options: {
+					output: { type: 'string', alias: ['o', 'out'] },
+				},
+				arguments: {},
+			});
 
-        it('should parse default command options', () => {
-            commandParser = parseCommand('test', [], {}, [new TestCommandOptions()]);
-            expect(commandParser.option('testOption')).toBe('default');
-        })
+			const result2 = parser2.init(['--out', 'file.txt']);
+			expect(result2.options.output).toBe('file.txt');
+		});
+	});
 
-        it('should parse default command options with provided value', () => {
-            commandParser = parseCommand('test', ['--testOption=value'], {}, [new TestCommandOptions()]);
-            expect(commandParser.option('testOption')).toBe('value');
-        })
+	describe('Array options', () => {
+		it('should parse string array options', () => {
+			const parser = new CommandParser({
+				io,
+				options: {
+					files: ['string'],
+				},
+				arguments: {},
+			});
 
-        it('should parse default command options with provided value with alias', () => {
-            commandParser = parseCommand('test', ['-t=value'], {}, [new TestCommandOptions()]);
-            expect(commandParser.option('testOption')).toBe('value');
-        })
+			const result = parser.init(['--files', 'a.txt', '--files', 'b.txt']);
 
-        it('should parse default command option help', () => {
-            commandParser = parseCommand('test', [], {}, [new TestCommandOptions()]);
-            expect(commandParser.optionHelp('testOption')).toBe('Test option');
-        })
+			expect(result.options.files).toEqual(['a.txt', 'b.txt']);
+		});
 
-        it('should handle null default value', () => {
-            const option = new TestCommandOptions();
-            option.defaultValue = null
-            commandParser = parseCommand('test', ['--testOption=value'], {}, [option]);
-            expect(commandParser.option('testOption')).toBe('value');
-        })
-    });
+		it('should parse number array options', () => {
+			const parser = new CommandParser({
+				io,
+				options: {
+					ports: ['number'],
+				},
+				arguments: {},
+			});
+
+			const result = parser.init(['--ports', '8080', '--ports', '3000']);
+
+			expect(result.options.ports).toEqual([8080, 3000]);
+		});
+
+		it('should default to empty array when no values provided', () => {
+			const parser = new CommandParser({
+				io,
+				options: {
+					tags: ['string'],
+				},
+				arguments: {},
+			});
+
+			const result = parser.init([]);
+
+			expect(result.options.tags).toEqual([]);
+		});
+
+		it('should default to empty array when no values provided', () => {
+			const parser = new CommandParser({
+				io,
+				options: {
+					tags: {
+						type: ['string'],
+						default: ['tag1', 'tag2'],
+					},
+				},
+				arguments: {},
+			});
+
+			const result = parser.init([]);
+
+			expect(result.options.tags).toEqual(['tag1', 'tag2']);
+		});
+	});
+
+	describe('Variadic arguments', () => {
+		it('should collect all remaining arguments as variadic', () => {
+			const parser = new CommandParser({
+				io,
+				options: {},
+				arguments: {
+					files: { type: ['string'], variadic: true },
+				},
+			});
+
+			const result = parser.init(['a.txt', 'b.txt', 'c.txt']);
+
+			expect(result.arguments.files).toEqual(['a.txt', 'b.txt', 'c.txt']);
+		});
+
+		it('should handle variadic after regular arguments', () => {
+			const parser = new CommandParser({
+				io,
+				options: {},
+				arguments: {
+					command: 'string',
+					args: { type: ['string'], variadic: true },
+				},
+			});
+
+			const result = parser.init(['run', 'arg1', 'arg2', 'arg3']);
+
+			expect(result.arguments.command).toBe('run');
+			expect(result.arguments.args).toEqual(['arg1', 'arg2', 'arg3']);
+		});
+
+		it('should default variadic to empty array when no values', () => {
+			const parser = new CommandParser({
+				io,
+				options: {},
+				arguments: {
+					files: { type: ['string'], variadic: true },
+				},
+			});
+
+			const result = parser.init([]);
+
+			expect(result.arguments.files).toEqual([]);
+		});
+	});
+
+	describe('Validation', () => {
+		it('should validate required options that have no default', async () => {
+			const parser = new CommandParser({
+				io,
+				options: {
+					name: { type: 'string', required: false },
+				},
+				arguments: {},
+			});
+
+			// Set up parser state manually to test validate() method
+			parser.init([]);
+
+			// Manually override to make it required for validate test
+
+			(parser as any).options.name.required = true;
+
+			// validate() should check for required values
+			await expect(parser.validate()).rejects.toThrow(MissingRequiredOptionValue);
+		});
+
+		it('should validate required arguments', async () => {
+			const parser = new CommandParser({
+				io,
+				options: {},
+				arguments: {
+					file: { type: 'string', required: true },
+				},
+			}).disablePrompting();
+
+			parser.init([]);
+
+			await expect(parser.validate()).rejects.toThrow(MissingRequiredArgumentValue);
+		});
+
+		it('should pass validation when all required values provided', async () => {
+			const parser = new CommandParser({
+				io,
+				options: {
+					name: { type: 'string', required: true },
+				},
+				arguments: {
+					file: { type: 'string', required: true },
+				},
+			});
+
+			parser.init(['test.txt', '--name', 'value']);
+
+			await expect(parser.validate()).resolves.toBeUndefined();
+		});
+
+		it('should throw InvalidOption for unknown options', () => {
+			const parser = new CommandParser({
+				io,
+				options: {
+					verbose: 'boolean',
+				},
+				arguments: {},
+			});
+
+			expect(() => parser.init(['--unknown'])).toThrow(InvalidOption);
+		});
+	});
+
+	describe('Accessor methods', () => {
+		it('should retrieve option values', () => {
+			const parser = new CommandParser({
+				io,
+				options: { verbose: 'boolean', name: 'string' },
+				arguments: {},
+			});
+
+			parser.init(['--verbose', '--name', 'test']);
+
+			expect(parser.option('verbose')).toBe(true);
+			expect(parser.option('name')).toBe('test');
+		});
+
+		it('should retrieve argument values', () => {
+			const parser = new CommandParser({
+				io,
+				options: {},
+				arguments: { file: 'string', count: 'number' },
+			});
+
+			parser.init(['test.txt', '42']);
+
+			expect(parser.argument('file')).toBe('test.txt');
+			expect(parser.argument('count')).toBe(42);
+		});
+
+		it('should throw error when accessing options before init', () => {
+			const parser = new CommandParser({
+				io,
+				options: { verbose: 'boolean' },
+				arguments: {},
+			});
+
+			expect(() => parser.option('verbose')).toThrow('Options have not been parsed yet');
+		});
+
+		it('should throw error when accessing arguments before init', () => {
+			const parser = new CommandParser({
+				io,
+				options: {},
+				arguments: { file: 'string' },
+			});
+
+			expect(() => parser.argument('file')).toThrow('Arguments have not been parsed yet');
+		});
+
+		describe('Runtime default values', () => {
+			it('should return runtime default for empty array options', () => {
+				const parser = new CommandParser({
+					io,
+					options: { tags: ['string'] },
+					arguments: {},
+				});
+
+				parser.init([]);
+
+				expect(parser.option('tags', ['default1', 'default2'])).toEqual(['default1', 'default2']);
+			});
+
+			it('should not use runtime default for non-empty array options', () => {
+				const parser = new CommandParser({
+					io,
+					options: { tags: ['string'] },
+					arguments: {},
+				});
+
+				parser.init(['--tags', 'a', '--tags', 'b']);
+
+				expect(parser.option('tags', ['default1', 'default2'])).toEqual(['a', 'b']);
+			});
+
+			it('should not use runtime default for false boolean values', () => {
+				const parser = new CommandParser({
+					io,
+					options: { flag: 'boolean' },
+					arguments: {},
+				});
+
+				parser.init([]);
+
+				expect(parser.option('flag', true)).toBe(false);
+			});
+
+			it('should not use runtime default for zero number values', () => {
+				const parser = new CommandParser({
+					io,
+					options: { count: 'number' },
+					arguments: {},
+				});
+
+				parser.init(['--count', '0']);
+
+				expect(parser.option('count', 10)).toBe(0);
+			});
+
+			it('should not use runtime default for empty string values', () => {
+				const parser = new CommandParser({
+					io,
+					options: { message: 'string' },
+					arguments: {},
+				});
+
+				parser.init(['--message', '']);
+
+				expect(parser.option('message', 'default')).toBe('');
+			});
+
+			it('should use runtime default for null values', () => {
+				const parser = new CommandParser({
+					io,
+					options: { name: 'string' },
+					arguments: {},
+				});
+
+				parser.init([]);
+
+				expect(parser.option('name', 'default')).toBe('default');
+			});
+
+			it('should return runtime default for empty array arguments', () => {
+				const parser = new CommandParser({
+					io,
+					options: {},
+					arguments: { files: { type: ['string'], variadic: true } },
+				});
+
+				parser.init([]);
+
+				expect(parser.argument('files', ['default.txt'])).toEqual(['default.txt']);
+			});
+
+			it('should not use runtime default for non-empty array arguments', () => {
+				const parser = new CommandParser({
+					io,
+					options: {},
+					arguments: { files: { type: ['string'], variadic: true } },
+				});
+
+				parser.init(['a.txt', 'b.txt']);
+
+				expect(parser.argument('files', ['default.txt'])).toEqual(['a.txt', 'b.txt']);
+			});
+		});
+	});
+
+	describe('Metadata methods', () => {
+		it('should return option definitions', () => {
+			const parser = new CommandParser({
+				io,
+				options: {
+					verbose: 'boolean',
+					count: { type: 'number', default: 10 },
+				},
+				arguments: {},
+			});
+
+			const defs = parser.optionDefinitions();
+
+			expect(defs.verbose.type).toBe('boolean');
+			expect(defs.count.type).toBe('number');
+			expect(defs.count.default).toBe(10);
+		});
+
+		it('should return argument definitions', () => {
+			const parser = new CommandParser({
+				io,
+				options: {},
+				arguments: {
+					file: 'string',
+					lines: { type: 'number', required: true },
+				},
+			});
+
+			const defs = parser.argumentDefinitions();
+
+			expect(defs.file.type).toBe('string');
+			expect(defs.lines.type).toBe('number');
+			expect(defs.lines.required).toBe(true);
+		});
+
+		it('should return available option names', () => {
+			const parser = new CommandParser({
+				io,
+				options: { verbose: 'boolean', output: 'string' },
+				arguments: {},
+			});
+
+			const names = parser.availableOptions();
+
+			expect(names).toEqual(['verbose', 'output']);
+		});
+
+		it('should return available argument names', () => {
+			const parser = new CommandParser({
+				io,
+				options: {},
+				arguments: { file: 'string', count: 'number' },
+			});
+
+			const names = parser.availableArguments();
+
+			expect(names).toEqual(['file', 'count']);
+		});
+	});
+
+	describe('Edge cases', () => {
+		it('should handle empty string values', () => {
+			const parser = new CommandParser({
+				io,
+				options: { message: 'string' },
+				arguments: {},
+			});
+
+			const result = parser.init(['--message', '']);
+
+			expect(result.options.message).toBe('');
+		});
+
+		it('should handle negative numbers with double dash', () => {
+			const parser = new CommandParser({
+				io,
+				options: { offset: 'number' },
+				arguments: {},
+			});
+
+			const result = parser.init(['--', '--offset', '-42']);
+
+			expect(result.options.offset).toBeNull();
+		});
+
+		it('should handle floating point numbers', () => {
+			const parser = new CommandParser({
+				io,
+				options: { ratio: 'number' },
+				arguments: {},
+			});
+
+			const result = parser.init(['--ratio', '3.14']);
+
+			expect(result.options.ratio).toBe(3.14);
+		});
+
+		it('should handle options with equals sign syntax', () => {
+			const parser = new CommandParser({
+				io,
+				options: { name: 'string' },
+				arguments: {},
+			});
+
+			const result = parser.init(['--name=test']);
+
+			expect(result.options.name).toBe('test');
+		});
+
+		it('should handle mixed positional and option ordering', () => {
+			const parser = new CommandParser({
+				io,
+				options: { verbose: 'boolean' },
+				arguments: { file: 'string', lines: 'number' },
+			});
+
+			const result = parser.init(['test.txt', '100', '--verbose']);
+
+			expect(result.arguments.file).toBe('test.txt');
+			expect(result.arguments.lines).toBe(100);
+			expect(result.options.verbose).toBe(true);
+		});
+	});
+
+	describe('Type conversion errors', () => {
+		it('should handle invalid number conversion', () => {
+			const parser = new CommandParser({
+				io,
+				options: { count: 'number' },
+				arguments: {},
+			});
+
+			expect(() => parser.init(['--count', 'not-a-number'])).toThrow(BadCommandOption);
+		});
+	});
 });

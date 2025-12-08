@@ -1,71 +1,296 @@
-import {describe, it, expect, beforeEach, vi} from 'vitest';
-import { Command } from '@/src/Command.js';
-import {MissingRequiredArgumentValue} from "@/src/errors/MissingRequiredArgumentValue.js";
-import {CommandIO} from "@/src/CommandIO.js";
+import { faker } from '@faker-js/faker';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-class MockCommand extends Command {
-    signature = 'mockCommand {argument} {--option}';
-    description = 'This is a mock command for testing';
-
-	protected get CommandIOClass(): typeof CommandIO {
-		return vi.mockObject(CommandIO);
-	}
-
-	protected handle() {
-        const opts = this.option('option');
-        const arg = this.argument('argument');
-
-        if (opts) {
-            return Promise.resolve(11);
-        }
-
-        if (arg === 'value') {
-            return Promise.resolve(1);
-        } else if (arg) {
-            return Promise.resolve(-1);
-        }
-
-        return Promise.resolve(0);
-    }
-}
+import { Command, CommandRunOption } from '@/src/Command.js';
+import { TestLogger, newTestLogger } from '@/src/fixtures.test.js';
+import { ContextDefinition, OptionsSchema } from '@/src/lib/types.js';
 
 describe('Command', () => {
-    let command: MockCommand;
+	let logger: TestLogger;
+	let command: Command;
+	let commandRunOption: CommandRunOption<ContextDefinition, OptionsSchema, OptionsSchema>;
 
-    beforeEach(() => {
-        command = new MockCommand();
-    });
+	beforeEach(() => {
+		logger = newTestLogger();
 
-    it('should have a command', () => {
-        expect(command.command).toBe('mockCommand');
-    });
+		command = new Command('test-command', {
+			description: 'A test command',
+		});
+		commandRunOption = {
+			ctx: {},
+			logger: logger,
+			args: [],
+		};
+	});
 
-    it('should have a signature', () => {
-        expect(command.signature).toBe('mockCommand {argument} {--option}');
-    });
+	it('should instantiate Command', () => {
+		expect(command).toBeInstanceOf(Command);
+		expect(command).toHaveProperty('command', 'test-command');
+		expect(command).toHaveProperty('description', 'A test command');
+	});
 
-    it('should have a description', () => {
-        expect(command.description).toBe('This is a mock command for testing');
-    });
+	it('should throw error when running without handler', async () => {
+		await expect(command.run(commandRunOption)).rejects.toThrow('No handler defined for command test');
+	});
 
+	describe('Running commands', () => {
+		let handlerFn: ReturnType<typeof vi.fn>;
+		let handlerResult: number | void;
 
-    it('should handle command with argument', async () => {
-        const result = await command.run(undefined, 'value')
-        expect(result).toBe(1);
-    });
+		beforeEach(() => {
+			handlerResult = faker.number.int({ min: 0, max: 100 });
+			handlerFn = vi.fn().mockImplementation(() => handlerResult);
+			command = command.handler(handlerFn);
+		});
 
-    it('should handle command with argument', async () => {
-        const result = await command.run(undefined, 'badValue')
-        expect(result).toBe(-1);
-    });
+		it('should run command with handler method', async () => {
+			const result = await command.run(commandRunOption);
 
-    it('should throw error if argument is missing', async () => {
-        await expect(command.run(undefined)).rejects.toThrowError(MissingRequiredArgumentValue);
+			expect(handlerFn).toHaveBeenCalled();
+			expect(result).toBe(handlerResult);
+		});
 
-    });
+		it('should run command with handle instance method', async () => {
+			class TestCommand extends Command {
+				async handle() {
+					return 42;
+				}
+			}
 
-    it('should handle command with option', async () => {
-        const result = await command.run(undefined,  'value', '--option')
-        expect(result).toBe(11);
-    })
+			const command = new TestCommand('test');
+			const result = await command.run(commandRunOption);
+
+			expect(result).toBe(42);
+			expect(handlerFn).not.toHaveBeenCalled();
+		});
+
+		it('should pass context to handler', async () => {
+			const context = { user: 'test-user', config: {} };
+
+			await command.run({
+				ctx: context,
+				logger,
+				args: [],
+			});
+
+			expect(handlerFn).toHaveBeenCalledWith(
+				context,
+				expect.objectContaining({
+					options: expect.any(Object),
+					arguments: expect.any(Object),
+				}),
+			);
+		});
+
+		it('should parse args when provided', async () => {
+			command = command.options<OptionsSchema>({ verbose: 'boolean' }).arguments<OptionsSchema>({ file: 'string' });
+			commandRunOption = {
+				...commandRunOption,
+				args: ['test.txt', '--verbose'],
+			};
+
+			await command.run(commandRunOption);
+
+			expect(handlerFn).toHaveBeenCalledWith(
+				commandRunOption.ctx,
+				expect.objectContaining({
+					options: expect.objectContaining({ verbose: true }),
+					arguments: expect.objectContaining({ file: 'test.txt' }),
+				}),
+			);
+		});
+
+		it('should accept pre-parsed options and arguments when parser available', async () => {
+			command = command.options<OptionsSchema>({ verbose: 'boolean' }).arguments<OptionsSchema>({ file: 'string' });
+
+			// When using pre-parsed, the command flow bypasses parser init
+			// This test verifies pre-parsed values are passed through
+			await command.run({
+				ctx: commandRunOption.ctx,
+				logger: commandRunOption.logger,
+				options: { verbose: true },
+				arguments: { file: 'test.txt' },
+			});
+
+			expect(handlerFn).toHaveBeenCalledWith(
+				commandRunOption.ctx,
+				expect.objectContaining({
+					options: expect.objectContaining({ verbose: true }),
+					arguments: expect.objectContaining({ file: 'test.txt' }),
+				}),
+			);
+		});
+
+		it('should return 0 by default when handler returns void', async () => {
+			command = command.handler(() => {
+				// No return value
+			});
+
+			const result = await command.run(commandRunOption);
+
+			expect(result).toBe(0);
+		});
+
+		it('should handle asynchronous handlers', async () => {
+			handlerFn.mockResolvedValue(handlerResult);
+
+			const result = await command.run(commandRunOption);
+
+			expect(result).toBe(handlerResult);
+		});
+
+		it('should include help option by default', async () => {
+			commandRunOption = {
+				...commandRunOption,
+				args: ['--help'],
+			};
+
+			const result = await command.run(commandRunOption);
+
+			expect(handlerFn).not.toHaveBeenCalled();
+			expect(result).toBe(-1);
+		});
+	});
+
+	describe('PreHandle hook', () => {
+		it('should call preHandle before handler', async () => {
+			const calls: string[] = [];
+
+			class TestCommand extends Command {
+				async preHandle() {
+					calls.push('preHandle');
+				}
+
+				async handle() {
+					calls.push('handle');
+					return 0;
+				}
+			}
+
+			const command = new TestCommand('test');
+			await command.run(commandRunOption);
+
+			expect(calls).toEqual(['preHandle', 'handle']);
+		});
+
+		it('should skip handler if preHandle returns non-zero', async () => {
+			const handlerFn = vi.fn();
+
+			class TestCommand extends Command {
+				async preHandle() {
+					return 5;
+				}
+
+				async handle() {
+					handlerFn();
+					return 0;
+				}
+			}
+
+			const command = new TestCommand('test');
+			const result = await command.run(commandRunOption);
+
+			expect(result).toBe(5);
+			expect(handlerFn).not.toHaveBeenCalled();
+		});
+
+		it('should continue to handler if preHandle returns 0', async () => {
+			const handlerFn = vi.fn().mockResolvedValue(0);
+
+			class TestCommand extends Command {
+				async preHandle() {
+					return 0;
+				}
+
+				async handle() {
+					handlerFn();
+					return 0;
+				}
+			}
+
+			const command = new TestCommand('test');
+			await command.run(commandRunOption);
+
+			expect(handlerFn).toHaveBeenCalled();
+		});
+	});
+
+	describe('Validation', () => {
+		it('should validate required options', async () => {
+			const command = new Command('test')
+				.options({
+					name: { type: 'string', required: true },
+				})
+				.handler(() => 0);
+
+			await expect(command.run({ ...commandRunOption, args: [] })).rejects.toThrow();
+		});
+
+		it('should validate required arguments', async () => {
+			const command = new Command('test')
+				.disablePrompting()
+				.arguments({
+					file: { type: 'string', required: true },
+				})
+				.handler(() => 0);
+
+			await expect(command.run({ ...commandRunOption, args: [] })).rejects.toThrow();
+		});
+
+		it('should pass validation with all required values', async () => {
+			const command = new Command('test')
+				.options({
+					name: { type: 'string', required: true },
+				})
+				.arguments({
+					file: { type: 'string', required: true },
+				})
+				.handler(() => 0);
+
+			commandRunOption = {
+				...commandRunOption,
+				args: ['test.txt', '--name', 'value'],
+			};
+
+			const result = await command.run(commandRunOption);
+
+			expect(result).toBe(0);
+		});
+	});
+
+	describe('Type safety with generics', () => {
+		it('should maintain type safety through options chain', async () => {
+			type Context = { userId: string };
+
+			const command = new Command<Context>('test').options({ verbose: 'boolean', count: 'number' }).handler((ctx, opts) => {
+				// Type checking - these should compile
+				const _userId: string = ctx.userId;
+				const _verbose: boolean | null = opts.options.verbose;
+				const _count: number | null = opts.options.count;
+				return 0;
+			});
+
+			const contextRunOption = { ...commandRunOption, ctx: { userId: '123' }, args: [] };
+
+			await command.run(contextRunOption);
+
+			expect(contextRunOption.ctx).toHaveProperty('userId', '123');
+		});
+
+		it('should maintain type safety through arguments chain', async () => {
+			const command = new Command('test').arguments({ file: 'string', lines: 'number' }).handler((ctx, opts) => {
+				// Type checking
+				const _file: string | null = opts.arguments.file;
+				const _lines: number | null = opts.arguments.lines;
+				return 0;
+			});
+
+			commandRunOption = {
+				...commandRunOption,
+				args: ['test.txt', '10'],
+			};
+
+			await command.run(commandRunOption);
+		});
+	});
 });

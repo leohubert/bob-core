@@ -1,7 +1,8 @@
-import {defineConfig} from 'vite'
-import {resolve} from 'path'
-import dts from 'vite-plugin-dts'
-import {writeFileSync, mkdirSync} from 'fs'
+import { mkdirSync, writeFileSync } from 'fs';
+import { resolve } from 'path';
+import { defineConfig } from 'vite';
+import dts from 'vite-plugin-dts';
+import { configDefaults } from 'vitest/config';
 
 export default defineConfig({
 	plugins: [
@@ -18,10 +19,10 @@ export default defineConfig({
 		{
 			name: 'create-package-json',
 			writeBundle() {
-				mkdirSync('dist/cjs', { recursive: true })
-				writeFileSync('dist/cjs/package.json', JSON.stringify({ type: 'commonjs' }, null, 2))
-			}
-		}
+				mkdirSync('dist/cjs', { recursive: true });
+				writeFileSync('dist/cjs/package.json', JSON.stringify({ type: 'commonjs' }, null, 2));
+			},
+		},
 	],
 	build: {
 		lib: {
@@ -29,7 +30,7 @@ export default defineConfig({
 			name: 'BobCore',
 		},
 		rollupOptions: {
-			external: ['chalk', 'minimist', 'prompts', 'string-similarity', 'node:fs', 'path', 'fs'],
+			external: ['minimist', 'chalk', 'prompts', 'node:fs', 'node:path'],
 			output: [
 				{
 					format: 'es',
@@ -40,13 +41,16 @@ export default defineConfig({
 					format: 'cjs',
 					dir: 'dist/cjs',
 					entryFileNames: 'src/index.js',
-				}
-			]
-		}
+				},
+			],
+		},
 	},
 	resolve: {
 		alias: {
-			'@/src': resolve(__dirname, './src')
-		}
-	}
-})
+			'@/src': resolve(__dirname, './src'),
+		},
+	},
+	test: {
+		exclude: [...configDefaults.exclude, './**/fixtures.test.ts'],
+	},
+});

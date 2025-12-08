@@ -1,13 +1,19 @@
-import {BobError} from "@/src/errors/index.js";
+import { Logger } from '@/src/Logger.js';
+import { BobError } from '@/src/errors/index.js';
 
 export class ExceptionHandler {
-    handle(err: Error | BobError) {
+	private readonly logger: Logger;
 
-        if (err instanceof BobError) {
-            err.pretty()
+	constructor(logger: Logger) {
+		this.logger = logger;
+	}
 
-            return -1;
-        }
-        throw err;
-    }
+	handle(err: Error | BobError) {
+		if (err instanceof BobError) {
+			err.pretty(this.logger);
+
+			return -1;
+		}
+		throw err;
+	}
 }

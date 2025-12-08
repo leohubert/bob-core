@@ -1,10 +1,8 @@
-export interface CommandOption<C> {
-    option: string
-    alias?: string[]
+import { Command } from '@/src/Command.js';
+import { OptionDefinition } from '@/src/lib/types.js';
 
-    defaultValue: string | boolean | Array<string> | null
+export interface CommandOption<Cmd extends Command> extends OptionDefinition {
+	option: string;
 
-    description?: string
-
-    handler(this: C): Promise<number|void>;
+	handler(this: Cmd): Promise<number | void>;
 }

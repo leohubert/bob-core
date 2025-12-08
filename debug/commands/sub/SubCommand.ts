@@ -1,10 +1,13 @@
-import {Command} from "../../command.js";
+import { Command, CommandContext } from '../../command.js';
 
-export default  class SubCommand extends Command {
-    signature = 'sub';
-    description = 'sub command description'
+export default class SubCommand extends Command {
+	signature = 'sub {name*}';
+	description = 'sub command description';
 
-    protected handle(): Promise<void> {
-        throw new Error("Method not implemented.");
-    }
+	disablePromptingFlag = true;
+
+	protected handle(ctx: CommandContext, opts: any): Promise<void> {
+		this.io.info('Sub command executed', ctx, opts);
+		throw new Error('Method not implemented.');
+	}
 }

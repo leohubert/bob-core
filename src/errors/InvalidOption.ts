@@ -1,29 +1,36 @@
-import chalk from "chalk";
+import chalk from 'chalk';
 
-import {BobError} from "@/src/errors/BobError.js";
-import {ArgSignature} from "@/src/CommandParser.js";
+import { Logger } from '@/src/Logger.js';
+import { BobError } from '@/src/errors/BobError.js';
+import { getOptionDetails } from '@/src/lib/optionHelpers.js';
+import { OptionsSchema } from '@/src/lib/types.js';
 
 export class InvalidOption extends BobError {
-    constructor(private option: string, private optionsSignature: ArgSignature[]) {
-        super(`Invalid option ${option} in not recognized`);
-    }
+	constructor(
+		private option: string,
+		private optionsSchema: OptionsSchema = {},
+	) {
+		super(`Invalid option ${option} in not recognized`);
+	}
 
-    pretty(): void {
-        const log = console.log
+	pretty(logger: Logger): void {
+		const options = Object.entries(this.optionsSchema);
 
-        if (this.optionsSignature.length > 0) {
-            log(chalk`\n{yellow Available options}:`)
-            for (const option of this.optionsSignature) {
-                const type = option.type ? chalk`{white (${option.type})}` : ''
-                const nameWithAlias = `--${option.name}${option.alias?.map(a => `, -${a}`).join('') ?? ''}`
+		if (options.length > 0) {
+			logger.log(`\n${chalk.yellow('Available options')}:`);
 
-                const spaces = ' '.repeat(30 - nameWithAlias.length)
+			for (const [name, definition] of options) {
+				const details = getOptionDetails(definition);
+				const alias = details.alias ? (typeof details.alias === 'string' ? [details.alias] : details.alias) : [];
+				const typeDisplay = Array.isArray(details.type) ? `[${details.type[0]}]` : details.type;
+				const nameWithAlias = `--${name}${alias.length > 0 ? alias.map(a => `, -${a}`).join('') : ''}`;
+				const spaces = ' '.repeat(30 - nameWithAlias.length);
 
-                log(chalk`  {green ${nameWithAlias}} ${spaces} ${option.help ?? '\b'} ${type}`)
-            }
-            log('')
-        }
+				logger.log(`  ${chalk.green(nameWithAlias)} ${spaces} ${details.description || '\b'} ${chalk.white(`(${typeDisplay})`)}`);
+			}
+			logger.log('');
+		}
 
-        log(chalk`{white.bgRed  ERROR } Option {bold.yellow ${this.option}} is not recognized.`)
-    }
+		logger.log(`${chalk.white.bgRed(' ERROR ')} Option ${chalk.bold.yellow(this.option)} is not recognized.`);
+	}
 }

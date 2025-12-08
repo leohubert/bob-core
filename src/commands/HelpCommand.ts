@@ -1,73 +1,71 @@
-import chalk from "chalk";
+import chalk from 'chalk';
 
-import {Command} from "@/src/Command.js";
-import {CommandRegistry} from "@/src/CommandRegistry.js";
-import {generateSpace} from "@/src/lib/string.js";
+import { Command } from '@/src/Command.js';
+import { CommandRegistry } from '@/src/CommandRegistry.js';
+import { generateSpace } from '@/src/lib/string.js';
 
 export type HelpCommandOptions = {
-    commandRegistry: CommandRegistry
-    cliName?: string
-    cliVersion?: string
-}
+	commandRegistry: CommandRegistry;
+	cliName?: string;
+	cliVersion?: string;
+};
 
 export default class HelpCommand extends Command {
-    signature = 'help'
-    description = 'Show help'
+	constructor(private opts: HelpCommandOptions) {
+		super('help', {
+			description: chalk.bold('Show help information about the CLI and its commands'),
+		});
+	}
 
-    constructor(private opts: HelpCommandOptions) {
-        super();
-    }
+	async handle(): Promise<void> {
+		const commands = this.opts.commandRegistry.getCommands();
 
-    protected async handle(): Promise<void> {
-        const commands = this.opts.commandRegistry.getCommands()
+		const cliName = this.opts.cliName ?? 'Bob CLI';
+		const version = this.opts.cliVersion ?? '0.0.0';
 
-        const cliName = this.opts.cliName ?? 'Bob CLI'
-        const version = this.opts.cliVersion ?? '0.0.0'
+		const coreVersion = (await import('../../package.json'))?.default?.version ?? '0.0.0';
 
-        const coreVersion = (await import('../../package.json'))?.default?.version ?? '0.0.0'
+		this.io.log(`${cliName} ${chalk.green(version)} (core: ${chalk.yellow(coreVersion)})
 
-        console.log(chalk`${cliName} {green ${version}} (core: {yellow ${coreVersion}})
-
-{yellow Usage}:
+${chalk.yellow('Usage')}:
   command [options] [arguments]
 
-{yellow Available commands}:
-`)
+${chalk.yellow('Available commands')}:
+`);
 
-        const maxCommandLength = Math.max(...commands.map(command => command.command.length)) ?? 0
-        const commandByGroups: { [key: string]: Command[] } = {}
+		const maxCommandLength = Math.max(...commands.map(command => command.command.length)) ?? 0;
+		const commandByGroups: { [key: string]: Array<Command> } = {};
 
-        for (const command of commands) {
-            const commandGroup = command.command.split(':')[0]
+		for (const command of commands) {
+			const commandGroup = command.group ?? command.command.split(':')[0];
 
-            if (!commandByGroups[commandGroup]) {
-                commandByGroups[commandGroup] = []
-            }
+			if (!commandByGroups[commandGroup]) {
+				commandByGroups[commandGroup] = [];
+			}
 
-            commandByGroups[commandGroup].push(command)
-        }
+			commandByGroups[commandGroup].push(command);
+		}
 
-        const sortedCommandsByGroups = Object.entries(commandByGroups)
-            .sort(([groupA], [groupB]) => groupA.toLowerCase().localeCompare(groupB.toLowerCase()))
-            .sort(([, commandsA], [, commandsB]) => commandsA.length - commandsB.length)
+		const sortedCommandsByGroups = Object.entries(commandByGroups)
+			.sort(([groupA], [groupB]) => groupA.toLowerCase().localeCompare(groupB.toLowerCase()))
+			.sort(([, commandsA], [, commandsB]) => commandsA.length - commandsB.length);
 
-        for (const [group, groupCommands] of sortedCommandsByGroups) {
-            const isGrouped = groupCommands.length > 1
+		for (const [group, groupCommands] of sortedCommandsByGroups) {
+			const isGrouped = groupCommands.length > 1;
 
-            if (isGrouped) {
-                console.log(chalk`{yellow ${group}}:`)
-            }
+			if (isGrouped) {
+				this.io.log(chalk.yellow(`${group}:`));
+			}
 
-            const sortedGroupCommands = groupCommands.sort((a, b) => a.command.toLowerCase().localeCompare(b.command.toLowerCase()))
+			const sortedGroupCommands = groupCommands.sort((a, b) => a.command.toLowerCase().localeCompare(b.command.toLowerCase()));
 
-            for (const command of sortedGroupCommands) {
-                let spaces = generateSpace(maxCommandLength - command.command.length)
-                if (isGrouped) {
-                    spaces = spaces.slice(2)
-                }
-                console.log(chalk`${isGrouped ? '  ' : ''}{green ${command.command}} ${spaces} ${command.description}`)
-            }
-        }
-    }
-
+			for (const command of sortedGroupCommands) {
+				let spaces = generateSpace(maxCommandLength - command.command.length);
+				if (isGrouped) {
+					spaces = spaces.slice(2);
+				}
+				this.io.log(`${isGrouped ? '  ' : ''}${chalk.green(command.command)} ${spaces} ${command.description}`);
+			}
+		}
+	}
 }

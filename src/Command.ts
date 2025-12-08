@@ -1,170 +1,215 @@
-import {CommandParser} from "@/src/CommandParser.js";
-import {HelpOption} from "@/src/options/index.js";
-import {CommandOption} from "@/src/contracts/index.js";
-import {CommandIO} from "@/src/CommandIO.js";
+import { CommandIO, CommandIOOptions } from '@/src/CommandIO.js';
+import { CommandParser } from '@/src/CommandParser.js';
+import { Logger } from '@/src/Logger.js';
+import { CommandOption } from '@/src/contracts/index.js';
+import { ArgumentsObject, ArgumentsSchema, ContextDefinition, OptionsObject, OptionsSchema } from '@/src/lib/types.js';
+import { HelpOption } from '@/src/options/index.js';
+
+export type CommandHandlerOptions<Options extends OptionsSchema, Arguments extends ArgumentsSchema> = {
+	options: OptionsObject<Options>;
+	arguments: ArgumentsObject<Arguments>;
+};
+export type CommandHandler<C extends ContextDefinition, Options extends OptionsSchema, Arguments extends ArgumentsSchema> = (
+	ctx: C,
+	opts: CommandHandlerOptions<Options, Arguments>,
+) => Promise<number | void> | number | void;
+
+export type CommandRunOption<C, Options extends OptionsSchema, Arguments extends ArgumentsSchema> = {
+	logger: Logger;
+	ctx: C;
+} & (
+	| {
+			args: string[];
+	  }
+	| {
+			options: OptionsObject<Options>;
+			arguments: ArgumentsObject<Arguments>;
+	  }
+);
 
 export type CommandExample = {
-    description: string;
-    command: string;
-}
+	description: string;
+	command: string;
+};
 
-export abstract class Command<C = any> {
-    abstract signature: string;
-    abstract description: string;
+export class Command<
+	C extends ContextDefinition = ContextDefinition,
+	Options extends OptionsSchema = OptionsSchema,
+	Arguments extends ArgumentsSchema = ArgumentsSchema,
+> {
+	public readonly _command: string;
+	public readonly description: string;
+	public readonly group?: string;
+	protected commandsExamples: CommandExample[] = [];
 
-    protected ctx!: C;
-
-    protected helperDefinitions: { [key: string]: string } = {};
-
-    protected commandsExamples: CommandExample[] = [];
-
-    protected parser!: CommandParser;
-	protected io!: CommandIO;
-
-
-    protected abstract handle(): Promise<void|number>;
-
-	protected preHandle?(): Promise<void|number>;
-
-    protected get CommandParserClass(): typeof CommandParser {
-        return CommandParser;
-    }
-
-	protected get CommandIOClass(): typeof CommandIO {
-		return CommandIO;
+	get command(): string {
+		return this._command;
 	}
 
-    protected defaultOptions(): CommandOption<Command<C>>[] {
-        return [new HelpOption]
-    }
+	protected ctx!: C;
+	protected io!: CommandIO;
+	protected parser!: CommandParser<Options, Arguments>;
 
-    get command(): string {
-        if (this.parser) {
-            return this.parser.command;
-        }
-        return this.signature.split(' ')[0];
-    }
+	protected disablePromptingFlag = false;
 
-    public async run(ctx: C, ...args: any[]): Promise<number> {
-        this.ctx = ctx;
-        const defaultOptions = this.defaultOptions();
-		this.io = new this.CommandIOClass();
-        this.parser = new this.CommandParserClass(this.io, this.signature, this.helperDefinitions, defaultOptions, ...args);
+	protected preHandle?(): Promise<void | number>;
+	protected _preHandler?: CommandHandler<C, Options, Arguments>;
 
-        for (const option of defaultOptions) {
-            if (this.parser.option(option.option)) {
-                const code = await option.handler.call(this)
-                if (code && code !== 0) {
-                    return code;
-                }
-            }
-        }
+	protected handle?(ctx: C, opts: CommandHandlerOptions<Options, Arguments>): Promise<number | void> | number | void;
+	protected _handler?: CommandHandler<C, Options, Arguments>;
 
-        await this.parser.validate();
+	private tmp?: {
+		options: Options;
+		arguments: Arguments;
+	};
 
-		const preHandleResult = this.preHandle ? await this.preHandle() : null;
-		if (preHandleResult && preHandleResult !== 0) {
-			return preHandleResult;
+	protected defaultOptions(): CommandOption<Command>[] {
+		return [new HelpOption()];
+	}
+
+	protected newCommandParser(opts: { io: CommandIO; options: Options; arguments: Arguments }): CommandParser<Options, Arguments> {
+		return new CommandParser({
+			io: opts.io,
+			options: opts.options,
+			arguments: opts.arguments,
+		});
+	}
+
+	protected newCommandIO(opts: CommandIOOptions): CommandIO {
+		return new CommandIO(opts);
+	}
+
+	constructor(
+		command: string,
+		opts?: {
+			description?: string;
+			group?: string;
+			options?: Options;
+			arguments?: Arguments;
+		},
+	) {
+		this._command = command;
+		this.description = opts?.description ?? '';
+		this.group = opts?.group;
+		this.tmp = {
+			options: opts?.options ?? ({} as Options),
+			arguments: opts?.arguments ?? ({} as Arguments),
+		};
+
+		const defaultOptions = this.defaultOptions();
+
+		if (defaultOptions.length > 0) {
+			for (const option of defaultOptions) {
+				this.tmp.options[option.option as keyof Options] = option as any;
+			}
+		}
+	}
+
+	disablePrompting() {
+		this.disablePromptingFlag = true;
+		return this;
+	}
+
+	preHandler(handler: CommandHandler<C, Options, Arguments>) {
+		this._preHandler = handler;
+		return this;
+	}
+
+	handler(handler: CommandHandler<C, Options, Arguments>) {
+		this._handler = handler;
+		return this;
+	}
+
+	options<Opts extends OptionsSchema>(opts: Opts): Command<C, Options & Opts, Arguments> {
+		this.tmp = {
+			options: {
+				...(this.tmp?.options ?? ({} as Options)),
+				...opts,
+			},
+			arguments: this.tmp?.arguments ?? ({} as Arguments),
+		};
+
+		return this as any;
+	}
+
+	arguments<Args extends ArgumentsSchema>(args: Args): Command<C, Options, Arguments & Args> {
+		this.tmp = {
+			options: this.tmp?.options ?? ({} as Options),
+			arguments: {
+				...(this.tmp?.arguments ?? ({} as Arguments)),
+				...args,
+			},
+		};
+
+		return this as any;
+	}
+
+	async run(opts: CommandRunOption<C, Options, Arguments>): Promise<number | void> {
+		if (!this._handler && !this.handle) {
+			throw new Error(`No handler defined for command ${this.command || '(unknown)'}`);
 		}
 
-        return (await this.handle()) ?? 0;
-    }
+		let handlerOptions: CommandHandlerOptions<Options, Arguments>;
 
-    protected setOption(name: string, value: any) {
-        this.parser.setOption(name, value);
-    }
+		this.ctx = opts.ctx;
+		this.io = this.newCommandIO({
+			logger: opts.logger,
+		});
 
-    protected setArgument(name: string, value: any) {
-        this.parser.setArgument(name, value);
-    }
+		if (opts && 'args' in opts) {
+			const options = this.tmp?.options ?? ({} as Options);
+			for (const option of this.defaultOptions()) {
+				if (!(option.option in options)) {
+					(options as any)[option.option] = option as any;
+				}
+			}
 
-    protected option<T = string>(key: string): T | null
-    protected option<T = string>(key: string, defaultValue: T): NoInfer<T>
-    protected option<T = string>(key: string, defaultValue: T | null = null): NoInfer<T> | null {
-        return this.parser.option(key) ?? defaultValue;
-    }
+			this.parser = this.newCommandParser({
+				io: this.io,
+				options: options,
+				arguments: this.tmp?.arguments ?? ({} as Arguments),
+			});
+			handlerOptions = this.parser.init(opts.args);
 
-    protected optionBoolean(key: string, defaultValue: boolean = false): boolean  {
-        return this.parser.option(key) ?? defaultValue;
-    }
+			for (const option of this.defaultOptions()) {
+				if (handlerOptions.options[option.option] === true) {
+					const code = await option.handler.call(this as Command);
+					if (code && code !== 0) {
+						return code;
+					}
+				}
+			}
 
-    protected optionArray<T = string>(key: string, defaultValue: Array<T> = []): Array<NoInfer<T>> {
-        const values = this.parser.option(key) as Array<T>
-        if (!Array.isArray(values)) {
-            throw new Error(`Option ${key} is not an array`);
-        }
-        if (values.length) {
-            return values;
-        }
-        return defaultValue;
-    }
+			if (this.disablePromptingFlag) {
+				this.parser.disablePrompting();
+			}
 
-    protected optionNumber(key: string): number | null
-    protected optionNumber(key: string, defaultValue: number): number
-    protected optionNumber(key: string, defaultValue: number | null = null): number | null {
-        const value = this.parser.option(key);
-        if (!value) {
-            return defaultValue;
-        }
-        if (typeof value === 'number') {
-            return value;
-        }
+			await this.parser.validate();
+		} else {
+			handlerOptions = {
+				options: opts.options,
+				arguments: opts.arguments,
+			};
+		}
 
-        return parseInt(value);
-    }
+		if (!this._preHandler && this.preHandle) {
+			this._preHandler = this.preHandle.bind(this);
+		}
 
+		if (this._preHandler) {
+			const preHandlerResult = await this._preHandler(opts.ctx, handlerOptions);
+			if (preHandlerResult && preHandlerResult !== 0) {
+				return preHandlerResult;
+			}
+		}
 
-    protected argument<T = string>(key: string): T | null
-    protected argument<T = string>(key: string, defaultValue: T): NoInfer<T>
-    protected argument<T = string>(key: string, defaultValue: T | null = null): NoInfer<T> | null {
-        return this.parser.argument(key) ?? defaultValue;
-    }
+		if (!this._handler && this.handle) {
+			this._handler = this.handle.bind(this);
+		} else if (!this._handler) {
+			throw new Error(`No handler defined for command ${this.command || '(unknown)'}`);
+		}
 
-    protected argumentArray<T = string>(key: string, defaultValue: Array<any> = []): Array<T> {
-        const values = this.parser.argument(key) as Array<T>
-        if (!Array.isArray(values)) {
-            throw new Error(`Argument ${key} is not an array`);
-        }
-
-        if (values?.length) {
-            return values;
-        }
-        return defaultValue;
-    }
-
-    protected argumentBoolean(key: string, defaultValue: boolean = false): boolean {
-        return this.parser.argument(key) ?? defaultValue;
-    }
-
-    protected argumentNumber(key: string, defaultValue: number | null = null): number | null {
-        const value = this.parser.argument(key);
-        if (!value) {
-            return defaultValue;
-        }
-        if (typeof value === 'number') {
-            return value;
-        }
-
-        return parseInt(value);
-    }
-
-	/**
-	 * Prompt utils
-	 */
-
-	async askForConfirmation(...opts: Parameters<typeof this.io.askForConfirmation>): ReturnType<typeof this.io.askForConfirmation> {
-		return this.io.askForConfirmation(...opts);
-	}
-
-	async askForInput(...opts: Parameters<typeof this.io.askForInput>): ReturnType<typeof this.io.askForInput> {
-		return this.io.askForInput(...opts);
-	}
-
-	async askForSelect(...opts: Parameters<typeof this.io.askForSelect>): ReturnType<typeof this.io.askForSelect> {
-		return this.io.askForSelect(...opts);
-	}
-
-	newLoader(...opts: Parameters<typeof this.io.newLoader>): ReturnType<typeof this.io.newLoader> {
-		return this.io.newLoader(...opts);
+		const res = await this._handler(opts.ctx, handlerOptions);
+		return res ?? 0;
 	}
 }
