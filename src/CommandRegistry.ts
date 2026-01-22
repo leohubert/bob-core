@@ -133,7 +133,7 @@ export class CommandRegistry {
 		const { bestMatch, bestMatchIndex, ratings } = this.stringSimilarity.findBestMatch(command, availableCommands);
 		const similarCommands = ratings.filter(r => r.rating > 0.3).map(r => r.target);
 
-		if ((bestMatch.rating > 0 && similarCommands.length <= 1) || (bestMatch.rating > 0.7 && similarCommands.length > 1)) {
+		if (bestMatch && ((bestMatch.rating > 0 && similarCommands.length <= 1) || (bestMatch.rating > 0.7 && similarCommands.length > 1))) {
 			const commandToAsk = availableCommands[bestMatchIndex];
 			const runCommand = await this.askRunSimilarCommand(command, commandToAsk);
 			if (runCommand) {
