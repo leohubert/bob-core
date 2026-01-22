@@ -1,5 +1,5 @@
 import { Logger } from '@/src/Logger.js';
-import { BobError } from '@/src/errors/index.js';
+import { isBobError } from '@/src/lib/helpers.js';
 
 export class ExceptionHandler {
 	private readonly logger: Logger;
@@ -8,8 +8,8 @@ export class ExceptionHandler {
 		this.logger = logger;
 	}
 
-	handle(err: Error | BobError) {
-		if (err instanceof BobError) {
+	handle(err: Error) {
+		if (isBobError(err)) {
 			err.pretty(this.logger);
 
 			return -1;

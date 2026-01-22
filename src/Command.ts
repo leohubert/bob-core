@@ -37,6 +37,7 @@ export class Command<
 	Options extends OptionsSchema = OptionsSchema,
 	Arguments extends ArgumentsSchema = ArgumentsSchema,
 > {
+	$type = 'BobCommand' as const;
 	public readonly _command: string;
 	public readonly description: string;
 	public readonly group?: string;

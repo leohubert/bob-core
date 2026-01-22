@@ -7,6 +7,7 @@ import { CommandIO, CommandIOOptions } from '@/src/CommandIO.js';
 import { Logger } from '@/src/Logger.js';
 import { StringSimilarity } from '@/src/StringSimilarity.js';
 import { CommandNotFoundError } from '@/src/errors/CommandNotFoundError.js';
+import { isBobCommand } from '@/src/lib/helpers.js';
 import { ArgumentsSchema, ContextDefinition, OptionsSchema } from '@/src/lib/types.js';
 
 export type CommandResolver = (path: string) => Promise<Command | null>;
@@ -59,7 +60,7 @@ export class CommandRegistry {
 
 		if (typeof defaultImport === 'function') {
 			return new (defaultImport as new () => Command)();
-		} else if (defaultImport instanceof Command) {
+		} else if (isBobCommand(defaultImport)) {
 			return defaultImport;
 		}
 
@@ -96,7 +97,7 @@ export class CommandRegistry {
 			try {
 				const command = await this.commandResolver(file);
 
-				if (command instanceof Command) {
+				if (isBobCommand(command)) {
 					this.registerCommand(command);
 				}
 			} catch (e) {
