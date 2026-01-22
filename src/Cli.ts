@@ -2,6 +2,7 @@ import { Command } from '@/src/Command.js';
 import { CommandRegistry, CommandRegistryOptions, CommandResolver, FileImporter } from '@/src/CommandRegistry.js';
 import { ExceptionHandler } from '@/src/ExceptionHandler.js';
 import { Logger } from '@/src/Logger.js';
+import CompletionCommand, { CompletionCommandOptions } from '@/src/commands/CompletionCommand.js';
 import HelpCommand, { HelpCommandOptions } from '@/src/commands/HelpCommand.js';
 import { ContextDefinition, OptionsSchema } from '@/src/lib/types.js';
 
@@ -10,6 +11,7 @@ export type CliOptions<C extends ContextDefinition = ContextDefinition> = {
 	name?: string;
 	version?: string;
 	logger?: Logger;
+	cliPath?: string;
 };
 
 export class Cli<C extends ContextDefinition = ContextDefinition> {
@@ -20,6 +22,7 @@ export class Cli<C extends ContextDefinition = ContextDefinition> {
 	private readonly exceptionHandler: ExceptionHandler;
 
 	private readonly helpCommand: Command;
+	private readonly completionCommand?: Command;
 
 	protected newCommandRegistry(opts: CommandRegistryOptions) {
 		return new CommandRegistry(opts);
@@ -27,6 +30,10 @@ export class Cli<C extends ContextDefinition = ContextDefinition> {
 
 	protected newHelpCommand(opts: HelpCommandOptions) {
 		return new HelpCommand(opts);
+	}
+
+	protected newCompletionCommand(opts: CompletionCommandOptions) {
+		return new CompletionCommand(opts);
 	}
 
 	protected newExceptionHandler(opts: { logger: Logger }) {
@@ -47,6 +54,16 @@ export class Cli<C extends ContextDefinition = ContextDefinition> {
 			cliVersion: opts.version,
 			commandRegistry: this.commandRegistry,
 		});
+
+		// Register CompletionCommand if CLI name and path are provided
+		if (opts.name && opts.cliPath) {
+			this.completionCommand = this.newCompletionCommand({
+				commandRegistry: this.commandRegistry,
+				cliName: opts.name,
+				cliPath: opts.cliPath,
+			});
+			this.commandRegistry.registerCommand(this.completionCommand);
+		}
 	}
 
 	withCommandResolver(resolver: CommandResolver) {

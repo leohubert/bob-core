@@ -12,3 +12,4 @@ export * from './lib/types.js';
 export * from './errors/index.js';
 export * from './options/index.js';
 export * from './contracts/index.js';
+export * from './completion/types.js';
