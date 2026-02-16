@@ -6,6 +6,7 @@ import { BadCommandOption } from '@/src/errors/BadCommandOption.js';
 import { InvalidOption } from '@/src/errors/InvalidOption.js';
 import { MissingRequiredArgumentValue } from '@/src/errors/MissingRequiredArgumentValue.js';
 import { MissingRequiredOptionValue } from '@/src/errors/MissingRequiredOptionValue.js';
+import { TooManyArguments } from '@/src/errors/TooManyArguments.js';
 import { TestLogger, newTestLogger } from '@/src/fixtures.test.js';
 
 describe('CommandParser', () => {
@@ -383,6 +384,21 @@ describe('CommandParser', () => {
 
 			expect(() => parser.init(['--unknown'])).toThrow(InvalidOption);
 		});
+
+		it('should not throw on unknown options when allowUnknownOptions is set', () => {
+			const parser = new CommandParser({
+				io,
+				options: {
+					verbose: 'boolean',
+				},
+				arguments: {},
+			}).allowUnknownOptions();
+
+			const result = parser.init(['--verbose', '--unknown', 'value']);
+
+			expect(result.options.verbose).toBe(true);
+			expect(result.options).not.toHaveProperty('unknown');
+		});
 	});
 
 	describe('Accessor methods', () => {
@@ -652,6 +668,72 @@ describe('CommandParser', () => {
 			expect(result.arguments.file).toBe('test.txt');
 			expect(result.arguments.lines).toBe(100);
 			expect(result.options.verbose).toBe(true);
+		});
+	});
+
+	describe('Strict mode', () => {
+		it('should throw TooManyArguments when extra positional args are provided', () => {
+			const parser = new CommandParser({
+				io,
+				options: {},
+				arguments: { file: 'string' },
+			}).strictMode();
+
+			expect(() => parser.init(['test.txt', 'extra1', 'extra2'])).toThrow(TooManyArguments);
+		});
+
+		it('should pass when exact number of arguments are provided', () => {
+			const parser = new CommandParser({
+				io,
+				options: {},
+				arguments: { file: 'string', count: 'number' },
+			}).strictMode();
+
+			const result = parser.init(['test.txt', '42']);
+
+			expect(result.arguments.file).toBe('test.txt');
+			expect(result.arguments.count).toBe(42);
+		});
+
+		it('should pass when fewer arguments are provided (missing args handled by validation)', () => {
+			const parser = new CommandParser({
+				io,
+				options: {},
+				arguments: { file: 'string', count: 'number' },
+			}).strictMode();
+
+			const result = parser.init(['test.txt']);
+
+			expect(result.arguments.file).toBe('test.txt');
+			expect(result.arguments.count).toBeNull();
+		});
+
+		it('should not reject extra args when strict mode is off', () => {
+			const parser = new CommandParser({
+				io,
+				options: {},
+				arguments: { file: 'string' },
+			});
+
+			const result = parser.init(['test.txt', 'extra1', 'extra2']);
+
+			expect(result.arguments.file).toBe('test.txt');
+		});
+
+		it('should not reject extra args consumed by variadic arguments', () => {
+			const parser = new CommandParser({
+				io,
+				options: {},
+				arguments: {
+					command: 'string',
+					args: { type: ['string'], variadic: true },
+				},
+			}).strictMode();
+
+			const result = parser.init(['run', 'arg1', 'arg2']);
+
+			expect(result.arguments.command).toBe('run');
+			expect(result.arguments.args).toEqual(['arg1', 'arg2']);
 		});
 	});
 

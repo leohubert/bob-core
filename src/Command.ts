@@ -52,6 +52,10 @@ export class Command<
 	protected parser!: CommandParser<Options, Arguments>;
 
 	protected disablePromptingFlag = false;
+	protected allowUnknownOptionsFlag = false;
+	protected hiddenFlag = false;
+	protected disableDefaultOptionsFlag = false;
+	protected strictModeFlag = false;
 
 	protected preHandle?(): Promise<void | number>;
 	protected _preHandler?: CommandHandler<C, Options, Arguments>;
@@ -65,6 +69,9 @@ export class Command<
 	};
 
 	protected defaultOptions(): CommandOption<Command>[] {
+		if (this.disableDefaultOptionsFlag) {
+			return [];
+		}
 		return [new HelpOption()];
 	}
 
@@ -108,6 +115,30 @@ export class Command<
 
 	disablePrompting() {
 		this.disablePromptingFlag = true;
+		return this;
+	}
+
+	allowUnknownOptions() {
+		this.allowUnknownOptionsFlag = true;
+		return this;
+	}
+
+	hidden() {
+		this.hiddenFlag = true;
+		return this;
+	}
+
+	get isHidden(): boolean {
+		return this.hiddenFlag;
+	}
+
+	disableDefaultOptions() {
+		this.disableDefaultOptionsFlag = true;
+		return this;
+	}
+
+	strictMode() {
+		this.strictModeFlag = true;
 		return this;
 	}
 
@@ -170,6 +201,13 @@ export class Command<
 				options: options,
 				arguments: this.tmp?.arguments ?? ({} as Arguments),
 			});
+			if (this.allowUnknownOptionsFlag) {
+				this.parser.allowUnknownOptions();
+			}
+			if (this.strictModeFlag) {
+				this.parser.strictMode();
+			}
+
 			handlerOptions = this.parser.init(opts.args);
 
 			for (const option of this.defaultOptions()) {

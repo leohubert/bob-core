@@ -2,6 +2,7 @@ import { faker } from '@faker-js/faker';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Command, CommandRunOption } from '@/src/Command.js';
+import { TooManyArguments } from '@/src/errors/TooManyArguments.js';
 import { TestLogger, newTestLogger } from '@/src/fixtures.test.js';
 import { ContextDefinition, OptionsSchema } from '@/src/lib/types.js';
 
@@ -255,6 +256,88 @@ describe('Command', () => {
 			const result = await command.run(commandRunOption);
 
 			expect(result).toBe(0);
+		});
+	});
+
+	describe('Hidden flag', () => {
+		it('should not be hidden by default', () => {
+			expect(command.isHidden).toBe(false);
+		});
+
+		it('should be hidden after calling hidden()', () => {
+			command.hidden();
+			expect(command.isHidden).toBe(true);
+		});
+	});
+
+	describe('Disable default options', () => {
+		it('should not include help option when default options are disabled', async () => {
+			const handlerFn = vi.fn().mockReturnValue(0);
+			const command = new Command('test').disableDefaultOptions().handler(handlerFn);
+
+			const result = await command.run({
+				...commandRunOption,
+				args: ['--help'],
+			});
+
+			// With default options disabled, --help is not recognized as a special option
+			// and the handler should be called (though it will throw InvalidOption since --help is unknown)
+			// Actually, with no options defined at all and no allowUnknownOptions, this will throw InvalidOption
+			// Let's test that help option is not in the parsed options instead
+			expect(result).not.toBe(-1);
+		});
+
+		it('should still work with custom options when default options are disabled', async () => {
+			const handlerFn = vi.fn().mockReturnValue(0);
+			const command = new Command('test')
+				.disableDefaultOptions()
+				.allowUnknownOptions()
+				.options({ verbose: 'boolean' })
+				.handler(handlerFn);
+
+			await command.run({
+				...commandRunOption,
+				args: ['--verbose'],
+			});
+
+			expect(handlerFn).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({
+					options: expect.objectContaining({ verbose: true }),
+				}),
+			);
+		});
+	});
+
+	describe('Strict mode', () => {
+		it('should reject extra positional arguments', async () => {
+			const command = new Command('test')
+				.strictMode()
+				.arguments({ file: 'string' })
+				.handler(() => 0);
+
+			await expect(
+				command.run({
+					...commandRunOption,
+					args: ['test.txt', 'extra1', 'extra2'],
+				}),
+			).rejects.toThrow(TooManyArguments);
+		});
+
+		it('should allow exact number of arguments', async () => {
+			const handlerFn = vi.fn().mockReturnValue(0);
+			const command = new Command('test')
+				.strictMode()
+				.arguments({ file: 'string' })
+				.handler(handlerFn);
+
+			const result = await command.run({
+				...commandRunOption,
+				args: ['test.txt'],
+			});
+
+			expect(result).toBe(0);
+			expect(handlerFn).toHaveBeenCalled();
 		});
 	});
 

@@ -81,9 +81,13 @@ export class CommandRegistry {
 		command: Command<C, Opts, Args>,
 		force: boolean = false,
 	) {
+		if (!isBobCommand(command)) {
+			throw new Error('Invalid command, it must extend the Command class.');
+		}
+
 		const commandName = command.command;
 		if (!commandName) {
-			throw new Error('Command signature is invalid, it must have a command name.');
+			throw new Error('Cannot register a command with no name.');
 		}
 
 		if (!force && this.commands[commandName]) {

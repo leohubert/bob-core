@@ -18,7 +18,7 @@ export default class HelpCommand extends Command {
 	}
 
 	async handle(): Promise<void> {
-		const commands = this.opts.commandRegistry.getCommands();
+		const commands = this.opts.commandRegistry.getCommands().filter(command => !command.isHidden);
 
 		const cliName = this.opts.cliName ?? 'Bob CLI';
 		const version = this.opts.cliVersion ?? '0.0.0';

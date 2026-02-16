@@ -5,7 +5,7 @@ import { CommandIO } from '@/src/CommandIO.js';
 import { InvalidOption } from '@/src/errors/InvalidOption.js';
 import { MissingRequiredArgumentValue } from '@/src/errors/MissingRequiredArgumentValue.js';
 import { MissingRequiredOptionValue } from '@/src/errors/MissingRequiredOptionValue.js';
-import { BadCommandOption } from '@/src/errors/index.js';
+import { BadCommandOption, TooManyArguments } from '@/src/errors/index.js';
 import { OptionDetails, getOptionDetails } from '@/src/lib/optionHelpers.js';
 import { ArgumentsObject, OptionDefinition, OptionReturnType, OptionsObject, OptionsSchema } from '@/src/lib/types.js';
 import { convertValue } from '@/src/lib/valueConverter.js';
@@ -24,6 +24,8 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 	protected io: CommandIO;
 
 	protected shouldPromptForMissingOptions = true;
+	protected shouldValidateUnknownOptions = true;
+	protected shouldRejectExtraArguments = false;
 
 	constructor(opts: { io: CommandIO; options: Options; arguments: Arguments }) {
 		this.options = opts.options;
@@ -46,7 +48,9 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 	} {
 		const { _: positionalArgs, ...optionValues } = minimist(args);
 
-		this.validateUnknownOptions(optionValues);
+		if (this.shouldValidateUnknownOptions) {
+			this.validateUnknownOptions(optionValues);
+		}
 		this.parsedOptions = this.handleOptions(optionValues);
 		this.parsedArguments = this.handleArguments(positionalArgs);
 
@@ -218,16 +222,23 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 		const parsedArgs = {} as ArgumentsObject<Arguments>;
 		const remainingArgs = [...positionalArgs];
 
+		const expectedCount = Object.keys(this.arguments).length;
+
 		for (const key in this.arguments) {
 			const argDefinition = getOptionDetails(this.arguments[key]);
 
 			// Handle variadic arguments (consumes all remaining values)
 			if (argDefinition.variadic) {
 				parsedArgs[key] = this.handleVariadicArgument(key, argDefinition, remainingArgs) as OptionReturnType<Arguments[typeof key]>;
+				remainingArgs.length = 0;
 				continue;
 			}
 
 			parsedArgs[key] = this.resolveArgumentValue(key, argDefinition, remainingArgs.shift()) as OptionReturnType<Arguments[typeof key]>;
+		}
+
+		if (this.shouldRejectExtraArguments && remainingArgs.length > 0) {
+			throw new TooManyArguments(expectedCount, expectedCount + remainingArgs.length);
 		}
 
 		return parsedArgs;
@@ -316,6 +327,16 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 	 */
 	disablePrompting() {
 		this.shouldPromptForMissingOptions = false;
+		return this;
+	}
+
+	allowUnknownOptions() {
+		this.shouldValidateUnknownOptions = false;
+		return this;
+	}
+
+	strictMode() {
+		this.shouldRejectExtraArguments = true;
 		return this;
 	}
 
