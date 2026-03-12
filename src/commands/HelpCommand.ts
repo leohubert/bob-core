@@ -19,7 +19,7 @@ export default class HelpCommand extends Command {
 	}
 
 	async handle(): Promise<void> {
-		const commands = this.opts.commandRegistry.getCommands().filter(command => !command.isHidden);
+		const commands = this.opts.commandRegistry.getCommands().filter(Cmd => !Cmd.hidden);
 
 		const cliName = this.opts.cliName ?? 'Bob CLI';
 		const version = this.opts.cliVersion ?? '0.0.0';
@@ -34,17 +34,17 @@ ${chalk.yellow('Usage')}:
 ${chalk.yellow('Available commands')}:
 `);
 
-		const maxCommandLength = Math.max(...commands.map(command => command.command.length)) ?? 0;
-		const commandByGroups: { [key: string]: Array<Command> } = {};
+		const maxCommandLength = Math.max(...commands.map(Cmd => Cmd.command.length)) ?? 0;
+		const commandByGroups: { [key: string]: Array<typeof Command> } = {};
 
-		for (const command of commands) {
-			const commandGroup = command.group ?? command.command.split(':')[0];
+		for (const Cmd of commands) {
+			const commandGroup = Cmd.group ?? Cmd.command.split(':')[0];
 
 			if (!commandByGroups[commandGroup]) {
 				commandByGroups[commandGroup] = [];
 			}
 
-			commandByGroups[commandGroup].push(command);
+			commandByGroups[commandGroup].push(Cmd);
 		}
 
 		const sortedCommandsByGroups = Object.entries(commandByGroups)
@@ -60,12 +60,12 @@ ${chalk.yellow('Available commands')}:
 
 			const sortedGroupCommands = groupCommands.sort((a, b) => a.command.toLowerCase().localeCompare(b.command.toLowerCase()));
 
-			for (const command of sortedGroupCommands) {
-				let spaces = generateSpace(maxCommandLength - command.command.length);
+			for (const Cmd of sortedGroupCommands) {
+				let spaces = generateSpace(maxCommandLength - Cmd.command.length);
 				if (isGrouped) {
 					spaces = spaces.slice(2);
 				}
-				this.io.log(`${isGrouped ? '  ' : ''}${chalk.green(command.command)} ${spaces} ${command.description}`);
+				this.io.log(`${isGrouped ? '  ' : ''}${chalk.green(Cmd.command)} ${spaces} ${Cmd.description}`);
 			}
 		}
 	}

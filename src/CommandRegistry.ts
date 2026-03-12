@@ -7,10 +7,10 @@ import { CommandIO, CommandIOOptions } from '@/src/CommandIO.js';
 import { Logger } from '@/src/Logger.js';
 import { StringSimilarity } from '@/src/StringSimilarity.js';
 import { CommandNotFoundError } from '@/src/errors/CommandNotFoundError.js';
-import { isBobCommand } from '@/src/lib/helpers.js';
+import { isBobCommand, isBobCommandClass } from '@/src/lib/helpers.js';
 import { ContextDefinition } from '@/src/lib/types.js';
 
-export type CommandResolver = (path: string) => Promise<Command | null>;
+export type CommandResolver = (path: string) => Promise<typeof Command | null>;
 export type FileImporter = (filePath: string) => Promise<unknown>;
 
 export type CommandRegistryOptions = {
@@ -19,7 +19,7 @@ export type CommandRegistryOptions = {
 };
 
 export class CommandRegistry {
-	private readonly commands: Record<string, Command> = {};
+	private readonly commands: Record<string, typeof Command> = {};
 	protected readonly io!: CommandIO;
 	protected readonly logger: Logger;
 	private readonly stringSimilarity: StringSimilarity;
@@ -40,7 +40,7 @@ export class CommandRegistry {
 		return Object.keys(this.commands);
 	}
 
-	getCommands(): Array<Command> {
+	getCommands(): Array<typeof Command> {
 		return Object.values(this.commands);
 	}
 
@@ -58,10 +58,8 @@ export class CommandRegistry {
 			defaultImport = (defaultImport as { default: any }).default;
 		}
 
-		if (typeof defaultImport === 'function') {
-			return new (defaultImport as new () => Command)();
-		} else if (isBobCommand(defaultImport)) {
-			return defaultImport;
+		if (typeof defaultImport === 'function' && isBobCommandClass(defaultImport)) {
+			return defaultImport as typeof Command;
 		}
 
 		return null;
@@ -77,14 +75,14 @@ export class CommandRegistry {
 		return this;
 	}
 
-	registerCommand(command: Command, force: boolean = false) {
-		if (!isBobCommand(command)) {
+	registerCommand(command: typeof Command, force: boolean = false) {
+		if (!isBobCommandClass(command)) {
 			throw new Error('Invalid command, it must extend the Command class.');
 		}
 
 		const commandName = command.command;
 		if (!commandName) {
-			throw new Error(`Cannot register a command with no name. ${command.constructor.name} `);
+			throw new Error(`Cannot register a command with no name. ${command.name} `);
 		}
 
 		if (!force && this.commands[commandName]) {
@@ -98,7 +96,7 @@ export class CommandRegistry {
 			try {
 				const command = await this.commandResolver(file);
 
-				if (isBobCommand(command)) {
+				if (isBobCommandClass(command)) {
 					this.registerCommand(command);
 				}
 			} catch (e) {
@@ -109,20 +107,31 @@ export class CommandRegistry {
 		}
 	}
 
-	async runCommand(ctx: ContextDefinition, command: string | Command, ...args: string[]): Promise<number> {
-		const commandToRun: Command = typeof command === 'string' ? this.commands[command] : command;
-		const commandSignature = typeof command === 'string' ? command : commandToRun.command;
+	async runCommand(ctx: ContextDefinition, command: string | typeof Command | Command, ...args: string[]): Promise<number> {
+		let commandInstance: Command;
+		let commandSignature: string;
 
-		if (!commandToRun) {
-			const suggestedCommand = await this.suggestCommand(commandSignature);
-			if (suggestedCommand) {
-				return await this.runCommand(ctx, suggestedCommand, ...args);
+		if (typeof command === 'string') {
+			const CommandClass = this.commands[command];
+			if (!CommandClass) {
+				const suggestedCommand = await this.suggestCommand(command);
+				if (suggestedCommand) {
+					return await this.runCommand(ctx, suggestedCommand, ...args);
+				}
+				return 1;
 			}
-			return 1;
+			commandSignature = command;
+			commandInstance = new (CommandClass as unknown as new () => Command)();
+		} else if (isBobCommandClass(command)) {
+			commandSignature = command.command;
+			commandInstance = new (command as unknown as new () => Command)();
+		} else {
+			commandSignature = (command.constructor as typeof Command).command;
+			commandInstance = command;
 		}
 
 		return (
-			(await commandToRun.run({
+			(await commandInstance.run({
 				ctx,
 				logger: this.logger,
 				args,

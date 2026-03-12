@@ -8,3 +8,7 @@ export function isBobError(err: Error): err is BobError {
 export function isBobCommand(obj: unknown): obj is Command {
 	return typeof obj === 'object' && obj !== null && (obj instanceof Command || ('$type' in obj && obj.$type === 'BobCommand'));
 }
+
+export function isBobCommandClass(cls: unknown): cls is typeof Command {
+	return typeof cls === 'function' && (cls as any).prototype instanceof Command;
+}

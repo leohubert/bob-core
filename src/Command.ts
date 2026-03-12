@@ -34,23 +34,11 @@ export abstract class Command<C extends ContextDefinition = ContextDefinition> {
 	static examples: CommandExample[] = [];
 	static hidden: boolean = false;
 
-	// Instance properties initialized from static
-	public description: string = (this.constructor as typeof Command).description;
-	public group?: string = (this.constructor as typeof Command).group;
-
 	// Static configuration options
 	static disableDefaultOptions: boolean = false;
 	static disablePrompting: boolean = false;
 	static allowUnknownOptions: boolean = false;
 	static strictMode: boolean = false;
-
-	get command(): string {
-		return (this.constructor as typeof Command).command;
-	}
-
-	get isHidden(): boolean {
-		return (this.constructor as typeof Command).hidden;
-	}
 
 	protected ctx!: C;
 	protected io!: CommandIO;
@@ -63,11 +51,17 @@ export abstract class Command<C extends ContextDefinition = ContextDefinition> {
 		help: HelpCommandFlag,
 	};
 
-	protected newCommandParser(opts: { cmd: typeof Command; ctx: ContextDefinition; io: CommandIO }): CommandParser<FlagsSchema, FlagsSchema> {
+	protected newCommandParser(opts: {
+		flags: FlagsSchema;
+		args: ArgumentsSchema;
+		ctx: ContextDefinition;
+		io: CommandIO;
+	}): CommandParser<FlagsSchema, FlagsSchema> {
 		return new CommandParser({
-			cmd: opts.cmd,
-			ctx: opts.ctx,
 			io: opts.io,
+			ctx: opts.ctx,
+			flags: opts.flags,
+			args: opts.args,
 		});
 	}
 
@@ -85,9 +79,10 @@ export abstract class Command<C extends ContextDefinition = ContextDefinition> {
 
 		if (!('flags' in runOpts)) {
 			this.parser = this.newCommandParser({
-				cmd: ctor,
 				ctx: this.ctx,
 				io: this.io,
+				flags: ctor.disableDefaultOptions ? ctor.flags : { ...ctor.baseFlags, ...ctor.flags },
+				args: ctor.args,
 			});
 
 			if (ctor.allowUnknownOptions) {
@@ -100,11 +95,11 @@ export abstract class Command<C extends ContextDefinition = ContextDefinition> {
 			const parsed = await this.parser.init(runOpts.args);
 
 			for (const flag in parsed.flags) {
-				const value = parsed.flags[flag];
+				const value: any = parsed.flags[flag];
 				const definition = ctor.flags[flag] || ctor.baseFlags[flag];
 
-				if (definition && definition.handlers) {
-					const res = definition.handlers(value, runOpts.ctx, ctor);
+				if (definition && definition.handler) {
+					const res = definition.handler(value, runOpts.ctx, ctor);
 					if (res.shouldStop) {
 						return -1;
 					}

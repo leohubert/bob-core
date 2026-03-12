@@ -7,8 +7,8 @@ export type BaseFlagConfig<T> = {
 	required?: boolean;
 	secret?: boolean;
 	default?: T | null;
-	parse: (input: any, ctx: ContextDefinition, cmd: typeof Command) => T;
-	handlers?(value: T, ctx: ContextDefinition, cmd: typeof Command): { shouldStop: boolean };
+	parse: (input: any, ctx: ContextDefinition) => T;
+	handler?(value: T, ctx: ContextDefinition, cmd: typeof Command): { shouldStop: boolean };
 };
 
 // === Per-type definitions (discriminated union members) ===

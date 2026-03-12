@@ -49,7 +49,7 @@ async function main() {
 		version: '0.0.1',
 	});
 
-	await cli.withCommands(path.resolve(import.meta.dirname, './commands'), TestTestCommand, new TestOtherTestCommand());
+	await cli.withCommands(path.resolve(import.meta.dirname, './commands'), TestTestCommand, TestOtherTestCommand);
 
 	const command = process.argv.at(2);
 

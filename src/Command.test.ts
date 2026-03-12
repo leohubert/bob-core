@@ -31,8 +31,8 @@ describe('Command', () => {
 
 		const command = new TestCmd();
 		expect(command).toBeInstanceOf(Command);
-		expect(command).toHaveProperty('command', 'test-command');
-		expect(command).toHaveProperty('description', 'A test command');
+		expect(TestCmd.command).toBe('test-command');
+		expect(TestCmd.description).toBe('A test command');
 	});
 
 	describe('Running commands', () => {
@@ -307,7 +307,7 @@ describe('Command', () => {
 					return 0;
 				}
 			}
-			expect(new TestCmd().isHidden).toBe(false);
+			expect(TestCmd.hidden).toBe(false);
 		});
 
 		it('should be hidden when static hidden is true', () => {
@@ -318,7 +318,7 @@ describe('Command', () => {
 					return 0;
 				}
 			}
-			expect(new TestCmd().isHidden).toBe(true);
+			expect(TestCmd.hidden).toBe(true);
 		});
 	});
 

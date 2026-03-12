@@ -14,7 +14,7 @@ function getTypeDisplay(details: FlagDefinition): string {
 
 export const HelpCommandFlag = Flags.boolean({
 	alias: ['h'],
-	handlers: (value: boolean, ctx: ContextDefinition, cmd: typeof Command) => {
+	handler: (value: boolean, ctx: ContextDefinition, cmd: typeof Command) => {
 		if (!value) {
 			return { shouldStop: false };
 		}

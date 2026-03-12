@@ -50,43 +50,31 @@ describe('CommandRegistry', () => {
 
 	describe('Command registration', () => {
 		it('should register a command', () => {
-			const command = new (makeCommand('test-command'))();
-			registry.registerCommand(command);
+			registry.registerCommand(makeCommand('test-command'));
 
 			expect(registry.getAvailableCommands()).toContain('test-command');
 		});
 
 		it('should throw error when registering command without name', () => {
-			const command = new (makeCommand(''))();
-			expect(() => registry.registerCommand(command)).toThrow('Cannot register a command with no name');
+			expect(() => registry.registerCommand(makeCommand(''))).toThrow('Cannot register a command with no name');
 		});
 
 		it('should throw error when registering duplicate command', () => {
-			const command1 = new (makeCommand('test'))();
-			const command2 = new (makeCommand('test'))();
-
-			registry.registerCommand(command1);
-			expect(() => registry.registerCommand(command2)).toThrow('Command test already registered');
+			registry.registerCommand(makeCommand('test'));
+			expect(() => registry.registerCommand(makeCommand('test'))).toThrow('Command test already registered');
 		});
 
 		it('should allow duplicate registration with force flag', () => {
-			const command1 = new (makeCommand('test'))();
-			const command2 = new (makeCommand('test'))();
-
-			registry.registerCommand(command1);
-			registry.registerCommand(command2, true);
+			registry.registerCommand(makeCommand('test'));
+			registry.registerCommand(makeCommand('test'), true);
 
 			expect(registry.getAvailableCommands()).toContain('test');
 		});
 
 		it('should register multiple commands', () => {
-			const cmd1 = new (makeCommand('cmd1'))();
-			const cmd2 = new (makeCommand('cmd2'))();
-			const cmd3 = new (makeCommand('cmd3'))();
-
-			registry.registerCommand(cmd1);
-			registry.registerCommand(cmd2);
-			registry.registerCommand(cmd3);
+			registry.registerCommand(makeCommand('cmd1'));
+			registry.registerCommand(makeCommand('cmd2'));
+			registry.registerCommand(makeCommand('cmd3'));
 
 			expect(registry.getAvailableCommands()).toEqual(['cmd1', 'cmd2', 'cmd3']);
 		});
@@ -94,26 +82,23 @@ describe('CommandRegistry', () => {
 
 	describe('Command retrieval', () => {
 		it('should get all available command names', () => {
-			const cmd1 = new (makeCommand('cmd1'))();
-			const cmd2 = new (makeCommand('cmd2'))();
-
-			registry.registerCommand(cmd1);
-			registry.registerCommand(cmd2);
+			registry.registerCommand(makeCommand('cmd1'));
+			registry.registerCommand(makeCommand('cmd2'));
 
 			expect(registry.getAvailableCommands()).toEqual(['cmd1', 'cmd2']);
 		});
 
-		it('should get all command instances', () => {
-			const cmd1 = new (makeCommand('cmd1'))();
-			const cmd2 = new (makeCommand('cmd2'))();
+		it('should get all command classes', () => {
+			const Cmd1 = makeCommand('cmd1');
+			const Cmd2 = makeCommand('cmd2');
 
-			registry.registerCommand(cmd1);
-			registry.registerCommand(cmd2);
+			registry.registerCommand(Cmd1);
+			registry.registerCommand(Cmd2);
 
 			const commands = registry.getCommands();
 			expect(commands).toHaveLength(2);
-			expect(commands).toContain(cmd1);
-			expect(commands).toContain(cmd2);
+			expect(commands).toContain(Cmd1);
+			expect(commands).toContain(Cmd2);
 		});
 	});
 
@@ -128,7 +113,7 @@ describe('CommandRegistry', () => {
 				}
 			}
 
-			registry.registerCommand(new TestCmd());
+			registry.registerCommand(TestCmd);
 
 			const result = await registry.runCommand({}, 'test', 'arg1', 'arg2');
 
@@ -164,7 +149,7 @@ describe('CommandRegistry', () => {
 				}
 			}
 
-			registry.registerCommand(new TestCmd());
+			registry.registerCommand(TestCmd);
 			await registry.runCommand(ctx, 'test');
 
 			expect(handlerFn).toHaveBeenCalledWith(ctx, expect.any(Object));
@@ -181,7 +166,7 @@ describe('CommandRegistry', () => {
 				}
 			}
 
-			registry.registerCommand(new TestCmd());
+			registry.registerCommand(TestCmd);
 			await registry.runCommand({}, 'test', 'test.txt');
 
 			expect(handlerFn).toHaveBeenCalledWith(
@@ -201,7 +186,7 @@ describe('CommandRegistry', () => {
 
 	describe('Custom command resolver', () => {
 		it('should use custom resolver for loading commands', () => {
-			const customResolver = vi.fn().mockResolvedValue(new (makeCommand('custom'))());
+			const customResolver = vi.fn().mockResolvedValue(makeCommand('custom'));
 			registry.withCommandResolver(customResolver);
 
 			expect(customResolver).not.toHaveBeenCalled();

@@ -2,7 +2,6 @@ import chalk from 'chalk';
 import fs from 'fs';
 import minimist from 'minimist';
 
-import { Command } from '@/src/Command.js';
 import { CommandIO } from '@/src/CommandIO.js';
 import { InvalidOption } from '@/src/errors/InvalidOption.js';
 import { MissingRequiredArgumentValue } from '@/src/errors/MissingRequiredArgumentValue.js';
@@ -27,13 +26,10 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends Argument
 	protected shouldValidateUnknownFlags = true;
 	protected shouldRejectExtraArguments = false;
 
-	constructor(protected opts: { cmd: typeof Command; ctx: ContextDefinition; io: CommandIO }) {
+	constructor(protected opts: { flags: Flags; args: Arguments; ctx: ContextDefinition; io: CommandIO }) {
 		this.io = opts.io;
-		this.flags = {
-			...opts.cmd.baseFlags,
-			...opts.cmd.flags,
-		};
-		this.args = opts.cmd.args;
+		this.flags = opts.flags;
+		this.args = opts.args;
 	}
 
 	// === PUBLIC METHODS ===
@@ -334,7 +330,7 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends Argument
 
 	private async callParse(value: any, details: FlagDefinition, name: string): Promise<any> {
 		try {
-			return await details.parse(value, this.opts.ctx, this.opts.cmd);
+			return await details.parse(value, this.opts.ctx);
 		} catch (err) {
 			throw new BadCommandFlag({
 				flag: name,
