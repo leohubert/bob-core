@@ -3,15 +3,15 @@ import chalk from 'chalk';
 import { Logger } from '@/src/Logger.js';
 import { BobError } from '@/src/errors/BobError.js';
 
-export type OptionProps = {
-	option: string;
+export type FlagProps = {
+	flag: string;
 	value?: string;
 	reason?: string;
 };
 
-export class BadCommandOption extends BobError {
-	constructor(public readonly param: OptionProps) {
-		let message = `Option "${param.option}" value is invalid.`;
+export class BadCommandFlag extends BobError {
+	constructor(public readonly param: FlagProps) {
+		let message = `Flag "${param.flag}" value is invalid.`;
 		if (param.reason) {
 			message += ` Reason: ${param.reason}`;
 		} else {
@@ -21,7 +21,7 @@ export class BadCommandOption extends BobError {
 	}
 
 	pretty(logger: Logger): void {
-		logger.log(`  ${chalk.white.bgRed(' ERROR ')} Option ${chalk.bold.yellow(this.param.option)} value is invalid. `);
+		logger.log(`  ${chalk.white.bgRed(' ERROR ')} Flag ${chalk.bold.yellow(this.param.flag)} value is invalid. `);
 
 		if (this.param.value || this.param.reason) {
 			logger.log('');

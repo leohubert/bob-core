@@ -11,10 +11,11 @@ export type HelpCommandOptions = {
 };
 
 export default class HelpCommand extends Command {
+	static command = 'help';
+	static description = chalk.bold('Show help information about the CLI and its commands');
+
 	constructor(private opts: HelpCommandOptions) {
-		super('help', {
-			description: chalk.bold('Show help information about the CLI and its commands'),
-		});
+		super();
 	}
 
 	async handle(): Promise<void> {

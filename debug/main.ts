@@ -5,8 +5,8 @@ import { Cli } from '@/src/index.js';
 import { Command, CommandContext } from './command.js';
 
 class TestTestCommand extends Command {
-	signature = 'scout:sync-index-settings';
-	description = 'test test';
+	static command = 'scout:sync-index-settings';
+	static description = 'test test';
 
 	protected async handle(): Promise<number | void> {
 		const res = await this.ctx.bambooClient.getProjects();
@@ -16,8 +16,8 @@ class TestTestCommand extends Command {
 }
 
 class TestOtherTestCommand extends Command {
-	signature = 'scout:test-index-settings';
-	description = 'other test';
+	static command = 'scout:test-index-settings';
+	static description = 'other test';
 
 	protected handle(): Promise<number | void> {
 		throw new Error('Method not implemented.');

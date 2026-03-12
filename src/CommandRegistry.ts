@@ -8,7 +8,7 @@ import { Logger } from '@/src/Logger.js';
 import { StringSimilarity } from '@/src/StringSimilarity.js';
 import { CommandNotFoundError } from '@/src/errors/CommandNotFoundError.js';
 import { isBobCommand } from '@/src/lib/helpers.js';
-import { ArgumentsSchema, ContextDefinition, OptionsSchema } from '@/src/lib/types.js';
+import { ContextDefinition } from '@/src/lib/types.js';
 
 export type CommandResolver = (path: string) => Promise<Command | null>;
 export type FileImporter = (filePath: string) => Promise<unknown>;
@@ -19,7 +19,7 @@ export type CommandRegistryOptions = {
 };
 
 export class CommandRegistry {
-	private readonly commands: Record<string, Command<ContextDefinition, OptionsSchema, OptionsSchema>> = {};
+	private readonly commands: Record<string, Command> = {};
 	protected readonly io!: CommandIO;
 	protected readonly logger: Logger;
 	private readonly stringSimilarity: StringSimilarity;
@@ -77,23 +77,20 @@ export class CommandRegistry {
 		return this;
 	}
 
-	registerCommand<C extends ContextDefinition = ContextDefinition, Opts extends OptionsSchema = OptionsSchema, Args extends ArgumentsSchema = ArgumentsSchema>(
-		command: Command<C, Opts, Args>,
-		force: boolean = false,
-	) {
+	registerCommand(command: Command, force: boolean = false) {
 		if (!isBobCommand(command)) {
 			throw new Error('Invalid command, it must extend the Command class.');
 		}
 
 		const commandName = command.command;
 		if (!commandName) {
-			throw new Error('Cannot register a command with no name.');
+			throw new Error(`Cannot register a command with no name. ${command.constructor.name} `);
 		}
 
 		if (!force && this.commands[commandName]) {
 			throw new Error(`Command ${commandName} already registered.`);
 		}
-		this.commands[commandName] = command as Command<ContextDefinition, OptionsSchema, OptionsSchema>;
+		this.commands[commandName] = command;
 	}
 
 	async loadCommandsPath(commandsPath: string) {

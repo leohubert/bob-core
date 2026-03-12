@@ -1,55 +1,47 @@
 import { Command } from '@/src/Command.js';
+import { Args, Flags } from '@/src/Flags.js';
+import { ArgumentsSchema, FlagsSchema, Parsed } from '@/src/lib/types.js';
 
-export default new Command('test-new', {
-	description: 'A new test command that is not implemented yet',
-	group: 'testing',
-	arguments: {
-		name: {
-			type: 'string',
+export default class NewTestCommand extends Command {
+	static command = 'new-test-command';
+	static description = 'A new test command that is not implemented yet';
+	static group = 'testing';
+
+	static args = {
+		name: Args.string({
 			required: true,
 			description: 'Name argument',
-		},
-		age: {
-			type: 'number',
+		}),
+		age: Args.number({
 			required: true,
 			description: 'Age argument',
-		},
-		tests: {
-			type: 'string',
+			max: 55,
+		}),
+		tests: Args.string({
 			secret: true,
 			required: true,
 			description: 'Age argument',
-		},
-		tags: {
-			type: ['number'],
+		}),
+		tags: Args.number({
 			required: true,
-			variadic: true,
+			multiple: true,
 			description: 'Tags',
-		},
-	},
-	options: {
-		force: 'boolean',
-		test: {
-			type: 'string',
+		}),
+	} satisfies ArgumentsSchema;
+
+	static flags = {
+		force: Flags.boolean(),
+		test: Flags.string({
 			description: 'A test option',
 			required: true,
-		},
-	},
-})
-	.options({
-		anotherTest: {
-			type: 'boolean',
+		}),
+		anotherTest: Flags.boolean({
 			alias: 'f',
-		},
-	})
-	.handler((ctx, opts) => {
-		const _test = opts.options.anotherTest || opts.options.force;
-		// Note: Functional handlers don't have access to this.io
-		// For logging in handlers, you can either:
-		// 1. Pass io/logger through the context
-		// 2. Use console.log directly (not recommended for library code)
-		console.log('test command', {
-			options: opts.options,
-			arguments: opts.arguments,
-		});
-	});
+		}),
+	} satisfies FlagsSchema;
+
+	async handle(ctx: any, { flags, args }: Parsed<typeof NewTestCommand>) {
+		const _test = flags.anotherTest || flags.force;
+		console.log('test command', { flags, args });
+	}
+}

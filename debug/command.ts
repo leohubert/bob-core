@@ -1,6 +1,6 @@
-import { CommandWithSignature as BaseCommand, CommandOption } from '@/src/index.js';
+import { Command as BaseCommand } from '@/src/index.js';
 
-import { LoggerVerboseOption } from './options/LoggerVerboseOption.js';
+import { LoggerVerboseFlag } from './options/LoggerVerboseOption.js';
 
 export type CommandContext = {
 	bambooClient: {
@@ -12,7 +12,8 @@ export type CommandContext = {
 };
 
 export abstract class Command extends BaseCommand<CommandContext> {
-	protected defaultOptions(): CommandOption<Command>[] {
-		return [...super.defaultOptions(), new LoggerVerboseOption()];
-	}
+	static baseFlags = {
+		...BaseCommand.baseFlags,
+		verbose: LoggerVerboseFlag,
+	};
 }
