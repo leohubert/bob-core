@@ -23,7 +23,7 @@ export type CommandRunOption<C = ContextDefinition> = {
 );
 
 export abstract class Command<C extends ContextDefinition = ContextDefinition> {
-	$type = 'BobCommand' as const;
+	static $type = 'BobCommand' as const;
 
 	// Static metadata — override in subclasses
 	static command: string = '';
