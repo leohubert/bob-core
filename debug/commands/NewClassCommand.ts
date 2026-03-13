@@ -1,36 +1,22 @@
-import { Command, CommandHandlerOptions } from '@/src/Command.js';
-import { OptionsSchema } from '@/src/lib/types.js';
-
-const CommandOptions = {
-	test: 'string',
-} satisfies OptionsSchema;
-type CommandOptions = typeof CommandOptions;
-
-const CommandArguments = {
-	test: 'number',
-} satisfies OptionsSchema;
-type CommandArguments = typeof CommandArguments;
+import { Command } from '@/src/Command.js';
+import { Flags } from '@/src/Flags.js';
+import { FlagsSchema, Parsed } from '@/src/lib/types.js';
 
 type Context = {
 	userId: string;
 };
 
-export default class TestCommand extends Command<Context, CommandOptions, CommandArguments> {
-	constructor() {
-		super('test-class-new', {
-			description: 'A test command that is not implemented yet',
-			options: CommandOptions,
-			arguments: CommandArguments,
-		});
-	}
+export default class TestCommand extends Command<Context> {
+	static command = 'test-class-new';
+	static description = 'A test command that is not implemented yet';
 
-	handle(ctx: Context, opts: CommandHandlerOptions<CommandOptions, CommandArguments>): void {
-		const _test = opts.options.test;
-		const _test2 = this.parser.option('test');
+	static flags = { test: Flags.string() } satisfies FlagsSchema;
+	static args = { test: Flags.number() } satisfies FlagsSchema;
 
-		console.log('Test command executed', {
-			options: opts.options,
-			arguments: opts.arguments,
-		});
+	async handle(ctx: Context, { flags, args }: Parsed<typeof TestCommand>) {
+		const _test = flags.test;
+		const _test2 = this.parser.flag('test');
+
+		console.log('Test command executed', { flags, args });
 	}
 }

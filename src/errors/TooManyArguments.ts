@@ -12,8 +12,10 @@ export class TooManyArguments extends BobError {
 	}
 
 	pretty(logger: Logger): void {
+		logger.log('');
 		logger.log(
-			`${chalk.white.bgRed(' ERROR ')} Too many arguments provided. Expected ${chalk.bold.yellow(String(this.expected))}, got ${chalk.bold.yellow(String(this.received))}.`,
+			`  ${chalk.bold.white.bgRed(' ERROR ')} Too many arguments. Expected ${chalk.bold.yellow(String(this.expected))}, got ${chalk.bold.yellow(String(this.received))}.`,
 		);
+		logger.log('');
 	}
 }

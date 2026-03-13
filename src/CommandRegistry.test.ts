@@ -2,7 +2,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Command } from '@/src/Command.js';
 import { CommandRegistry } from '@/src/CommandRegistry.js';
+import { Flags } from '@/src/Flags.js';
 import { Logger } from '@/src/Logger.js';
+import { ArgumentsSchema } from '@/src/lib/types.js';
+
+function makeCommand(name: string, handler?: (...args: any[]) => any) {
+	return class extends Command {
+		static command = name;
+		async handle(...args: any[]) {
+			return handler?.(...args) ?? 0;
+		}
+	};
+}
 
 describe('CommandRegistry', () => {
 	let registry: CommandRegistry;
@@ -40,43 +51,31 @@ describe('CommandRegistry', () => {
 
 	describe('Command registration', () => {
 		it('should register a command', () => {
-			const command = new Command('test-command');
-			registry.registerCommand(command);
+			registry.registerCommand(makeCommand('test-command'));
 
 			expect(registry.getAvailableCommands()).toContain('test-command');
 		});
 
 		it('should throw error when registering command without name', () => {
-			const command = new Command('');
-			expect(() => registry.registerCommand(command)).toThrow('Command signature is invalid');
+			expect(() => registry.registerCommand(makeCommand(''))).toThrow('Cannot register a command with no name');
 		});
 
 		it('should throw error when registering duplicate command', () => {
-			const command1 = new Command('test');
-			const command2 = new Command('test');
-
-			registry.registerCommand(command1);
-			expect(() => registry.registerCommand(command2)).toThrow('Command test already registered');
+			registry.registerCommand(makeCommand('test'));
+			expect(() => registry.registerCommand(makeCommand('test'))).toThrow('Command test already registered');
 		});
 
 		it('should allow duplicate registration with force flag', () => {
-			const command1 = new Command('test');
-			const command2 = new Command('test');
-
-			registry.registerCommand(command1);
-			registry.registerCommand(command2, true);
+			registry.registerCommand(makeCommand('test'));
+			registry.registerCommand(makeCommand('test'), true);
 
 			expect(registry.getAvailableCommands()).toContain('test');
 		});
 
 		it('should register multiple commands', () => {
-			const cmd1 = new Command('cmd1');
-			const cmd2 = new Command('cmd2');
-			const cmd3 = new Command('cmd3');
-
-			registry.registerCommand(cmd1);
-			registry.registerCommand(cmd2);
-			registry.registerCommand(cmd3);
+			registry.registerCommand(makeCommand('cmd1'));
+			registry.registerCommand(makeCommand('cmd2'));
+			registry.registerCommand(makeCommand('cmd3'));
 
 			expect(registry.getAvailableCommands()).toEqual(['cmd1', 'cmd2', 'cmd3']);
 		});
@@ -84,35 +83,38 @@ describe('CommandRegistry', () => {
 
 	describe('Command retrieval', () => {
 		it('should get all available command names', () => {
-			const cmd1 = new Command('cmd1');
-			const cmd2 = new Command('cmd2');
-
-			registry.registerCommand(cmd1);
-			registry.registerCommand(cmd2);
+			registry.registerCommand(makeCommand('cmd1'));
+			registry.registerCommand(makeCommand('cmd2'));
 
 			expect(registry.getAvailableCommands()).toEqual(['cmd1', 'cmd2']);
 		});
 
-		it('should get all command instances', () => {
-			const cmd1 = new Command('cmd1');
-			const cmd2 = new Command('cmd2');
+		it('should get all command classes', () => {
+			const Cmd1 = makeCommand('cmd1');
+			const Cmd2 = makeCommand('cmd2');
 
-			registry.registerCommand(cmd1);
-			registry.registerCommand(cmd2);
+			registry.registerCommand(Cmd1);
+			registry.registerCommand(Cmd2);
 
 			const commands = registry.getCommands();
 			expect(commands).toHaveLength(2);
-			expect(commands).toContain(cmd1);
-			expect(commands).toContain(cmd2);
+			expect(commands).toContain(Cmd1);
+			expect(commands).toContain(Cmd2);
 		});
 	});
 
 	describe('Command execution', () => {
 		it('should run command by name', async () => {
 			const handlerFn = vi.fn().mockResolvedValue(0);
-			const command = new Command('test').handler(handlerFn);
 
-			registry.registerCommand(command);
+			class TestCmd extends Command {
+				static command = 'test';
+				async handle(ctx: any, parsed: any) {
+					return handlerFn(ctx, parsed);
+				}
+			}
+
+			registry.registerCommand(TestCmd);
 
 			const result = await registry.runCommand({}, 'test', 'arg1', 'arg2');
 
@@ -122,8 +124,15 @@ describe('CommandRegistry', () => {
 
 		it('should run command by instance', async () => {
 			const handlerFn = vi.fn().mockResolvedValue(42);
-			const command = new Command('test').handler(handlerFn);
 
+			class TestCmd extends Command {
+				static command = 'test';
+				async handle(ctx: any, parsed: any) {
+					return handlerFn(ctx, parsed);
+				}
+			}
+
+			const command = new TestCmd();
 			const result = await registry.runCommand({}, command);
 
 			expect(handlerFn).toHaveBeenCalled();
@@ -133,9 +142,15 @@ describe('CommandRegistry', () => {
 		it('should pass context to command', async () => {
 			const ctx = { user: 'test' };
 			const handlerFn = vi.fn().mockResolvedValue(0);
-			const command = new Command('test').handler(handlerFn);
 
-			registry.registerCommand(command);
+			class TestCmd extends Command {
+				static command = 'test';
+				async handle(ctx: any, parsed: any) {
+					return handlerFn(ctx, parsed);
+				}
+			}
+
+			registry.registerCommand(TestCmd);
 			await registry.runCommand(ctx, 'test');
 
 			expect(handlerFn).toHaveBeenCalledWith(ctx, expect.any(Object));
@@ -143,15 +158,22 @@ describe('CommandRegistry', () => {
 
 		it('should pass arguments to command', async () => {
 			const handlerFn = vi.fn().mockResolvedValue(0);
-			const command = new Command('test').arguments({ file: 'string' }).handler(handlerFn);
 
-			registry.registerCommand(command);
+			class TestCmd extends Command {
+				static command = 'test';
+				static args = { file: Flags.string() } satisfies ArgumentsSchema;
+				async handle(ctx: any, parsed: any) {
+					return handlerFn(ctx, parsed);
+				}
+			}
+
+			registry.registerCommand(TestCmd);
 			await registry.runCommand({}, 'test', 'test.txt');
 
 			expect(handlerFn).toHaveBeenCalledWith(
 				expect.any(Object),
 				expect.objectContaining({
-					arguments: expect.objectContaining({ file: 'test.txt' }),
+					args: expect.objectContaining({ file: 'test.txt' }),
 				}),
 			);
 		});
@@ -165,7 +187,7 @@ describe('CommandRegistry', () => {
 
 	describe('Custom command resolver', () => {
 		it('should use custom resolver for loading commands', () => {
-			const customResolver = vi.fn().mockResolvedValue(new Command('custom'));
+			const customResolver = vi.fn().mockResolvedValue(makeCommand('custom'));
 			registry.withCommandResolver(customResolver);
 
 			expect(customResolver).not.toHaveBeenCalled();

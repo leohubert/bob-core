@@ -3,7 +3,7 @@ import { CommandRegistry, CommandRegistryOptions, CommandResolver, FileImporter 
 import { ExceptionHandler } from '@/src/ExceptionHandler.js';
 import { Logger } from '@/src/Logger.js';
 import HelpCommand, { HelpCommandOptions } from '@/src/commands/HelpCommand.js';
-import { ContextDefinition, OptionsSchema } from '@/src/lib/types.js';
+import { ContextDefinition } from '@/src/lib/types.js';
 
 export type CliOptions<C extends ContextDefinition = ContextDefinition> = {
 	ctx?: C;
@@ -59,21 +59,19 @@ export class Cli<C extends ContextDefinition = ContextDefinition> {
 		return this;
 	}
 
-	async withCommands(...commands: Array<Command<C, OptionsSchema, OptionsSchema> | { new (): Command<C> } | string>) {
+	async withCommands(...commands: Array<typeof Command<C> | Command<C> | string>) {
 		for (const command of commands) {
 			if (typeof command === 'string') {
 				await this.commandRegistry.loadCommandsPath(command);
+			} else if (typeof command === 'function') {
+				this.registerCommand(command);
 			} else {
-				if (typeof command === 'function') {
-					this.registerCommand(new command());
-				} else {
-					this.registerCommand(command);
-				}
+				this.registerCommand(command.constructor as typeof Command);
 			}
 		}
 	}
 
-	async runCommand(command: string | Command | undefined, ...args: string[]): Promise<number> {
+	async runCommand(command: string | typeof Command | Command | undefined, ...args: string[]): Promise<number> {
 		if (!command) {
 			return await this.runHelpCommand();
 		}
@@ -85,7 +83,7 @@ export class Cli<C extends ContextDefinition = ContextDefinition> {
 		return await this.runCommand(this.helpCommand);
 	}
 
-	protected registerCommand(command: Command<C, OptionsSchema, OptionsSchema>) {
+	protected registerCommand(command: typeof Command<C>) {
 		this.commandRegistry.registerCommand(command);
 	}
 }

@@ -1,111 +1,112 @@
 import chalk from 'chalk';
 
 import { Command } from '@/src/Command.js';
-import { CommandOption } from '@/src/contracts/index.js';
-import { OptionDetails } from '@/src/lib/optionHelpers.js';
+import { Flags } from '@/src/Flags.js';
 import { generateSpace } from '@/src/lib/string.js';
-import { OptionPrimitive } from '@/src/lib/types.js';
+import { ContextDefinition, FlagDefinition } from '@/src/lib/types.js';
 
-export class HelpOption implements CommandOption<Command> {
-	type: OptionPrimitive = 'boolean';
-	option = 'help';
-	alias = ['h'];
+function getTypeDisplay(details: FlagDefinition): string {
+	const type = details.type;
+	if (Array.isArray(type)) return `[${type[0]}]`;
+	if (type === 'enum' && details.options) return `enum: ${details.options.join('|')}`;
+	return type;
+}
 
-	default = false;
+export const HelpCommandFlag = Flags.boolean({
+	alias: ['h'],
+	handler: (value: boolean, ctx: ContextDefinition, cmd: typeof Command) => {
+		if (!value) {
+			return { shouldStop: false };
+		}
 
-	description = `Display help for the given command. When no command is given display help for the ${chalk.green('list')} command`;
+		const argumentDefinitions = cmd.args;
+		const flagDefinitions = cmd.flags;
 
-	public async handler(this: Command): Promise<number | void> {
-		const argumentDefinitions = this.parser.argumentDefinitions();
-		const optionDefinitions = this.parser.optionDefinitions();
+		const availableArguments: [string, FlagDefinition][] = Object.entries(argumentDefinitions);
+		const availableFlags: [string, FlagDefinition][] = Object.entries(flagDefinitions);
 
-		const availableArguments: [string, OptionDetails][] = Object.entries(argumentDefinitions);
-		const availableOptions: [string, OptionDetails][] = Object.entries(optionDefinitions);
-
-		const optionsWithAlias = availableOptions.map(([name, signature]) => {
-			const aliases = Array.isArray(signature.alias) ? signature.alias : signature.alias ? [signature.alias] : [];
+		const flagsWithAlias = availableFlags.map(([name, definition]) => {
+			const aliases = Array.isArray(definition.alias) ? definition.alias : definition.alias ? [definition.alias] : [];
 			return {
 				name,
-				...signature,
-				optionWithAlias: `--${name}${aliases.map((a: string) => `, -${a}`).join('')}`,
+				...definition,
+				flagWithAlias: `--${name}${aliases.map((a: string) => `, -${a}`).join('')}`,
 			};
 		});
 
 		const requiredArguments = availableArguments.filter(([, signature]) => signature.required);
 
-		this.io.log(chalk.yellow('Description:'));
-		this.io.log(`  ${this.description}\n`);
+		console.log(chalk.yellow('Description:'));
+		console.log(`  ${cmd.description}\n`);
 
-		this.io.log(chalk.yellow('Usage:'));
-		this.io.log(`  ${this.command} ${requiredArguments.length > 0 ? requiredArguments.map(([name]) => `<${name}>`).join(' ') : '\b'} [options]`);
+		console.log(chalk.yellow('Usage:'));
+		console.log(`  ${cmd.command} ${requiredArguments.length > 0 ? requiredArguments.map(([name]) => `<${name}>`).join(' ') : '\b'} [options]`);
 
-		const maxOptionLength: number = Math.max(...optionsWithAlias.map(opt => opt.optionWithAlias.length), 0);
+		const maxOptionLength: number = Math.max(...flagsWithAlias.map(opt => opt.flagWithAlias.length), 0);
 		const maxArgumentLength: number = Math.max(...availableArguments.map(([name]) => name.length), 0);
 		const maxLength = maxArgumentLength > maxOptionLength ? maxArgumentLength : maxOptionLength;
 
 		if (availableArguments.length > 0) {
-			this.io.log(`\n${chalk.yellow('Arguments')}:`);
+			console.log(`\n${chalk.yellow('Arguments')}:`);
 
-			for (const [name, signature] of availableArguments) {
+			for (const [name, definition] of availableArguments) {
 				const spaces = generateSpace(maxLength - name.length);
 
-				let message = `  ${chalk.green(name)} ${spaces} ${signature.description ?? '\b'}`;
+				let message = `  ${chalk.green(name)} ${spaces} ${definition.description ?? '\b'}`;
 
-				if (signature.default !== undefined && !signature.required) {
-					const typeDisplay = Array.isArray(signature.type) ? `[${signature.type[0]}]` : signature.type;
-					const defaultValue = typeDisplay === 'array' || Array.isArray(signature.type) ? JSON.stringify(signature.default) : signature.default;
+				if (definition.default !== undefined && !definition.required) {
+					const defaultValue =
+						typeof definition.default === 'function' ? '[function]' : definition.multiple ? JSON.stringify(definition.default) : definition.default;
 
 					message += ` ${chalk.yellow(`[default: ${defaultValue}]`)}`;
 				}
 
-				if (signature.variadic) {
+				if ('multiple' in definition && definition.multiple) {
 					message += ` ${chalk.white('(variadic)')}`;
 				}
 
-				this.io.log(message);
+				console.log(message);
 			}
 		}
 
-		if (availableOptions.length > 0) {
-			this.io.log(`\n${chalk.yellow('Options')}:`);
+		if (availableFlags.length > 0) {
+			console.log(`\n${chalk.yellow('Options')}:`);
 
-			for (const signature of optionsWithAlias) {
-				const spaces = generateSpace(maxLength - signature.optionWithAlias.length);
+			for (const definition of flagsWithAlias) {
+				const spaces = generateSpace(maxLength - definition.flagWithAlias.length);
 
-				let message = `${chalk.green(signature.optionWithAlias)} ${spaces} ${signature.description ?? '\b'}`;
+				let message = `  ${chalk.green(definition.flagWithAlias)} ${spaces} ${definition.description ?? '\b'}`;
 
-				if (signature.type) {
-					const typeDisplay = Array.isArray(signature.type) ? `[${signature.type[0]}]` : signature.type;
-					message += ` ${chalk.white(`(${typeDisplay})`)}`;
+				if (definition.type) {
+					message += ` ${chalk.white(`(${getTypeDisplay(definition)})`)}`;
 				}
 
-				if (signature.default !== undefined && !signature.required) {
-					const typeDisplay = Array.isArray(signature.type) ? `[${signature.type[0]}]` : signature.type;
-					const defaultValue = typeDisplay === 'array' || Array.isArray(signature.type) ? JSON.stringify(signature.default) : signature.default;
+				if (definition.default !== undefined && !definition.required) {
+					const defaultValue = typeof definition.default === 'function' ? '(function)' : definition.default;
 					message += ` ${chalk.yellow(`[default: ${defaultValue}]`)}`;
 				}
 
-				this.io.log(message);
+				console.log(message);
 			}
 		}
 
-		// Only show examples for LegacyCommand which has commandsExamples property
-		if (this.commandsExamples.length > 0) {
-			this.io.log(`\n${chalk.yellow('Examples')}:`);
+		const examples = cmd.examples ?? [];
+		if (examples.length > 0) {
+			console.log(`\n${chalk.yellow('Examples')}:`);
 			let binaryName = process.argv[0].split('/').pop();
 			if (binaryName === 'node') {
 				binaryName += ' ' + process.argv[1].split('/').pop();
 			}
 
-			for (const [index, example] of (this as any).commandsExamples.entries()) {
+			for (const [index, example] of examples.entries()) {
 				if (index > 0) {
-					this.io.log('');
+					console.log('');
 				}
-				this.io.log(`  ${example.description}\n`);
-				this.io.log(`    ${chalk.green(`${binaryName} ${example.command}`)}`);
+				console.log(`  ${example.description}\n`);
+				console.log(`    ${chalk.green(`${binaryName} ${example.command}`)}`);
 			}
 		}
 
-		return -1;
-	}
-}
+		return { shouldStop: true };
+	},
+});

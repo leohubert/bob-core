@@ -1,22 +1,19 @@
 import { faker } from '@faker-js/faker';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 
 import { Command, CommandRunOption } from '@/src/Command.js';
+import { Flags } from '@/src/Flags.js';
 import { TooManyArguments } from '@/src/errors/TooManyArguments.js';
 import { TestLogger, newTestLogger } from '@/src/fixtures.test.js';
-import { ContextDefinition, OptionsSchema } from '@/src/lib/types.js';
+import { ArgumentsSchema, FlagType, FlagsSchema, Parsed } from '@/src/lib/types.js';
 
 describe('Command', () => {
 	let logger: TestLogger;
-	let command: Command;
-	let commandRunOption: CommandRunOption<ContextDefinition, OptionsSchema, OptionsSchema>;
+	let commandRunOption: CommandRunOption;
 
 	beforeEach(() => {
 		logger = newTestLogger();
 
-		command = new Command('test-command', {
-			description: 'A test command',
-		});
 		commandRunOption = {
 			ctx: {},
 			logger: logger,
@@ -25,49 +22,56 @@ describe('Command', () => {
 	});
 
 	it('should instantiate Command', () => {
-		expect(command).toBeInstanceOf(Command);
-		expect(command).toHaveProperty('command', 'test-command');
-		expect(command).toHaveProperty('description', 'A test command');
-	});
+		class TestCmd extends Command {
+			static command = 'test-command';
+			static description = 'A test command';
+			async handle() {
+				return 0;
+			}
+		}
 
-	it('should throw error when running without handler', async () => {
-		await expect(command.run(commandRunOption)).rejects.toThrow('No handler defined for command test');
+		const command = new TestCmd();
+		expect(command).toBeInstanceOf(Command);
+		expect(TestCmd.command).toBe('test-command');
+		expect(TestCmd.description).toBe('A test command');
 	});
 
 	describe('Running commands', () => {
-		let handlerFn: ReturnType<typeof vi.fn>;
+		let handlerFn: ReturnType<typeof vi.fn<(...args: any[]) => any>>;
 		let handlerResult: number | void;
 
 		beforeEach(() => {
 			handlerResult = faker.number.int({ min: 0, max: 100 });
-			handlerFn = vi.fn().mockImplementation(() => handlerResult);
-			command = command.handler(handlerFn);
+			handlerFn = vi.fn().mockReturnValue(handlerResult);
 		});
 
-		it('should run command with handler method', async () => {
+		it('should run command with handle method', async () => {
+			class TestCmd extends Command {
+				static command = 'test';
+				async handle() {
+					return handlerFn();
+				}
+			}
+
+			const command = new TestCmd();
 			const result = await command.run(commandRunOption);
 
 			expect(handlerFn).toHaveBeenCalled();
 			expect(result).toBe(handlerResult);
 		});
 
-		it('should run command with handle instance method', async () => {
-			class TestCommand extends Command {
-				async handle() {
-					return 42;
-				}
-			}
-
-			const command = new TestCommand('test');
-			const result = await command.run(commandRunOption);
-
-			expect(result).toBe(42);
-			expect(handlerFn).not.toHaveBeenCalled();
-		});
-
 		it('should pass context to handler', async () => {
 			const context = { user: 'test-user', config: {} };
 
+			class TestCmd extends Command {
+				static command = 'test';
+				async handle(ctx: any, parsed: any) {
+					handlerFn(ctx, parsed);
+					return 0;
+				}
+			}
+
+			const command = new TestCmd();
 			await command.run({
 				ctx: context,
 				logger,
@@ -77,76 +81,108 @@ describe('Command', () => {
 			expect(handlerFn).toHaveBeenCalledWith(
 				context,
 				expect.objectContaining({
-					options: expect.any(Object),
-					arguments: expect.any(Object),
+					flags: expect.any(Object),
+					args: expect.any(Object),
 				}),
 			);
 		});
 
 		it('should parse args when provided', async () => {
-			command = command.options<OptionsSchema>({ verbose: 'boolean' }).arguments<OptionsSchema>({ file: 'string' });
-			commandRunOption = {
+			class TestCmd extends Command {
+				static command = 'test';
+				static flags = { verbose: Flags.boolean() } satisfies FlagsSchema;
+				static args = { file: Flags.string() } satisfies ArgumentsSchema;
+				async handle(ctx: any, parsed: any) {
+					handlerFn(ctx, parsed);
+					return 0;
+				}
+			}
+
+			const command = new TestCmd();
+			await command.run({
 				...commandRunOption,
 				args: ['test.txt', '--verbose'],
-			};
-
-			await command.run(commandRunOption);
-
-			expect(handlerFn).toHaveBeenCalledWith(
-				commandRunOption.ctx,
-				expect.objectContaining({
-					options: expect.objectContaining({ verbose: true }),
-					arguments: expect.objectContaining({ file: 'test.txt' }),
-				}),
-			);
-		});
-
-		it('should accept pre-parsed options and arguments when parser available', async () => {
-			command = command.options<OptionsSchema>({ verbose: 'boolean' }).arguments<OptionsSchema>({ file: 'string' });
-
-			// When using pre-parsed, the command flow bypasses parser init
-			// This test verifies pre-parsed values are passed through
-			await command.run({
-				ctx: commandRunOption.ctx,
-				logger: commandRunOption.logger,
-				options: { verbose: true },
-				arguments: { file: 'test.txt' },
 			});
 
 			expect(handlerFn).toHaveBeenCalledWith(
 				commandRunOption.ctx,
 				expect.objectContaining({
-					options: expect.objectContaining({ verbose: true }),
-					arguments: expect.objectContaining({ file: 'test.txt' }),
+					flags: expect.objectContaining({ verbose: true }),
+					args: expect.objectContaining({ file: 'test.txt' }),
+				}),
+			);
+		});
+
+		it('should accept pre-parsed options and arguments', async () => {
+			class TestCmd extends Command {
+				static command = 'test';
+				static flags = { verbose: Flags.boolean() } satisfies FlagsSchema;
+				static args = { file: Flags.string() } satisfies ArgumentsSchema;
+				async handle(ctx: any, parsed: any) {
+					handlerFn(ctx, parsed);
+					return 0;
+				}
+			}
+
+			const command = new TestCmd();
+			await command.run({
+				ctx: commandRunOption.ctx,
+				logger: commandRunOption.logger,
+				flags: { verbose: true },
+				args: { file: 'test.txt' },
+			});
+
+			expect(handlerFn).toHaveBeenCalledWith(
+				commandRunOption.ctx,
+				expect.objectContaining({
+					flags: expect.objectContaining({ verbose: true }),
+					args: expect.objectContaining({ file: 'test.txt' }),
 				}),
 			);
 		});
 
 		it('should return 0 by default when handler returns void', async () => {
-			command = command.handler(() => {
-				// No return value
-			});
+			class TestCmd extends Command {
+				static command = 'test';
+				async handle() {
+					// No return value
+				}
+			}
 
+			const command = new TestCmd();
 			const result = await command.run(commandRunOption);
 
 			expect(result).toBe(0);
 		});
 
 		it('should handle asynchronous handlers', async () => {
-			handlerFn.mockResolvedValue(handlerResult);
+			class TestCmd extends Command {
+				static command = 'test';
+				async handle() {
+					return handlerResult;
+				}
+			}
 
+			const command = new TestCmd();
 			const result = await command.run(commandRunOption);
 
 			expect(result).toBe(handlerResult);
 		});
 
 		it('should include help option by default', async () => {
-			commandRunOption = {
+			class TestCmd extends Command {
+				static command = 'test';
+				async handle() {
+					handlerFn();
+					return 0;
+				}
+			}
+
+			const command = new TestCmd();
+			const result = await command.run({
 				...commandRunOption,
 				args: ['--help'],
-			};
-
-			const result = await command.run(commandRunOption);
+			});
 
 			expect(handlerFn).not.toHaveBeenCalled();
 			expect(result).toBe(-1);
@@ -157,18 +193,18 @@ describe('Command', () => {
 		it('should call preHandle before handler', async () => {
 			const calls: string[] = [];
 
-			class TestCommand extends Command {
+			class TestCmd extends Command {
+				static command = 'test';
 				async preHandle() {
 					calls.push('preHandle');
 				}
-
 				async handle() {
 					calls.push('handle');
 					return 0;
 				}
 			}
 
-			const command = new TestCommand('test');
+			const command = new TestCmd();
 			await command.run(commandRunOption);
 
 			expect(calls).toEqual(['preHandle', 'handle']);
@@ -177,18 +213,18 @@ describe('Command', () => {
 		it('should skip handler if preHandle returns non-zero', async () => {
 			const handlerFn = vi.fn();
 
-			class TestCommand extends Command {
+			class TestCmd extends Command {
+				static command = 'test';
 				async preHandle() {
 					return 5;
 				}
-
 				async handle() {
 					handlerFn();
 					return 0;
 				}
 			}
 
-			const command = new TestCommand('test');
+			const command = new TestCmd();
 			const result = await command.run(commandRunOption);
 
 			expect(result).toBe(5);
@@ -198,18 +234,18 @@ describe('Command', () => {
 		it('should continue to handler if preHandle returns 0', async () => {
 			const handlerFn = vi.fn().mockResolvedValue(0);
 
-			class TestCommand extends Command {
+			class TestCmd extends Command {
+				static command = 'test';
 				async preHandle() {
 					return 0;
 				}
-
 				async handle() {
 					handlerFn();
 					return 0;
 				}
 			}
 
-			const command = new TestCommand('test');
+			const command = new TestCmd();
 			await command.run(commandRunOption);
 
 			expect(handlerFn).toHaveBeenCalled();
@@ -218,42 +254,47 @@ describe('Command', () => {
 
 	describe('Validation', () => {
 		it('should validate required options', async () => {
-			const command = new Command('test')
-				.options({
-					name: { type: 'string', required: true },
-				})
-				.handler(() => 0);
+			class TestCmd extends Command {
+				static command = 'test';
+				static flags = { name: Flags.string({ required: true }) } satisfies FlagsSchema;
+				async handle() {
+					return 0;
+				}
+			}
 
+			const command = new TestCmd();
 			await expect(command.run({ ...commandRunOption, args: [] })).rejects.toThrow();
 		});
 
 		it('should validate required arguments', async () => {
-			const command = new Command('test')
-				.disablePrompting()
-				.arguments({
-					file: { type: 'string', required: true },
-				})
-				.handler(() => 0);
+			class TestCmd extends Command {
+				static command = 'test';
+				static disablePrompting = true;
+				static args = { file: Flags.string({ required: true }) } satisfies ArgumentsSchema;
+				async handle() {
+					return 0;
+				}
+			}
 
+			const command = new TestCmd();
 			await expect(command.run({ ...commandRunOption, args: [] })).rejects.toThrow();
 		});
 
 		it('should pass validation with all required values', async () => {
-			const command = new Command('test')
-				.options({
-					name: { type: 'string', required: true },
-				})
-				.arguments({
-					file: { type: 'string', required: true },
-				})
-				.handler(() => 0);
+			class TestCmd extends Command {
+				static command = 'test';
+				static flags = { name: Flags.string({ required: true }) } satisfies FlagsSchema;
+				static args = { file: Flags.string({ required: true }) } satisfies ArgumentsSchema;
+				async handle() {
+					return 0;
+				}
+			}
 
-			commandRunOption = {
+			const command = new TestCmd();
+			const result = await command.run({
 				...commandRunOption,
 				args: ['test.txt', '--name', 'value'],
-			};
-
-			const result = await command.run(commandRunOption);
+			});
 
 			expect(result).toBe(0);
 		});
@@ -261,40 +302,65 @@ describe('Command', () => {
 
 	describe('Hidden flag', () => {
 		it('should not be hidden by default', () => {
-			expect(command.isHidden).toBe(false);
+			class TestCmd extends Command {
+				static command = 'test';
+				async handle() {
+					return 0;
+				}
+			}
+			expect(TestCmd.hidden).toBe(false);
 		});
 
-		it('should be hidden after calling hidden()', () => {
-			command.hidden();
-			expect(command.isHidden).toBe(true);
+		it('should be hidden when static hidden is true', () => {
+			class TestCmd extends Command {
+				static command = 'test';
+				static hidden = true;
+				async handle() {
+					return 0;
+				}
+			}
+			expect(TestCmd.hidden).toBe(true);
 		});
 	});
 
 	describe('Disable default options', () => {
 		it('should not include help option when default options are disabled', async () => {
 			const handlerFn = vi.fn().mockReturnValue(0);
-			const command = new Command('test').disableDefaultOptions().handler(handlerFn);
 
+			class TestCmd extends Command {
+				static command = 'test';
+				static disableDefaultOptions = true;
+				static allowUnknownFlags = true;
+				async handle() {
+					return handlerFn();
+				}
+			}
+
+			const command = new TestCmd();
 			const result = await command.run({
 				...commandRunOption,
 				args: ['--help'],
 			});
 
 			// With default options disabled, --help is not recognized as a special option
-			// and the handler should be called (though it will throw InvalidOption since --help is unknown)
-			// Actually, with no options defined at all and no allowUnknownOptions, this will throw InvalidOption
-			// Let's test that help option is not in the parsed options instead
+			// and the handler should be called instead
 			expect(result).not.toBe(-1);
 		});
 
 		it('should still work with custom options when default options are disabled', async () => {
 			const handlerFn = vi.fn().mockReturnValue(0);
-			const command = new Command('test')
-				.disableDefaultOptions()
-				.allowUnknownOptions()
-				.options({ verbose: 'boolean' })
-				.handler(handlerFn);
 
+			class TestCmd extends Command {
+				static command = 'test';
+				static disableDefaultOptions = true;
+				static allowUnknownFlags = true;
+				static flags = { verbose: Flags.boolean() } satisfies FlagsSchema;
+				async handle(ctx: any, parsed: any) {
+					return handlerFn(ctx, parsed);
+				}
+			}
+
+			const command = new TestCmd();
 			await command.run({
 				...commandRunOption,
 				args: ['--verbose'],
@@ -303,7 +369,7 @@ describe('Command', () => {
 			expect(handlerFn).toHaveBeenCalledWith(
 				expect.anything(),
 				expect.objectContaining({
-					options: expect.objectContaining({ verbose: true }),
+					flags: expect.objectContaining({ verbose: true }),
 				}),
 			);
 		});
@@ -311,11 +377,16 @@ describe('Command', () => {
 
 	describe('Strict mode', () => {
 		it('should reject extra positional arguments', async () => {
-			const command = new Command('test')
-				.strictMode()
-				.arguments({ file: 'string' })
-				.handler(() => 0);
+			class TestCmd extends Command {
+				static command = 'test';
+				static strictMode = true;
+				static args = { file: Flags.string() } satisfies ArgumentsSchema;
+				async handle() {
+					return 0;
+				}
+			}
 
+			const command = new TestCmd();
 			await expect(
 				command.run({
 					...commandRunOption,
@@ -326,11 +397,17 @@ describe('Command', () => {
 
 		it('should allow exact number of arguments', async () => {
 			const handlerFn = vi.fn().mockReturnValue(0);
-			const command = new Command('test')
-				.strictMode()
-				.arguments({ file: 'string' })
-				.handler(handlerFn);
 
+			class TestCmd extends Command {
+				static command = 'test';
+				static strictMode = true;
+				static args = { file: Flags.string() } satisfies ArgumentsSchema;
+				async handle() {
+					return handlerFn();
+				}
+			}
+
+			const command = new TestCmd();
 			const result = await command.run({
 				...commandRunOption,
 				args: ['test.txt'],
@@ -341,39 +418,78 @@ describe('Command', () => {
 		});
 	});
 
-	describe('Type safety with generics', () => {
-		it('should maintain type safety through options chain', async () => {
+	describe('Type safety with Parsed<T>', () => {
+		it('should maintain type safety through static options', async () => {
 			type Context = { userId: string };
 
-			const command = new Command<Context>('test').options({ verbose: 'boolean', count: 'number' }).handler((ctx, opts) => {
-				// Type checking - these should compile
-				const _userId: string = ctx.userId;
-				const _verbose: boolean | null = opts.options.verbose;
-				const _count: number | null = opts.options.count;
-				return 0;
-			});
+			class TestCmd extends Command<Context> {
+				static command = 'test';
+				static flags = { verbose: Flags.boolean(), count: Flags.number() } satisfies FlagsSchema;
+				async handle(ctx: Context, { flags }: Parsed<typeof TestCmd>) {
+					// Type checking - these should compile
+					const _userId: string = ctx.userId;
+					const _verbose: boolean | null = flags.verbose;
+					const _count: number | null = flags.count;
+					return 0;
+				}
+			}
 
-			const contextRunOption = { ...commandRunOption, ctx: { userId: '123' }, args: [] };
-
-			await command.run(contextRunOption);
-
-			expect(contextRunOption.ctx).toHaveProperty('userId', '123');
+			const command = new TestCmd();
+			await command.run({ ...commandRunOption, ctx: { userId: '123' }, args: [] });
 		});
 
-		it('should maintain type safety through arguments chain', async () => {
-			const command = new Command('test').arguments({ file: 'string', lines: 'number' }).handler((ctx, opts) => {
-				// Type checking
-				const _file: string | null = opts.arguments.file;
-				const _lines: number | null = opts.arguments.lines;
-				return 0;
-			});
+		it('should maintain type safety through static args', async () => {
+			class TestCmd extends Command {
+				static command = 'test';
+				static args = { file: Flags.string(), lines: Flags.number() } satisfies ArgumentsSchema;
+				async handle(ctx: any, { args }: Parsed<typeof TestCmd>) {
+					// Type checking
+					const _file: string | null = args.file;
+					const _lines: number | null = args.lines;
+					return 0;
+				}
+			}
 
-			commandRunOption = {
+			const command = new TestCmd();
+			await command.run({
 				...commandRunOption,
 				args: ['test.txt', '10'],
-			};
+			});
+		});
 
-			await command.run(commandRunOption);
+		it('should infer enum type from Parsed', () => {
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			const flagDef = Flags.enum({ options: ['debug', 'info', 'warn'] as const });
+			type Result = FlagType<typeof flagDef>;
+			expectTypeOf<Result>().toEqualTypeOf<'debug' | 'info' | 'warn'>();
+		});
+
+		it('should infer url type from Parsed', () => {
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			const flagDef = Flags.url();
+			type Result = FlagType<typeof flagDef>;
+			expectTypeOf<Result>().toEqualTypeOf<URL>();
+		});
+
+		it('should infer file type as string', () => {
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			const flagDef = Flags.file();
+			type Result = FlagType<typeof flagDef>;
+			expectTypeOf<Result>().toEqualTypeOf<string>();
+		});
+
+		it('should infer directory type as string', () => {
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			const flagDef = Flags.directory();
+			type Result = FlagType<typeof flagDef>;
+			expectTypeOf<Result>().toEqualTypeOf<string>();
+		});
+
+		it('should infer custom return type', () => {
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			const flagDef = Flags.custom({ parse: (v: string) => new Date(v) })();
+			type Result = FlagType<typeof flagDef>;
+			expectTypeOf<Result>().toEqualTypeOf<Date>();
 		});
 	});
 });

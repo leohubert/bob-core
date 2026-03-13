@@ -4,26 +4,24 @@ import { CommandIO, CommandIOOptions } from '@/src/CommandIO.js';
 import { CommandWithSignature } from '@/src/CommandWithSignature.js';
 import { MissingRequiredArgumentValue } from '@/src/errors/MissingRequiredArgumentValue.js';
 import { TestLogger, newTestLogger } from '@/src/fixtures.test.js';
+import { Parsed } from '@/src/lib/types.js';
 
 class MockCommand extends CommandWithSignature {
-	signature = 'mockCommand {argument} {--option}';
-	description = 'This is a mock command for testing';
+	static override signature = 'mockCommand {argument} {--option}';
+	static override description = 'This is a mock command for testing';
 
 	protected newCommandIO(opts: CommandIOOptions): CommandIO {
 		return vi.mockObject(new CommandIO(opts));
 	}
 
-	async handle(): Promise<number | void> {
-		const opts = this.option('option');
-		const arg = this.argument('argument');
-
-		if (opts) {
+	async handle(_ctx: any, { flags, args }: Parsed<any>): Promise<number | void> {
+		if (flags.option) {
 			return 11;
 		}
 
-		if (arg === 'value') {
+		if (args.argument === 'value') {
 			return 1;
-		} else if (arg) {
+		} else if (args.argument) {
 			return -1;
 		}
 
@@ -31,7 +29,7 @@ class MockCommand extends CommandWithSignature {
 	}
 }
 
-describe('Command', () => {
+describe('CommandWithSignature', () => {
 	let command: MockCommand;
 	let logger: TestLogger;
 
@@ -40,16 +38,12 @@ describe('Command', () => {
 		command = new MockCommand();
 	});
 
-	it('should have a command', () => {
-		expect(command.command).toBe('mockCommand');
-	});
-
-	it('should have a signature', () => {
-		expect(command.signature).toBe('mockCommand {argument} {--option}');
+	it('should derive command name from signature', () => {
+		expect((MockCommand as any).command).toBe('mockCommand');
 	});
 
 	it('should have a description', () => {
-		expect(command.description).toBe('This is a mock command for testing');
+		expect(MockCommand.description).toBe('This is a mock command for testing');
 	});
 
 	it('should handle command with argument', async () => {
@@ -61,7 +55,7 @@ describe('Command', () => {
 		expect(result).toBe(1);
 	});
 
-	it('should handle command with argument', async () => {
+	it('should handle command with bad argument', async () => {
 		const result = await command.run({
 			ctx: {},
 			logger: logger,

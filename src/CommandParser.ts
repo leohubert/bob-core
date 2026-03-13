@@ -2,138 +2,158 @@ import chalk from 'chalk';
 import minimist from 'minimist';
 
 import { CommandIO } from '@/src/CommandIO.js';
-import { InvalidOption } from '@/src/errors/InvalidOption.js';
+import { InvalidFlag } from '@/src/errors/InvalidFlag.js';
 import { MissingRequiredArgumentValue } from '@/src/errors/MissingRequiredArgumentValue.js';
-import { MissingRequiredOptionValue } from '@/src/errors/MissingRequiredOptionValue.js';
-import { BadCommandOption, TooManyArguments } from '@/src/errors/index.js';
-import { OptionDetails, getOptionDetails } from '@/src/lib/optionHelpers.js';
-import { ArgumentsObject, OptionDefinition, OptionReturnType, OptionsObject, OptionsSchema } from '@/src/lib/types.js';
-import { convertValue } from '@/src/lib/valueConverter.js';
+import { MissingRequiredFlagValue } from '@/src/errors/MissingRequiredFlagValue.js';
+import { BadCommandArgument, BadCommandFlag, TooManyArguments } from '@/src/errors/index.js';
+import { ArgumentsObject, ArgumentsSchema, ContextDefinition, FlagDefinition, FlagReturnType, FlagsObject, FlagsSchema } from '@/src/lib/types.js';
 
 /**
- * Parses command-line arguments into typed options and arguments
+ * Parses command-line arguments into typed flags and arguments
  * Handles validation, type conversion, and default values
  */
-export class CommandParser<Options extends OptionsSchema, Arguments extends OptionsSchema> {
-	protected options: Options;
-	protected parsedOptions: OptionsObject<Options> | null = null;
+export class CommandParser<Flags extends FlagsSchema, Arguments extends ArgumentsSchema> {
+	protected flags: FlagsSchema;
+	protected parsedFlags: FlagsObject<Flags> | null = null;
 
-	protected arguments: Arguments;
-	protected parsedArguments: OptionsObject<Arguments> | null = null;
+	protected args: ArgumentsSchema;
+	protected parsedArguments: FlagsObject<Arguments> | null = null;
 
 	protected io: CommandIO;
 
-	protected shouldPromptForMissingOptions = true;
-	protected shouldValidateUnknownOptions = true;
+	protected shouldPromptForMissingFlags = true;
+	protected shouldValidateUnknownFlags = true;
 	protected shouldRejectExtraArguments = false;
 
-	constructor(opts: { io: CommandIO; options: Options; arguments: Arguments }) {
-		this.options = opts.options;
-		this.arguments = opts.arguments;
+	constructor(protected opts: { flags: Flags; args: Arguments; ctx?: ContextDefinition; io: CommandIO }) {
 		this.io = opts.io;
+		this.flags = opts.flags;
+		this.args = opts.args;
 	}
 
 	// === PUBLIC METHODS ===
 
 	/**
-	 * Parses raw command-line arguments into structured options and arguments
+	 * Parses raw command-line arguments into structured flags and arguments
 	 * @param args - Raw command line arguments (typically from process.argv.slice(2))
-	 * @returns Object containing parsed options and arguments
-	 * @throws {InvalidOption} If an naan option is provided
-	 * @throws {BadCommandOption} If a value cannot be converted to the expected type
+	 * @returns Object containing parsed flags and arguments
+	 * @throws {InvalidFlag} If an unknown flag is provided
+	 * @throws {BadCommandFlag} If a value cannot be converted to the expected type
 	 */
-	init(args: string[]): {
-		options: OptionsObject<Options>;
-		arguments: OptionsObject<Arguments>;
-	} {
-		const { _: positionalArgs, ...optionValues } = minimist(args);
+	async init(args: string[]): Promise<{
+		flags: FlagsObject<Flags>;
+		args: FlagsObject<Arguments>;
+	}> {
+		const { _: rawArgs, ...rawFlags } = minimist(args);
 
-		if (this.shouldValidateUnknownOptions) {
-			this.validateUnknownOptions(optionValues);
+		if (this.shouldValidateUnknownFlags) {
+			this.validateUnknownFlags(rawFlags);
 		}
-		this.parsedOptions = this.handleOptions(optionValues);
-		this.parsedArguments = this.handleArguments(positionalArgs);
+		this.parsedFlags = await this.handleOptions(rawFlags);
+		this.parsedArguments = await this.handleArguments(rawArgs);
 
 		return {
-			options: this.parsedOptions,
-			arguments: this.parsedArguments,
+			flags: this.parsedFlags,
+			args: this.parsedArguments,
 		};
 	}
 
 	/**
-	 * Validates the parsed options and arguments
+	 * Validates the parsed flags and arguments
 	 * @throws {Error} If validation fails
 	 */
 	async validate(): Promise<void> {
-		for (const key in this.options) {
-			const optionDetails = getOptionDetails(this.options[key]);
-			if (optionDetails.required && (this.parsedOptions?.[key] === undefined || this.parsedOptions?.[key] === null)) {
-				throw new MissingRequiredOptionValue(key);
+		for (const key in this.flags) {
+			const flagDefinition: FlagDefinition = this.flags[key];
+			const flagValue = this.parsedFlags?.[key];
+			const isEmpty = this.isEmptyValue(flagValue);
+			const isMultiple = 'multiple' in flagDefinition && flagDefinition.multiple;
+
+			if (flagDefinition.required && isEmpty) {
+				throw new MissingRequiredFlagValue(key);
+			}
+
+			if (!isEmpty && flagDefinition.validate) {
+				const valuesToValidate: any[] = isMultiple && Array.isArray(flagValue) ? flagValue : [flagValue];
+
+				for (const value of valuesToValidate) {
+					const result = await flagDefinition.validate(value as never);
+					if (result !== true) {
+						throw new BadCommandFlag({ flag: key, reason: result, value: value });
+					}
+				}
 			}
 		}
 
-		for (const key in this.arguments) {
-			const argDetails = getOptionDetails(this.arguments[key]);
-			const value = this.parsedArguments?.[key];
+		for (const key in this.args) {
+			const argDefinition = this.args[key];
+			const argValue = this.parsedArguments?.[key];
+			const isEmpty = this.isEmptyValue(argValue);
+			const isMultiple = 'multiple' in argDefinition && argDefinition.multiple;
 
-			if (argDetails.required && (value === undefined || value === null)) {
-				// Try prompting if enabled
-				if (this.shouldPromptForMissingOptions) {
-					const newValue = await this.promptForArgument(key, argDetails);
+			if (argDefinition.required && isEmpty) {
+				if (!this.shouldPromptForMissingFlags) {
+					throw new MissingRequiredArgumentValue(key);
+				}
 
-					if (newValue && this.parsedArguments) {
-						(this.parsedArguments as any)[key] = convertValue(newValue, argDetails.type, key);
-						continue;
-					}
+				const newValue = await this.promptForArgument(key, argDefinition);
+
+				if (newValue && this.parsedArguments) {
+					(this.parsedArguments as any)[key] = await this.parseValue(newValue, argDefinition, { name: key, isArg: true });
+					continue;
 				}
 
 				throw new MissingRequiredArgumentValue(key);
 			}
 
-			// Additional validation for variadic arguments
-			if (argDetails.required && argDetails.variadic && Array.isArray(value) && value.length === 0) {
-				if (this.shouldPromptForMissingOptions) {
-					const newValue = await this.promptForArgument(key, argDetails);
+			if (!isEmpty && argDefinition.validate) {
+				const valuesToValidate: any[] = isMultiple && Array.isArray(argValue) ? argValue : [argValue];
 
-					if (newValue && this.parsedArguments) {
-						(this.parsedArguments as any)[key] = convertValue(newValue, argDetails.type, key);
-						continue;
+				for (const value of valuesToValidate) {
+					const result = await argDefinition.validate(value as never);
+					if (result !== true) {
+						throw new BadCommandArgument({ arg: key, reason: result, value: value });
 					}
 				}
-
-				throw new MissingRequiredArgumentValue(key);
 			}
 		}
 	}
 
 	/**
-	 * Retrieves a parsed option value by name
-	 * @param name - The option name
-	 * @param defaultValue - Optional default value if option is not set
-	 * @returns The typed option value
+	 * Retrieves a parsed flag value by name
+	 * @param name - The flag name
+	 * @param defaultValue - Optional default value if flag is not set
+	 * @returns The typed flag value
 	 * @throws {Error} If init() has not been called yet
 	 */
-	option<OptsName extends keyof Options>(name: OptsName, defaultValue?: OptionReturnType<Options[OptsName]>): OptionReturnType<Options[OptsName]> {
-		if (!this.parsedOptions) {
-			throw new Error('Options have not been parsed yet. Call init() first.');
+	flag<FlagName extends keyof Flags>(name: FlagName, defaultValue?: FlagReturnType<Flags[FlagName]>): FlagReturnType<Flags[FlagName]> {
+		if (!this.parsedFlags) {
+			throw new Error('Flags have not been parsed yet. Call init() first.');
 		}
 
-		if (this.isEmptyValue(this.parsedOptions[name]) && defaultValue !== undefined) {
+		if (this.isEmptyValue(this.parsedFlags[name]) && defaultValue !== undefined) {
 			return defaultValue;
 		}
 
-		return this.parsedOptions[name];
+		return this.parsedFlags[name];
 	}
 
-	setOption<OptsName extends keyof Options>(name: OptsName, value: OptionReturnType<Options[OptsName]>): void {
-		if (!this.parsedOptions) {
-			throw new Error('Options have not been parsed yet. Call init() first.');
+	async setFlag<FlagName extends keyof Flags>(name: FlagName, value: FlagReturnType<Flags[FlagName]>): Promise<void> {
+		if (!this.parsedFlags) {
+			throw new Error('Flags have not been parsed yet. Call init() first.');
 		}
-		if (!(name in this.options)) {
-			throw new InvalidOption(name as string, this.options);
+		if (!(name in this.flags)) {
+			throw new InvalidFlag(name as string, this.flags);
 		}
 
-		(this.parsedOptions as any)[name] = value;
+		if (this.flags[name].validate) {
+			const validationResult = await this.flags[name].validate(value as never);
+			if (validationResult !== true) {
+				throw new BadCommandFlag({ flag: name as string, reason: validationResult, value: value });
+			}
+		}
+
+		(this.parsedFlags as any)[name] = value;
 	}
 
 	/**
@@ -143,7 +163,7 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 	 * @returns The typed argument value
 	 * @throws {Error} If init() has not been called yet
 	 */
-	argument<ArgName extends keyof Arguments>(name: ArgName, defaultValue?: OptionReturnType<Arguments[ArgName]>): OptionReturnType<Arguments[ArgName]> {
+	argument<ArgName extends keyof Arguments>(name: ArgName, defaultValue?: FlagReturnType<Arguments[ArgName]>): FlagReturnType<Arguments[ArgName]> {
 		if (!this.parsedArguments) {
 			throw new Error('Arguments have not been parsed yet. Call init() first.');
 		}
@@ -155,12 +175,19 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 		return this.parsedArguments[name];
 	}
 
-	setArgument<ArgName extends keyof Arguments>(name: ArgName, value: OptionReturnType<Arguments[ArgName]>): void {
+	async setArgument<ArgName extends keyof Arguments>(name: ArgName, value: FlagReturnType<Arguments[ArgName]>): Promise<void> {
 		if (!this.parsedArguments) {
 			throw new Error('Arguments have not been parsed yet. Call init() first.');
 		}
-		if (!(name in this.arguments)) {
-			throw new InvalidOption(name as string, this.arguments);
+		if (!(name in this.args)) {
+			throw new BadCommandArgument({ arg: name as string, reason: `Argument "${name as string}" is not recognized` });
+		}
+
+		if (this.args[name].validate) {
+			const validationResult = await this.args[name].validate(value as never);
+			if (validationResult !== true) {
+				throw new BadCommandArgument({ arg: name as string, reason: validationResult, value: value });
+			}
 		}
 
 		(this.parsedArguments as any)[name] = value;
@@ -174,42 +201,41 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 	 * @returns true if the value is null, undefined, or an empty array
 	 */
 	private isEmptyValue(value: any): boolean {
-		return value === null || value === undefined || (Array.isArray(value) && value.length === 0);
+		return value === null || value === undefined || (typeof value == 'string' && value.trim() === '') || (Array.isArray(value) && value.length === 0);
 	}
 
 	/**
-	 * Validates that all provided options are recognized
-	 * @throws {InvalidOption} If an unknown option is found
+	 * Validates that all provided flags are recognized
+	 * @throws {InvalidFlag} If an unknown flag is found
 	 */
-	private validateUnknownOptions(optionValues: Record<string, any>): void {
+	private validateUnknownFlags(rawFlags: Record<string, any>): void {
 		const validOptionNames = new Set<string>();
 
-		// Collect all valid option names and their aliases
-		for (const key in this.options) {
+		// Collect all valid flag names and their aliases
+		for (const key in this.flags) {
 			validOptionNames.add(key);
-			const optionDetails = getOptionDetails(this.options[key]);
-			for (const alias of optionDetails.alias) {
+			const flagDetails = this.flags[key];
+			for (const alias of flagDetails.alias ?? []) {
 				validOptionNames.add(alias);
 			}
 		}
 
-		// Check for unknown options
-		for (const optionName in optionValues) {
-			if (!validOptionNames.has(optionName)) {
-				throw new InvalidOption(optionName, this.options);
+		// Check for unknown flags
+		for (const flagName in rawFlags) {
+			if (!validOptionNames.has(flagName)) {
+				throw new InvalidFlag(flagName, this.flags);
 			}
 		}
 	}
 
 	/**
-	 * Processes named options from minimist output
+	 * Processes named flags from minimist output
 	 */
-	private handleOptions(optionValues: Record<string, unknown>): OptionsObject<Options> {
-		const parsedOptions = {} as OptionsObject<Options>;
+	private async handleOptions(rawFlags: Record<string, unknown>): Promise<FlagsObject<Flags>> {
+		const parsedOptions: FlagsObject<any> = {};
 
-		for (const key in this.options) {
-			const optionDetails = getOptionDetails(this.options[key]);
-			parsedOptions[key] = this.resolveOptionValue(key, optionDetails, optionValues) as OptionReturnType<Options[typeof key]>;
+		for (const key in this.flags) {
+			parsedOptions[key] = await this.resolveFlagValue(key, this.flags[key], rawFlags);
 		}
 
 		return parsedOptions;
@@ -218,23 +244,23 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 	/**
 	 * Processes positional arguments from minimist output
 	 */
-	private handleArguments(positionalArgs: string[]): ArgumentsObject<Arguments> {
-		const parsedArgs = {} as ArgumentsObject<Arguments>;
-		const remainingArgs = [...positionalArgs];
+	private async handleArguments(rawArgs: string[]): Promise<ArgumentsObject<Arguments>> {
+		const parsedArgs: ArgumentsObject<any> = {};
+		const remainingArgs = [...rawArgs];
 
-		const expectedCount = Object.keys(this.arguments).length;
+		const expectedCount = Object.keys(this.args).length;
 
-		for (const key in this.arguments) {
-			const argDefinition = getOptionDetails(this.arguments[key]);
+		for (const key in this.args) {
+			const argDefinition = this.args[key];
 
 			// Handle variadic arguments (consumes all remaining values)
-			if (argDefinition.variadic) {
-				parsedArgs[key] = this.handleVariadicArgument(key, argDefinition, remainingArgs) as OptionReturnType<Arguments[typeof key]>;
-				remainingArgs.length = 0;
+			if ('multiple' in argDefinition && argDefinition.multiple) {
+				parsedArgs[key] = await this.parseValue(remainingArgs, argDefinition, { name: key, isArg: true });
+				remainingArgs.length = 0; // Clear remaining args since variadic consumes all
 				continue;
 			}
 
-			parsedArgs[key] = this.resolveArgumentValue(key, argDefinition, remainingArgs.shift()) as OptionReturnType<Arguments[typeof key]>;
+			parsedArgs[key] = await this.parseValue(remainingArgs.shift(), argDefinition, { name: key, isArg: true });
 		}
 
 		if (this.shouldRejectExtraArguments && remainingArgs.length > 0) {
@@ -245,80 +271,63 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 	}
 
 	/**
-	 * Handles variadic arguments that consume all remaining positional values
-	 */
-	private handleVariadicArgument(key: string, definition: OptionDetails, remainingArgs: string[]): any {
-		// Variadic arguments are always arrays - convert each element if present, otherwise return default
-		return remainingArgs.length ? convertValue(remainingArgs, definition.type, key, definition.default) : definition.default;
-	}
-
-	/**
-	 * Resolves a single positional argument value with defaults and type conversion
-	 * Note: Does not validate required arguments - validation happens in subclass validate() methods
-	 */
-	private resolveArgumentValue(key: string, definition: OptionDetails, argValue: string | undefined): any {
-		// If no value provided, return default (validation happens later)
-		if (argValue === undefined) {
-			return definition.default;
-		}
-
-		// Convert the value to the correct type
-		return convertValue(argValue, definition.type, key, definition.default);
-	}
-
-	/**
-	 * Resolves an option value from the parsed option values object
+	 * Resolves a flag value from the parsed flag values object
 	 * Handles alias resolution, defaults, and type conversion
 	 */
-	private resolveOptionValue(key: string, definition: OptionDetails, optionValues: Record<string, unknown>): any {
+	private async resolveFlagValue(key: string, definition: FlagDefinition, rawFlags: Record<string, any>): Promise<any> {
 		let rawValue: any = undefined;
 
-		// Search through option name and its aliases
-		const allNames = [key, ...definition.alias];
+		// Search through flag name and its aliases
+		const allNames = [key];
+		if (definition.alias) {
+			allNames.push(...(Array.isArray(definition.alias) ? definition.alias : [definition.alias]));
+		}
+
 		for (const name of allNames) {
-			if (name in optionValues) {
-				rawValue = optionValues[name];
+			if (name in rawFlags) {
+				rawValue = rawFlags[name];
 				break;
 			}
 		}
 
-		// Handle missing value
-		if (rawValue === undefined) {
-			if (definition.required) {
-				throw new BadCommandOption({
-					option: key,
-					reason: `Required option is missing`,
-				});
+		return this.parseValue(rawValue, definition, { name: key });
+	}
+
+	/**
+	 * Parses a raw value using the flag's parse function
+	 */
+	private async parseValue(value: any, definition: FlagDefinition, meta?: { name: string; isArg?: boolean }): Promise<any> {
+		if (this.isEmptyValue(value)) {
+			if (typeof definition.default === 'function') {
+				return await definition.default();
 			}
+
 			return definition.default;
 		}
 
-		// Convert to the correct type
-		return convertValue(rawValue, definition.type, key, definition.default);
-	}
+		if ('multiple' in definition && definition.multiple) {
+			if (!Array.isArray(value)) {
+				value = [value];
+			}
 
-	optionDefinitions(): Record<string, OptionDetails> {
-		const defs: Record<string, OptionDetails> = {};
-		for (const key in this.options) {
-			defs[key] = getOptionDetails(this.options[key]);
+			const parsedArray: any = [];
+			for (const item of value) {
+				parsedArray.push(await this.safeParse(item, definition, meta));
+			}
+			return parsedArray;
 		}
-		return defs;
+
+		return this.safeParse(value, definition, meta);
 	}
 
-	argumentDefinitions(): Record<string, OptionDetails> {
-		const defs: Record<string, OptionDetails> = {};
-		for (const key in this.arguments) {
-			defs[key] = getOptionDetails(this.arguments[key]);
+	private async safeParse(value: any, definition: FlagDefinition, meta?: { name: string; isArg?: boolean }): Promise<any> {
+		try {
+			return definition.parse(value, this.opts.ctx);
+		} catch (e) {
+			if (!meta) throw e;
+			const reason = e instanceof Error ? e.message : String(e);
+			throw meta.isArg ? new BadCommandArgument({ arg: meta.name, value, reason }) : new BadCommandFlag({ flag: meta.name, value, reason });
 		}
-		return defs;
-	}
-
-	availableOptions(): string[] {
-		return Object.keys(this.options);
-	}
-
-	availableArguments(): string[] {
-		return Object.keys(this.arguments);
 	}
 
 	/**
@@ -326,12 +335,12 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 	 * Useful for non-interactive environments
 	 */
 	disablePrompting() {
-		this.shouldPromptForMissingOptions = false;
+		this.shouldPromptForMissingFlags = false;
 		return this;
 	}
 
-	allowUnknownOptions() {
-		this.shouldValidateUnknownOptions = false;
+	allowUnknownFlags() {
+		this.shouldValidateUnknownFlags = false;
 		return this;
 	}
 
@@ -344,35 +353,51 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 	 * Prompts the user to provide a missing argument value via CommandIO
 	 * Used by validate() when shouldPromptForMissingArgs is enabled
 	 * @param argumentName - The name of the missing argument
-	 * @param argDef - The argument's definition for type and description
+	 * @param definition - The argument's definition for type and description
 	 * @returns The user-provided value, or null if none given
 	 */
-	protected async promptForArgument(argumentName: string, argDef: OptionDefinition): Promise<string | number | string[] | null> {
-		if (!Array.isArray(argDef.type) && !['string', 'number', 'secret'].includes(argDef.type)) {
+	protected async promptForArgument(argumentName: string, definition: FlagDefinition): Promise<string | number | string[] | null> {
+		const type = definition.type;
+
+		// For enum type, show a select prompt
+		if (type === 'enum' && definition.options) {
+			let promptText = `${chalk.yellow.bold(argumentName)} is required`;
+			if (definition.description) {
+				promptText += `: ${chalk.gray(`(${definition.description})`)}`;
+			}
+			promptText += ` ${chalk.green('(enum)')}\n`;
+
+			const choices = definition.options.map(o => ({ title: o, value: o }));
+			return await this.io.askForSelect(promptText, choices);
+		}
+
+		const isMultiple = 'multiple' in definition && definition.multiple;
+
+		// For non-promptable types, skip
+		if (!isMultiple && !['string', 'number'].includes(type as string)) {
 			return null;
 		}
 
 		let promptText = `${chalk.yellow.bold(argumentName)} is required`;
-		if (argDef.description) {
-			promptText += `: ${chalk.gray(`(${argDef.description})`)}`;
+		if (definition.description) {
+			promptText += `: ${chalk.gray(`(${definition.description})`)}`;
 		}
-		promptText += ` ${chalk.green(`(${argDef.type}${argDef.variadic == true ? '[]' : ''})`)}\n`;
+		promptText += ` ${chalk.green(`(${type}${isMultiple ? '[]' : ''})`)}\n`;
 
-		if (Array.isArray(argDef.type)) {
+		if (isMultiple) {
 			promptText += 'Please provide one or more values, separated by commas:\n';
 
 			return await this.io.askForList(promptText, undefined, {
 				separator: ',',
 				validate: (value: string) => {
-					if (!value.length) {
+					if (this.isEmptyValue(value) && definition.required) {
 						return 'Please enter at least one value';
 					}
 
-					if (argDef.type[0] === 'number') {
-						for (const val of value.split(',')) {
-							if (isNaN(Number(val))) {
-								return `Please enter only valid numbers`;
-							}
+					for (const val of value.split(',')) {
+						const validate = definition.validate ? definition.validate(val as never) : true;
+						if (validate !== true) {
+							return typeof validate === 'string' ? `${val} ${validate}` : `Invalid value: "${val.trim()}"`;
 						}
 					}
 
@@ -382,21 +407,15 @@ export class CommandParser<Options extends OptionsSchema, Arguments extends Opti
 		}
 
 		return await this.io.askForInput(promptText, undefined, {
-			type: argDef.type === 'number' ? 'number' : argDef.secret ? 'password' : 'text',
+			type: type === 'number' ? 'number' : 'secret' in definition && definition.secret ? 'password' : 'text',
 			validate: (value: string | number) => {
-				if (value === null || value === undefined || (typeof value === 'string' && !value.length)) {
+				if (this.isEmptyValue(value) && definition.required) {
 					return 'This value is required';
 				}
 
-				if (argDef.type === 'number') {
-					const num = Number(value);
-					if (isNaN(num)) {
-						return 'Please enter a valid number';
-					}
-				} else if (argDef.type === 'string') {
-					if (typeof value !== 'string' || !value.length) {
-						return 'Please enter a valid text';
-					}
+				const validate = definition.validate ? definition.validate(value as never) : true;
+				if (validate !== true) {
+					return typeof validate === 'string' ? validate : `Invalid value`;
 				}
 				return true;
 			},
