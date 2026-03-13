@@ -23,14 +23,14 @@ export const HelpCommandFlag = Flags.boolean({
 		const flagDefinitions = cmd.flags;
 
 		const availableArguments: [string, FlagDefinition][] = Object.entries(argumentDefinitions);
-		const availableOptions: [string, FlagDefinition][] = Object.entries(flagDefinitions);
+		const availableFlags: [string, FlagDefinition][] = Object.entries(flagDefinitions);
 
-		const optionsWithAlias = availableOptions.map(([name, signature]) => {
-			const aliases = Array.isArray(signature.alias) ? signature.alias : signature.alias ? [signature.alias] : [];
+		const flagsWithAlias = availableFlags.map(([name, definition]) => {
+			const aliases = Array.isArray(definition.alias) ? definition.alias : definition.alias ? [definition.alias] : [];
 			return {
 				name,
-				...signature,
-				optionWithAlias: `--${name}${aliases.map((a: string) => `, -${a}`).join('')}`,
+				...definition,
+				flagWithAlias: `--${name}${aliases.map((a: string) => `, -${a}`).join('')}`,
 			};
 		});
 
@@ -42,7 +42,7 @@ export const HelpCommandFlag = Flags.boolean({
 		console.log(chalk.yellow('Usage:'));
 		console.log(`  ${cmd.command} ${requiredArguments.length > 0 ? requiredArguments.map(([name]) => `<${name}>`).join(' ') : '\b'} [options]`);
 
-		const maxOptionLength: number = Math.max(...optionsWithAlias.map(opt => opt.optionWithAlias.length), 0);
+		const maxOptionLength: number = Math.max(...flagsWithAlias.map(opt => opt.flagWithAlias.length), 0);
 		const maxArgumentLength: number = Math.max(...availableArguments.map(([name]) => name.length), 0);
 		const maxLength = maxArgumentLength > maxOptionLength ? maxArgumentLength : maxOptionLength;
 
@@ -55,8 +55,8 @@ export const HelpCommandFlag = Flags.boolean({
 				let message = `  ${chalk.green(name)} ${spaces} ${definition.description ?? '\b'}`;
 
 				if (definition.default !== undefined && !definition.required) {
-					const typeDisplay = getTypeDisplay(definition);
-					const defaultValue = typeDisplay === 'array' || Array.isArray(definition.type) ? JSON.stringify(definition.default) : definition.default;
+					const defaultValue =
+						typeof definition.default === 'function' ? '[function]' : definition.multiple ? JSON.stringify(definition.default) : definition.default;
 
 					message += ` ${chalk.yellow(`[default: ${defaultValue}]`)}`;
 				}
@@ -69,21 +69,20 @@ export const HelpCommandFlag = Flags.boolean({
 			}
 		}
 
-		if (availableOptions.length > 0) {
+		if (availableFlags.length > 0) {
 			console.log(`\n${chalk.yellow('Options')}:`);
 
-			for (const signature of optionsWithAlias) {
-				const spaces = generateSpace(maxLength - signature.optionWithAlias.length);
+			for (const definition of flagsWithAlias) {
+				const spaces = generateSpace(maxLength - definition.flagWithAlias.length);
 
-				let message = `${chalk.green(signature.optionWithAlias)} ${spaces} ${signature.description ?? '\b'}`;
+				let message = `  ${chalk.green(definition.flagWithAlias)} ${spaces} ${definition.description ?? '\b'}`;
 
-				if (signature.type) {
-					message += ` ${chalk.white(`(${getTypeDisplay(signature)})`)}`;
+				if (definition.type) {
+					message += ` ${chalk.white(`(${getTypeDisplay(definition)})`)}`;
 				}
 
-				if (signature.default !== undefined && !signature.required) {
-					const typeDisplay = getTypeDisplay(signature);
-					const defaultValue = typeDisplay === 'array' || Array.isArray(signature.type) ? JSON.stringify(signature.default) : signature.default;
+				if (definition.default !== undefined && !definition.required) {
+					const defaultValue = typeof definition.default === 'function' ? '(function)' : definition.default;
 					message += ` ${chalk.yellow(`[default: ${defaultValue}]`)}`;
 				}
 

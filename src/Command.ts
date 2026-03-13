@@ -4,7 +4,7 @@ import { Logger } from '@/src/Logger.js';
 import { ArgumentsSchema, ContextDefinition, FlagsSchema, Parsed } from '@/src/lib/types.js';
 import { HelpCommandFlag } from '@/src/options/index.js';
 
-export type CommandExample = {
+export type CommandRunExample = {
 	description: string;
 	command: string;
 };
@@ -31,13 +31,13 @@ export abstract class Command<C extends ContextDefinition = ContextDefinition> {
 	static group?: string;
 	static args: ArgumentsSchema = {};
 	static flags: FlagsSchema = {};
-	static examples: CommandExample[] = [];
+	static examples: CommandRunExample[] = [];
 	static hidden: boolean = false;
 
 	// Static configuration options
 	static disableDefaultOptions: boolean = false;
 	static disablePrompting: boolean = false;
-	static allowUnknownOptions: boolean = false;
+	static allowUnknownFlags: boolean = false;
 	static strictMode: boolean = false;
 
 	protected ctx!: C;
@@ -85,7 +85,7 @@ export abstract class Command<C extends ContextDefinition = ContextDefinition> {
 				args: ctor.args,
 			});
 
-			if (ctor.allowUnknownOptions) {
+			if (ctor.allowUnknownFlags) {
 				this.parser.allowUnknownFlags();
 			}
 			if (ctor.strictMode) {

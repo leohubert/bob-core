@@ -330,7 +330,7 @@ describe('Command', () => {
 			class TestCmd extends Command {
 				static command = 'test';
 				static disableDefaultOptions = true;
-				static allowUnknownOptions = true;
+				static allowUnknownFlags = true;
 				async handle() {
 					return handlerFn();
 				}
@@ -353,7 +353,7 @@ describe('Command', () => {
 			class TestCmd extends Command {
 				static command = 'test';
 				static disableDefaultOptions = true;
-				static allowUnknownOptions = true;
+				static allowUnknownFlags = true;
 				static flags = { verbose: Flags.boolean() } satisfies FlagsSchema;
 				async handle(ctx: any, parsed: any) {
 					return handlerFn(ctx, parsed);

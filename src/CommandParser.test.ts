@@ -4,9 +4,9 @@ import { CommandIO } from '@/src/CommandIO.js';
 import { CommandParser } from '@/src/CommandParser.js';
 import { Flags } from '@/src/Flags.js';
 import { BadCommandFlag } from '@/src/errors/BadCommandFlag.js';
-import { InvalidOption } from '@/src/errors/InvalidOption.js';
+import { InvalidFlag } from '@/src/errors/InvalidFlag.js';
 import { MissingRequiredArgumentValue } from '@/src/errors/MissingRequiredArgumentValue.js';
-import { MissingRequiredOptionValue } from '@/src/errors/MissingRequiredOptionValue.js';
+import { MissingRequiredFlagValue } from '@/src/errors/MissingRequiredFlagValue.js';
 import { TooManyArguments } from '@/src/errors/TooManyArguments.js';
 import { TestLogger, newTestLogger } from '@/src/fixtures.test.js';
 
@@ -256,7 +256,7 @@ describe('CommandParser', () => {
 			expect(result.flags.tags).toEqual([]);
 		});
 
-		it('should default to empty array when no values provided', async () => {
+		it('should use custom default array when no values provided', async () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
@@ -335,7 +335,7 @@ describe('CommandParser', () => {
 			(parser as any).flags.name.required = true;
 
 			// validate() should check for required values
-			await expect(parser.validate()).rejects.toThrow(MissingRequiredOptionValue);
+			await expect(parser.validate()).rejects.toThrow(MissingRequiredFlagValue);
 		});
 
 		it('should validate required arguments', async () => {
@@ -377,10 +377,10 @@ describe('CommandParser', () => {
 				args: {},
 			});
 
-			await expect(parser.init(['--unknown'])).rejects.toThrow(InvalidOption);
+			await expect(parser.init(['--unknown'])).rejects.toThrow(InvalidFlag);
 		});
 
-		it('should not throw on unknown options when allowUnknownOptions is set', async () => {
+		it('should not throw on unknown flags when allowUnknownFlags is set', async () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
@@ -430,7 +430,7 @@ describe('CommandParser', () => {
 				args: {},
 			});
 
-			expect(() => parser.flag('verbose')).toThrow('Options have not been parsed yet');
+			expect(() => parser.flag('verbose')).toThrow('Flags have not been parsed yet');
 		});
 
 		it('should throw error when accessing arguments before init', () => {
@@ -680,8 +680,7 @@ describe('CommandParser', () => {
 				args: {},
 			});
 
-			await parser.init(['--count', 'not-a-number']);
-			await expect(parser.validate()).rejects.toThrow(BadCommandFlag);
+			await expect(parser.init(['--count', 'not-a-number'])).rejects.toThrow(BadCommandFlag);
 		});
 	});
 

@@ -25,6 +25,13 @@ export default class NewTestCommand extends Command {
 			secret: true,
 			required: true,
 			description: 'Age argument',
+			default: () => {
+				return new Promise(resolve => {
+					setTimeout(() => {
+						resolve('dd');
+					}, 1000);
+				});
+			},
 		}),
 		tags: Args.number({
 			required: true,
@@ -55,7 +62,7 @@ export default class NewTestCommand extends Command {
 				return new Promise(resolve => {
 					setTimeout(() => {
 						resolve([1, 2, 3]);
-					}, 4000);
+					}, 1000);
 				});
 			},
 		}),

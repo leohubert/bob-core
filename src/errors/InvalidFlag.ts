@@ -4,23 +4,23 @@ import { Logger } from '@/src/Logger.js';
 import { BobError } from '@/src/errors/BobError.js';
 import { FlagsSchema } from '@/src/lib/types.js';
 
-export class InvalidOption extends BobError {
+export class InvalidFlag extends BobError {
 	constructor(
-		private option: string,
-		private optionsSchema: FlagsSchema = {},
+		private flag: string,
+		private flagsSchema: FlagsSchema = {},
 	) {
-		super(`Option ${option} is not recognized`);
+		super(`Flag ${flag} is not recognized`);
 	}
 
 	pretty(logger: Logger): void {
 		logger.log('');
-		logger.log(`  ${chalk.bold.white.bgRed(' ERROR ')} Option ${chalk.bold.yellow(this.option)} is not recognized.`);
+		logger.log(`  ${chalk.bold.white.bgRed(' ERROR ')} Flag ${chalk.bold.yellow(this.flag)} is not recognized.`);
 
-		const options = Object.entries(this.optionsSchema);
+		const options = Object.entries(this.flagsSchema);
 
 		if (options.length > 0) {
 			logger.log('');
-			logger.log(`  ${chalk.dim('Available options:')}`);
+			logger.log(`  ${chalk.dim('Available flags:')}`);
 			logger.log('');
 
 			const rows = options.map(([name, definition]) => {

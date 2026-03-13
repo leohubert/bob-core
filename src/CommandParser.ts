@@ -2,9 +2,9 @@ import chalk from 'chalk';
 import minimist from 'minimist';
 
 import { CommandIO } from '@/src/CommandIO.js';
-import { InvalidOption } from '@/src/errors/InvalidOption.js';
+import { InvalidFlag } from '@/src/errors/InvalidFlag.js';
 import { MissingRequiredArgumentValue } from '@/src/errors/MissingRequiredArgumentValue.js';
-import { MissingRequiredOptionValue } from '@/src/errors/MissingRequiredOptionValue.js';
+import { MissingRequiredFlagValue } from '@/src/errors/MissingRequiredFlagValue.js';
 import { BadCommandArgument, BadCommandFlag, TooManyArguments } from '@/src/errors/index.js';
 import { ArgumentsObject, ArgumentsSchema, ContextDefinition, FlagDefinition, FlagReturnType, FlagsObject, FlagsSchema } from '@/src/lib/types.js';
 
@@ -37,7 +37,7 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends Argument
 	 * Parses raw command-line arguments into structured flags and arguments
 	 * @param args - Raw command line arguments (typically from process.argv.slice(2))
 	 * @returns Object containing parsed flags and arguments
-	 * @throws {InvalidOption} If an unknown flag is provided
+	 * @throws {InvalidFlag} If an unknown flag is provided
 	 * @throws {BadCommandFlag} If a value cannot be converted to the expected type
 	 */
 	async init(args: string[]): Promise<{
@@ -70,7 +70,7 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends Argument
 			const isMultiple = 'multiple' in flagDefinition && flagDefinition.multiple;
 
 			if (flagDefinition.required && isEmpty) {
-				throw new MissingRequiredOptionValue(key);
+				throw new MissingRequiredFlagValue(key);
 			}
 
 			if (!isEmpty && flagDefinition.validate) {
@@ -128,7 +128,7 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends Argument
 	 */
 	flag<FlagName extends keyof Flags>(name: FlagName, defaultValue?: FlagReturnType<Flags[FlagName]>): FlagReturnType<Flags[FlagName]> {
 		if (!this.parsedFlags) {
-			throw new Error('Options have not been parsed yet. Call init() first.');
+			throw new Error('Flags have not been parsed yet. Call init() first.');
 		}
 
 		if (this.isEmptyValue(this.parsedFlags[name]) && defaultValue !== undefined) {
@@ -140,10 +140,10 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends Argument
 
 	async setFlag<FlagName extends keyof Flags>(name: FlagName, value: FlagReturnType<Flags[FlagName]>): Promise<void> {
 		if (!this.parsedFlags) {
-			throw new Error('Flag have not been parsed yet. Call init() first.');
+			throw new Error('Flags have not been parsed yet. Call init() first.');
 		}
 		if (!(name in this.flags)) {
-			throw new InvalidOption(name as string, this.flags);
+			throw new InvalidFlag(name as string, this.flags);
 		}
 
 		if (this.flags[name].validate) {
@@ -180,7 +180,7 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends Argument
 			throw new Error('Arguments have not been parsed yet. Call init() first.');
 		}
 		if (!(name in this.args)) {
-			throw new InvalidOption(name as string, this.args);
+			throw new BadCommandArgument({ arg: name as string, reason: `Argument "${name as string}" is not recognized` });
 		}
 
 		if (this.args[name].validate) {
@@ -206,7 +206,7 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends Argument
 
 	/**
 	 * Validates that all provided flags are recognized
-	 * @throws {InvalidOption} If an unknown flag is found
+	 * @throws {InvalidFlag} If an unknown flag is found
 	 */
 	private validateUnknownFlags(rawFlags: Record<string, any>): void {
 		const validOptionNames = new Set<string>();
@@ -223,7 +223,7 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends Argument
 		// Check for unknown flags
 		for (const flagName in rawFlags) {
 			if (!validOptionNames.has(flagName)) {
-				throw new InvalidOption(flagName, this.flags);
+				throw new InvalidFlag(flagName, this.flags);
 			}
 		}
 	}

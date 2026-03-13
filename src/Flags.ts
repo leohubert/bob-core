@@ -17,11 +17,6 @@ export const Flags = {
 	string<const T extends FlagInput<StringFlagDef>>(opts?: T): StringFlagDef & T {
 		return {
 			default: opts?.multiple ? [] : null,
-			validate(value: string): FlagValidationResult {
-				if (opts?.secret) return true; // skip validation for secret flags
-				if (opts?.required && (value === null || value === '')) return 'is required';
-				return true;
-			},
 			parse: (value: any): string => {
 				if (typeof value === 'boolean') {
 					throw new Error(`Expected a string, got boolean "${value}"`);
@@ -37,13 +32,16 @@ export const Flags = {
 		return {
 			default: opts?.multiple ? [] : null,
 			validate(value: number) {
-				if (isNaN(value)) return 'must be a valid number';
 				if (opts?.min !== undefined && value < opts.min) return `is below minimum ${opts.min}`;
 				if (opts?.max !== undefined && value > opts.max) return `exceeds maximum ${opts.max}`;
 				return true;
 			},
 			parse: (value: any): number => {
-				return typeof value === 'number' ? value : Number(value);
+				const num = typeof value === 'number' ? value : Number(value);
+				if (isNaN(num)) {
+					throw new Error(`must be a valid number`);
+				}
+				return num;
 			},
 			...opts,
 			type: 'number',
