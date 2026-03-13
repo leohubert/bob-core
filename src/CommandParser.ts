@@ -26,7 +26,7 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends Argument
 	protected shouldValidateUnknownFlags = true;
 	protected shouldRejectExtraArguments = false;
 
-	constructor(protected opts: { flags: Flags; args: Arguments; ctx: ContextDefinition; io: CommandIO }) {
+	constructor(protected opts: { flags: Flags; args: Arguments; ctx?: ContextDefinition; io: CommandIO }) {
 		this.io = opts.io;
 		this.flags = opts.flags;
 		this.args = opts.args;
@@ -314,14 +314,8 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends Argument
 		}
 
 		// Array types: handle multiple values
-		if (Array.isArray(definition.type) || ('multiple' in definition && definition.multiple)) {
+		if ('multiple' in definition && definition.multiple) {
 			const arr = Array.isArray(value) ? value : [value];
-			// For array primitive types (e.g. ['string'], ['number']), the parse function
-			// from flags.ts already handles array mapping, so pass the whole array
-			if (Array.isArray(definition.type)) {
-				return await this.callParse(arr, definition, name);
-			}
-			// For multiple (enum/custom), parse each element individually
 			return Promise.all(arr.map(v => this.callParse(v, definition, name)));
 		}
 
@@ -440,8 +434,10 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends Argument
 			return await this.io.askForSelect(promptText, choices);
 		}
 
-		// For new non-promptable types, skip
-		if (!Array.isArray(type) && !['string', 'number'].includes(type as string)) {
+		const isMultiple = 'multiple' in argDef && argDef.multiple;
+
+		// For non-promptable types, skip
+		if (!isMultiple && !['string', 'number'].includes(type as string)) {
 			return null;
 		}
 
@@ -449,10 +445,9 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends Argument
 		if (argDef.description) {
 			promptText += `: ${chalk.gray(`(${argDef.description})`)}`;
 		}
-		const typeDisplay = Array.isArray(type) ? `${type[0]}[]` : type;
-		promptText += ` ${chalk.green(`(${typeDisplay}${'multiple' in argDef && argDef.multiple == true ? '[]' : ''})`)}\n`;
+		promptText += ` ${chalk.green(`(${type}${isMultiple ? '[]' : ''})`)}\n`;
 
-		if (Array.isArray(type)) {
+		if (isMultiple) {
 			promptText += 'Please provide one or more values, separated by commas:\n';
 
 			return await this.io.askForList(promptText, undefined, {
@@ -462,7 +457,7 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends Argument
 						return 'Please enter at least one value';
 					}
 
-					if (type[0] === 'number') {
+					if (type === 'number') {
 						for (const val of value.split(',')) {
 							if (isNaN(Number(val))) {
 								return `Please enter only valid numbers`;

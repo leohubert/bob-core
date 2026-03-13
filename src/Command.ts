@@ -92,6 +92,10 @@ export abstract class Command<C extends ContextDefinition = ContextDefinition> {
 				this.parser.strictMode();
 			}
 
+			if (ctor.disablePrompting) {
+				this.parser.disablePrompting();
+			}
+
 			const parsed = await this.parser.init(runOpts.args);
 
 			for (const flag in parsed.flags) {
@@ -100,14 +104,10 @@ export abstract class Command<C extends ContextDefinition = ContextDefinition> {
 
 				if (definition && definition.handler) {
 					const res = definition.handler(value, runOpts.ctx, ctor);
-					if (res.shouldStop) {
+					if (res && res.shouldStop) {
 						return -1;
 					}
 				}
-			}
-
-			if (ctor.disablePrompting) {
-				this.parser.disablePrompting();
 			}
 
 			await this.parser.validate();

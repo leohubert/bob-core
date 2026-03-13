@@ -1,18 +1,18 @@
-import fs from 'node:fs';
-
 import type { BooleanFlagDef, CustomFlagDef, DirectoryFlagDef, EnumFlagDef, FileFlagDef, NumberFlagDef, StringFlagDef, UrlFlagDef } from '@/src/lib/types.js';
 
 export const Flags = {
-	string(opts?: Partial<Omit<StringFlagDef, 'type'>>): StringFlagDef {
+	string<const T extends Partial<Omit<StringFlagDef, 'type'>> = {}>(opts?: T): StringFlagDef & T {
 		return {
+			default: opts?.multiple ? ([] as any) : null,
 			...opts,
 			type: 'string',
 			parse: (value: any): string => String(value),
-		};
+		} as any;
 	},
 
-	number(opts?: Partial<Omit<NumberFlagDef, 'type'>>): NumberFlagDef {
+	number<const T extends Partial<Omit<NumberFlagDef, 'type'>> = {}>(opts?: T): NumberFlagDef & T {
 		return {
+			default: opts?.multiple ? ([] as any) : null,
 			...opts,
 			type: 'number',
 			parse: (value: any) => {
@@ -22,11 +22,12 @@ export const Flags = {
 				if (opts?.max !== undefined && parsed > opts.max) throw new Error(`Value ${parsed} exceeds maximum ${opts.max}`);
 				return parsed;
 			},
-		};
+		} as any;
 	},
 
-	boolean(opts?: Partial<Omit<BooleanFlagDef, 'type'>>): BooleanFlagDef {
+	boolean<const T extends Partial<Omit<BooleanFlagDef, 'type'>> = {}>(opts?: T): BooleanFlagDef & T {
 		return {
+			default: false,
 			...opts,
 			type: 'boolean',
 			parse: (value: any): boolean => {
@@ -36,15 +37,14 @@ export const Flags = {
 				if (val === 'false' || val === '0') return false;
 				return Boolean(value);
 			},
-		};
+		} as any;
 	},
 
-	enum<const T extends readonly string[]>(
-		opts: {
-			options: T;
-		} & Partial<Omit<EnumFlagDef<T>, 'type' | 'options'>>,
-	): EnumFlagDef<T> {
+	enum<const T extends readonly string[], const U extends Partial<Omit<EnumFlagDef<T>, 'type' | 'options'>> = {}>(
+		opts: { options: T } & U,
+	): EnumFlagDef<T> & U {
 		return {
+			default: opts.multiple ? ([] as any) : null,
 			...opts,
 			type: 'enum',
 			parse: (value: any) => {
@@ -52,37 +52,30 @@ export const Flags = {
 				if (!opts.options.includes(str)) throw new Error(`Expected one of [${opts.options.join(', ')}], got "${str}"`);
 				return str as unknown as T;
 			},
-		};
+		} as any;
 	},
 
-	file(opts?: Partial<Omit<FileFlagDef, 'type'>>): FileFlagDef {
+	file<const T extends Partial<Omit<FileFlagDef, 'type'>> = {}>(opts?: T): FileFlagDef & T {
 		return {
+			default: null,
 			...opts,
 			type: 'file',
-			parse: (input: any) => {
-				if (!fs.existsSync(input)) {
-					throw new Error(`File not found: "${input}"`);
-				}
-				return String(input);
-			},
-		};
+			parse: (input: any) => String(input),
+		} as any;
 	},
 
-	directory(opts?: Partial<Omit<DirectoryFlagDef, 'type'>>): DirectoryFlagDef {
+	directory<const T extends Partial<Omit<DirectoryFlagDef, 'type'>> = {}>(opts?: T): DirectoryFlagDef & T {
 		return {
+			default: null,
 			...opts,
 			type: 'directory',
-			parse: (input: any) => {
-				if (!fs.existsSync(input) || !fs.statSync(input).isDirectory()) {
-					throw new Error(`Directory not found: "${input}"`);
-				}
-				return String(input);
-			},
-		};
+			parse: (input: any) => String(input),
+		} as any;
 	},
 
-	url(opts?: Partial<Omit<UrlFlagDef, 'type'>>): UrlFlagDef {
+	url<const T extends Partial<Omit<UrlFlagDef, 'type'>> = {}>(opts?: T): UrlFlagDef & T {
 		return {
+			default: null,
 			...opts,
 			type: 'url',
 			parse: (input: any) => {
@@ -93,18 +86,19 @@ export const Flags = {
 					throw new Error(`Invalid URL: "${str}"`);
 				}
 			},
-		};
+		} as any;
 	},
 
 	custom<T>(
 		defaults: { parse: (value: string) => T } & Partial<Omit<CustomFlagDef<T>, 'type' | 'parse'>>,
-	): (overrides?: Partial<Omit<CustomFlagDef<T>, 'type' | 'parse'>>) => CustomFlagDef<T> {
+	): <const U extends Partial<Omit<CustomFlagDef<T>, 'type' | 'parse'>> = {}>(overrides?: U) => CustomFlagDef<T> & U {
 		return (overrides?) => ({
+			default: (defaults.multiple || overrides?.multiple ? [] : null) as any,
 			...defaults,
 			...overrides,
 			type: 'custom',
 			parse: defaults.parse,
-		});
+		}) as any;
 	},
 };
 

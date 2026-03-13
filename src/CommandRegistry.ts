@@ -7,7 +7,7 @@ import { CommandIO, CommandIOOptions } from '@/src/CommandIO.js';
 import { Logger } from '@/src/Logger.js';
 import { StringSimilarity } from '@/src/StringSimilarity.js';
 import { CommandNotFoundError } from '@/src/errors/CommandNotFoundError.js';
-import { isBobCommand, isBobCommandClass } from '@/src/lib/helpers.js';
+import { isBobCommandClass } from '@/src/lib/helpers.js';
 import { ContextDefinition } from '@/src/lib/types.js';
 
 export type CommandResolver = (path: string) => Promise<typeof Command | null>;
@@ -75,7 +75,7 @@ export class CommandRegistry {
 		return this;
 	}
 
-	registerCommand(command: typeof Command, force: boolean = false) {
+	registerCommand(command: typeof Command<any>, force: boolean = false) {
 		if (!isBobCommandClass(command)) {
 			throw new Error('Invalid command, it must extend the Command class.');
 		}
@@ -109,7 +109,6 @@ export class CommandRegistry {
 
 	async runCommand(ctx: ContextDefinition, command: string | typeof Command | Command, ...args: string[]): Promise<number> {
 		let commandInstance: Command;
-		let commandSignature: string;
 
 		if (typeof command === 'string') {
 			const CommandClass = this.commands[command];
@@ -120,13 +119,10 @@ export class CommandRegistry {
 				}
 				return 1;
 			}
-			commandSignature = command;
 			commandInstance = new (CommandClass as unknown as new () => Command)();
 		} else if (isBobCommandClass(command)) {
-			commandSignature = command.command;
 			commandInstance = new (command as unknown as new () => Command)();
 		} else {
-			commandSignature = (command.constructor as typeof Command).command;
 			commandInstance = command;
 		}
 

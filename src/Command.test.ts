@@ -2,6 +2,7 @@ import { faker } from '@faker-js/faker';
 import { beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 
 import { Command, CommandRunOption } from '@/src/Command.js';
+import { Flags } from '@/src/Flags.js';
 import { TooManyArguments } from '@/src/errors/TooManyArguments.js';
 import { TestLogger, newTestLogger } from '@/src/fixtures.test.js';
 import { ArgumentsSchema, FlagType, FlagsSchema, Parsed } from '@/src/lib/types.js';
@@ -89,8 +90,8 @@ describe('Command', () => {
 		it('should parse args when provided', async () => {
 			class TestCmd extends Command {
 				static command = 'test';
-				static flags = { verbose: { type: 'boolean' } } satisfies FlagsSchema;
-				static args = { file: { type: 'string' } } satisfies ArgumentsSchema;
+				static flags = { verbose: Flags.boolean() } satisfies FlagsSchema;
+				static args = { file: Flags.string() } satisfies ArgumentsSchema;
 				async handle(ctx: any, parsed: any) {
 					handlerFn(ctx, parsed);
 					return 0;
@@ -115,8 +116,8 @@ describe('Command', () => {
 		it('should accept pre-parsed options and arguments', async () => {
 			class TestCmd extends Command {
 				static command = 'test';
-				static flags = { verbose: { type: 'boolean' } } satisfies FlagsSchema;
-				static args = { file: { type: 'string' } } satisfies ArgumentsSchema;
+				static flags = { verbose: Flags.boolean() } satisfies FlagsSchema;
+				static args = { file: Flags.string() } satisfies ArgumentsSchema;
 				async handle(ctx: any, parsed: any) {
 					handlerFn(ctx, parsed);
 					return 0;
@@ -255,7 +256,7 @@ describe('Command', () => {
 		it('should validate required options', async () => {
 			class TestCmd extends Command {
 				static command = 'test';
-				static flags = { name: { type: 'string', required: true } } satisfies FlagsSchema;
+				static flags = { name: Flags.string({ required: true }) } satisfies FlagsSchema;
 				async handle() {
 					return 0;
 				}
@@ -269,7 +270,7 @@ describe('Command', () => {
 			class TestCmd extends Command {
 				static command = 'test';
 				static disablePrompting = true;
-				static args = { file: { type: 'string', required: true } } satisfies ArgumentsSchema;
+				static args = { file: Flags.string({ required: true }) } satisfies ArgumentsSchema;
 				async handle() {
 					return 0;
 				}
@@ -282,8 +283,8 @@ describe('Command', () => {
 		it('should pass validation with all required values', async () => {
 			class TestCmd extends Command {
 				static command = 'test';
-				static flags = { name: { type: 'string', required: true } } satisfies FlagsSchema;
-				static args = { file: { type: 'string', required: true } } satisfies ArgumentsSchema;
+				static flags = { name: Flags.string({ required: true }) } satisfies FlagsSchema;
+				static args = { file: Flags.string({ required: true }) } satisfies ArgumentsSchema;
 				async handle() {
 					return 0;
 				}
@@ -353,7 +354,7 @@ describe('Command', () => {
 				static command = 'test';
 				static disableDefaultOptions = true;
 				static allowUnknownOptions = true;
-				static flags = { verbose: { type: 'boolean' } } satisfies FlagsSchema;
+				static flags = { verbose: Flags.boolean() } satisfies FlagsSchema;
 				async handle(ctx: any, parsed: any) {
 					return handlerFn(ctx, parsed);
 				}
@@ -379,7 +380,7 @@ describe('Command', () => {
 			class TestCmd extends Command {
 				static command = 'test';
 				static strictMode = true;
-				static args = { file: { type: 'string' } } satisfies ArgumentsSchema;
+				static args = { file: Flags.string() } satisfies ArgumentsSchema;
 				async handle() {
 					return 0;
 				}
@@ -400,7 +401,7 @@ describe('Command', () => {
 			class TestCmd extends Command {
 				static command = 'test';
 				static strictMode = true;
-				static args = { file: { type: 'string' } } satisfies ArgumentsSchema;
+				static args = { file: Flags.string() } satisfies ArgumentsSchema;
 				async handle() {
 					return handlerFn();
 				}
@@ -423,7 +424,7 @@ describe('Command', () => {
 
 			class TestCmd extends Command<Context> {
 				static command = 'test';
-				static flags = { verbose: { type: 'boolean' }, count: { type: 'number' } } satisfies FlagsSchema;
+				static flags = { verbose: Flags.boolean(), count: Flags.number() } satisfies FlagsSchema;
 				async handle(ctx: Context, { flags }: Parsed<typeof TestCmd>) {
 					// Type checking - these should compile
 					const _userId: string = ctx.userId;
@@ -440,7 +441,7 @@ describe('Command', () => {
 		it('should maintain type safety through static args', async () => {
 			class TestCmd extends Command {
 				static command = 'test';
-				static args = { file: { type: 'string' }, lines: { type: 'number' } } satisfies ArgumentsSchema;
+				static args = { file: Flags.string(), lines: Flags.number() } satisfies ArgumentsSchema;
 				async handle(ctx: any, { args }: Parsed<typeof TestCmd>) {
 					// Type checking
 					const _file: string | null = args.file;
@@ -457,31 +458,36 @@ describe('Command', () => {
 		});
 
 		it('should infer enum type from Parsed', () => {
-			const flagDef = { type: 'enum', options: ['debug', 'info', 'warn'] as const } as const;
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			const flagDef = Flags.enum({ options: ['debug', 'info', 'warn'] as const });
 			type Result = FlagType<typeof flagDef>;
 			expectTypeOf<Result>().toEqualTypeOf<'debug' | 'info' | 'warn'>();
 		});
 
 		it('should infer url type from Parsed', () => {
-			const flagDef = { type: 'url' } as const;
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			const flagDef = Flags.url();
 			type Result = FlagType<typeof flagDef>;
 			expectTypeOf<Result>().toEqualTypeOf<URL>();
 		});
 
 		it('should infer file type as string', () => {
-			const flagDef = { type: 'file' } as const;
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			const flagDef = Flags.file();
 			type Result = FlagType<typeof flagDef>;
 			expectTypeOf<Result>().toEqualTypeOf<string>();
 		});
 
 		it('should infer directory type as string', () => {
-			const flagDef = { type: 'directory' } as const;
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			const flagDef = Flags.directory();
 			type Result = FlagType<typeof flagDef>;
 			expectTypeOf<Result>().toEqualTypeOf<string>();
 		});
 
 		it('should infer custom return type', () => {
-			const flagDef = { type: 'custom', parse: (v: string) => new Date(v) } as const;
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			const flagDef = Flags.custom({ parse: (v: string) => new Date(v) })();
 			type Result = FlagType<typeof flagDef>;
 			expectTypeOf<Result>().toEqualTypeOf<Date>();
 		});

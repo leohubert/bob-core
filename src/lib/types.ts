@@ -8,7 +8,7 @@ export type BaseFlagConfig<T> = {
 	secret?: boolean;
 	default?: T | null;
 	parse: (input: any, ctx: ContextDefinition) => T;
-	handler?(value: T, ctx: ContextDefinition, cmd: typeof Command): { shouldStop: boolean };
+	handler?(value: T, ctx: ContextDefinition, cmd: typeof Command): { shouldStop: boolean } | void;
 };
 
 // === Per-type definitions (discriminated union members) ===
@@ -56,19 +56,21 @@ export type FlagType<O extends FlagDefinition> = O extends {
 					? R[]
 					: O extends { type: 'custom'; parse: (value: string) => infer R }
 						? R
-						: O extends { type: 'url' }
-							? URL
-							: O extends { type: 'url'; multiple: true }
-								? URL[]
-								: O extends { type: 'number' }
-									? number
-									: O extends { type: 'number'; multiple: true }
-										? number
-										: O extends { type: infer R }
-											? R
-											: O extends { type: infer R; multiple: true }
-												? R[]
-												: never;
+						: O extends { type: 'url'; multiple: true }
+							? URL[]
+							: O extends { type: 'url' }
+								? URL
+								: O extends { type: 'boolean' }
+									? boolean
+									: O extends { type: 'string'; multiple: true }
+										? string[]
+										: O extends { type: 'string' }
+											? string
+											: O extends { type: 'number'; multiple: true }
+												? number[]
+												: O extends { type: 'number' }
+													? number
+													: never;
 
 export type IsRequired<O extends FlagDefinition> = O extends { required: true } ? true : false;
 

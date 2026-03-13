@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { CommandIO } from '@/src/CommandIO.js';
 import { CommandParser } from '@/src/CommandParser.js';
+import { Flags } from '@/src/Flags.js';
 import { BadCommandFlag } from '@/src/errors/BadCommandFlag.js';
 import { InvalidOption } from '@/src/errors/InvalidOption.js';
 import { MissingRequiredArgumentValue } from '@/src/errors/MissingRequiredArgumentValue.js';
@@ -37,7 +38,7 @@ describe('CommandParser', () => {
 		it('should parse boolean options', async () => {
 			const parser = new CommandParser({
 				io,
-				flags: { verbose: { type: 'boolean' }, debug: { type: 'boolean' } },
+				flags: { verbose: Flags.boolean(), debug: Flags.boolean() },
 				args: {},
 			});
 
@@ -50,7 +51,7 @@ describe('CommandParser', () => {
 		it('should default boolean options to false', async () => {
 			const parser = new CommandParser({
 				io,
-				flags: { verbose: { type: 'boolean' } },
+				flags: { verbose: Flags.boolean() },
 				args: {},
 			});
 
@@ -62,7 +63,7 @@ describe('CommandParser', () => {
 		it('should parse string options', async () => {
 			const parser = new CommandParser({
 				io,
-				flags: { name: { type: 'string' }, output: { type: 'string' } },
+				flags: { name: Flags.string(), output: Flags.string() },
 				args: {},
 			});
 
@@ -75,7 +76,7 @@ describe('CommandParser', () => {
 		it('should parse number options', async () => {
 			const parser = new CommandParser({
 				io,
-				flags: { count: { type: 'number' }, limit: { type: 'number' } },
+				flags: { count: Flags.number(), limit: Flags.number() },
 				args: {},
 			});
 
@@ -89,7 +90,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {},
-				args: { file: { type: 'string' }, lines: { type: 'number' } },
+				args: { file: Flags.string(), lines: Flags.number() },
 			});
 
 			const result = await parser.init(['test.txt', '50']);
@@ -101,8 +102,8 @@ describe('CommandParser', () => {
 		it('should parse mixed options and arguments', async () => {
 			const parser = new CommandParser({
 				io,
-				flags: { verbose: { type: 'boolean' } },
-				args: { file: { type: 'string' } },
+				flags: { verbose: Flags.boolean() },
+				args: { file: Flags.string() },
 			});
 
 			const result = await parser.init(['test.txt', '--verbose']);
@@ -117,10 +118,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
-					verbose: {
-						type: 'boolean',
-						description: 'Enable verbose output',
-					},
+					verbose: Flags.boolean({ description: 'Enable verbose output' }),
 				},
 				args: {},
 			});
@@ -134,7 +132,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
-					name: { type: 'string', required: true },
+					name: Flags.string({ required: true }),
 				},
 				args: {},
 			});
@@ -148,8 +146,8 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
-					port: { type: 'number', default: 8080 },
-					host: { type: 'string', default: 'localhost' },
+					port: Flags.number({ default: 8080 }),
+					host: Flags.string({ default: 'localhost' }),
 				},
 				args: {},
 			});
@@ -164,7 +162,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
-					port: { type: 'number', default: 8080 },
+					port: Flags.number({ default: 8080 }),
 				},
 				args: {},
 			});
@@ -180,7 +178,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
-					verbose: { type: 'boolean', alias: 'v' },
+					verbose: Flags.boolean({ alias: 'v' }),
 				},
 				args: {},
 			});
@@ -194,7 +192,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
-					output: { type: 'string', alias: ['o', 'out'] },
+					output: Flags.string({ alias: ['o', 'out'] }),
 				},
 				args: {},
 			});
@@ -205,7 +203,7 @@ describe('CommandParser', () => {
 			const parser2 = new CommandParser({
 				io,
 				flags: {
-					output: { type: 'string', alias: ['o', 'out'] },
+					output: Flags.string({ alias: ['o', 'out'] }),
 				},
 				args: {},
 			});
@@ -220,7 +218,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
-					files: { type: ['string'] },
+					files: Flags.string({ multiple: true }),
 				},
 				args: {},
 			});
@@ -234,7 +232,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
-					ports: { type: ['number'] },
+					ports: Flags.number({ multiple: true }),
 				},
 				args: {},
 			});
@@ -248,7 +246,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
-					tags: { type: ['string'] },
+					tags: Flags.string({ multiple: true }),
 				},
 				args: {},
 			});
@@ -262,10 +260,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
-					tags: {
-						type: ['string'],
-						default: ['tag1', 'tag2'],
-					},
+					tags: Flags.string({ multiple: true, default: ['tag1', 'tag2'] as any }),
 				},
 				args: {},
 			});
@@ -282,7 +277,7 @@ describe('CommandParser', () => {
 				io,
 				flags: {},
 				args: {
-					files: { type: ['string'], multiple: true },
+					files: Flags.string({ multiple: true }),
 				},
 			});
 
@@ -296,8 +291,8 @@ describe('CommandParser', () => {
 				io,
 				flags: {},
 				args: {
-					command: { type: 'string' },
-					args: { type: ['string'], multiple: true },
+					command: Flags.string(),
+					args: Flags.string({ multiple: true }),
 				},
 			});
 
@@ -312,7 +307,7 @@ describe('CommandParser', () => {
 				io,
 				flags: {},
 				args: {
-					files: { type: ['string'], multiple: true },
+					files: Flags.string({ multiple: true }),
 				},
 			});
 
@@ -327,7 +322,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
-					name: { type: 'string', required: false },
+					name: Flags.string({ required: false }),
 				},
 				args: {},
 			});
@@ -348,7 +343,7 @@ describe('CommandParser', () => {
 				io,
 				flags: {},
 				args: {
-					file: { type: 'string', required: true },
+					file: Flags.string({ required: true }),
 				},
 			}).disablePrompting();
 
@@ -361,10 +356,10 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
-					name: { type: 'string', required: true },
+					name: Flags.string({ required: true }),
 				},
 				args: {
-					file: { type: 'string', required: true },
+					file: Flags.string({ required: true }),
 				},
 			});
 
@@ -377,7 +372,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
-					verbose: { type: 'boolean' },
+					verbose: Flags.boolean(),
 				},
 				args: {},
 			});
@@ -389,7 +384,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
-					verbose: { type: 'boolean' },
+					verbose: Flags.boolean(),
 				},
 				args: {},
 			}).allowUnknownFlags();
@@ -405,7 +400,7 @@ describe('CommandParser', () => {
 		it('should retrieve flag values', async () => {
 			const parser = new CommandParser({
 				io,
-				flags: { verbose: { type: 'boolean' }, name: { type: 'string' } },
+				flags: { verbose: Flags.boolean(), name: Flags.string() },
 				args: {},
 			});
 
@@ -419,7 +414,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {},
-				args: { file: { type: 'string' }, count: { type: 'number' } },
+				args: { file: Flags.string(), count: Flags.number() },
 			});
 
 			await parser.init(['test.txt', '42']);
@@ -431,7 +426,7 @@ describe('CommandParser', () => {
 		it('should throw error when accessing options before init', () => {
 			const parser = new CommandParser({
 				io,
-				flags: { verbose: { type: 'boolean' } },
+				flags: { verbose: Flags.boolean() },
 				args: {},
 			});
 
@@ -442,7 +437,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {},
-				args: { file: { type: 'string' } },
+				args: { file: Flags.string() },
 			});
 
 			expect(() => parser.argument('file')).toThrow('Arguments have not been parsed yet');
@@ -452,31 +447,31 @@ describe('CommandParser', () => {
 			it('should return runtime default for empty array options', async () => {
 				const parser = new CommandParser({
 					io,
-					flags: { tags: { type: ['string'] } },
+					flags: { tags: Flags.string({ multiple: true }) },
 					args: {},
 				});
 
 				await parser.init([]);
 
-				expect(parser.flag('tags', ['default1', 'default2'])).toEqual(['default1', 'default2']);
+				expect(parser.flag('tags', ['default1', 'default2'] as any)).toEqual(['default1', 'default2']);
 			});
 
 			it('should not use runtime default for non-empty array options', async () => {
 				const parser = new CommandParser({
 					io,
-					flags: { tags: { type: ['string'] } },
+					flags: { tags: Flags.string({ multiple: true }) },
 					args: {},
 				});
 
 				await parser.init(['--tags', 'a', '--tags', 'b']);
 
-				expect(parser.flag('tags', ['default1', 'default2'])).toEqual(['a', 'b']);
+				expect(parser.flag('tags', ['default1', 'default2'] as any)).toEqual(['a', 'b']);
 			});
 
 			it('should not use runtime default for false boolean values', async () => {
 				const parser = new CommandParser({
 					io,
-					flags: { flag: { type: 'boolean' } },
+					flags: { flag: Flags.boolean() },
 					args: {},
 				});
 
@@ -488,7 +483,7 @@ describe('CommandParser', () => {
 			it('should not use runtime default for zero number values', async () => {
 				const parser = new CommandParser({
 					io,
-					flags: { count: { type: 'number' } },
+					flags: { count: Flags.number() },
 					args: {},
 				});
 
@@ -500,7 +495,7 @@ describe('CommandParser', () => {
 			it('should not use runtime default for empty string values', async () => {
 				const parser = new CommandParser({
 					io,
-					flags: { message: { type: 'string' } },
+					flags: { message: Flags.string() },
 					args: {},
 				});
 
@@ -512,7 +507,7 @@ describe('CommandParser', () => {
 			it('should use runtime default for null values', async () => {
 				const parser = new CommandParser({
 					io,
-					flags: { name: { type: 'string' } },
+					flags: { name: Flags.string() },
 					args: {},
 				});
 
@@ -525,24 +520,24 @@ describe('CommandParser', () => {
 				const parser = new CommandParser({
 					io,
 					flags: {},
-					args: { files: { type: ['string'], multiple: true } },
+					args: { files: Flags.string({ multiple: true }) },
 				});
 
 				await parser.init([]);
 
-				expect(parser.argument('files', ['default.txt'])).toEqual(['default.txt']);
+				expect(parser.argument('files', ['default.txt'] as any)).toEqual(['default.txt']);
 			});
 
 			it('should not use runtime default for non-empty array arguments', async () => {
 				const parser = new CommandParser({
 					io,
 					flags: {},
-					args: { files: { type: ['string'], multiple: true } },
+					args: { files: Flags.string({ multiple: true }) },
 				});
 
 				await parser.init(['a.txt', 'b.txt']);
 
-				expect(parser.argument('files', ['default.txt'])).toEqual(['a.txt', 'b.txt']);
+				expect(parser.argument('files', ['default.txt'] as any)).toEqual(['a.txt', 'b.txt']);
 			});
 		});
 	});
@@ -552,8 +547,8 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
-					verbose: { type: 'boolean' },
-					count: { type: 'number', default: 10 },
+					verbose: Flags.boolean(),
+					count: Flags.number({ default: 10 }),
 				},
 				args: {},
 			});
@@ -570,8 +565,8 @@ describe('CommandParser', () => {
 				io,
 				flags: {},
 				args: {
-					file: { type: 'string' },
-					lines: { type: 'number', required: true },
+					file: Flags.string(),
+					lines: Flags.number({ required: true }),
 				},
 			});
 
@@ -585,7 +580,7 @@ describe('CommandParser', () => {
 		it('should return available flag names', () => {
 			const parser = new CommandParser({
 				io,
-				flags: { verbose: { type: 'boolean' }, output: { type: 'string' } },
+				flags: { verbose: Flags.boolean(), output: Flags.string() },
 				args: {},
 			});
 
@@ -598,7 +593,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {},
-				args: { file: { type: 'string' }, count: { type: 'number' } },
+				args: { file: Flags.string(), count: Flags.number() },
 			});
 
 			const names = parser.availableArguments();
@@ -611,7 +606,7 @@ describe('CommandParser', () => {
 		it('should handle empty string values', async () => {
 			const parser = new CommandParser({
 				io,
-				flags: { message: { type: 'string' } },
+				flags: { message: Flags.string() },
 				args: {},
 			});
 
@@ -623,7 +618,7 @@ describe('CommandParser', () => {
 		it('should handle negative numbers with double dash', async () => {
 			const parser = new CommandParser({
 				io,
-				flags: { offset: { type: 'number' } },
+				flags: { offset: Flags.number() },
 				args: {},
 			});
 
@@ -635,7 +630,7 @@ describe('CommandParser', () => {
 		it('should handle floating point numbers', async () => {
 			const parser = new CommandParser({
 				io,
-				flags: { ratio: { type: 'number' } },
+				flags: { ratio: Flags.number() },
 				args: {},
 			});
 
@@ -647,7 +642,7 @@ describe('CommandParser', () => {
 		it('should handle options with equals sign syntax', async () => {
 			const parser = new CommandParser({
 				io,
-				flags: { name: { type: 'string' } },
+				flags: { name: Flags.string() },
 				args: {},
 			});
 
@@ -659,8 +654,8 @@ describe('CommandParser', () => {
 		it('should handle mixed positional and flag ordering', async () => {
 			const parser = new CommandParser({
 				io,
-				flags: { verbose: { type: 'boolean' } },
-				args: { file: { type: 'string' }, lines: { type: 'number' } },
+				flags: { verbose: Flags.boolean() },
+				args: { file: Flags.string(), lines: Flags.number() },
 			});
 
 			const result = await parser.init(['test.txt', '100', '--verbose']);
@@ -676,7 +671,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {},
-				args: { file: { type: 'string' } },
+				args: { file: Flags.string() },
 			}).strictMode();
 
 			await expect(parser.init(['test.txt', 'extra1', 'extra2'])).rejects.toThrow(TooManyArguments);
@@ -686,7 +681,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {},
-				args: { file: { type: 'string' }, count: { type: 'number' } },
+				args: { file: Flags.string(), count: Flags.number() },
 			}).strictMode();
 
 			const result = await parser.init(['test.txt', '42']);
@@ -699,7 +694,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {},
-				args: { file: { type: 'string' }, count: { type: 'number' } },
+				args: { file: Flags.string(), count: Flags.number() },
 			}).strictMode();
 
 			const result = await parser.init(['test.txt']);
@@ -712,7 +707,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {},
-				args: { file: { type: 'string' } },
+				args: { file: Flags.string() },
 			});
 
 			const result = await parser.init(['test.txt', 'extra1', 'extra2']);
@@ -725,8 +720,8 @@ describe('CommandParser', () => {
 				io,
 				flags: {},
 				args: {
-					command: { type: 'string' },
-					args: { type: ['string'], multiple: true },
+					command: Flags.string(),
+					args: Flags.string({ multiple: true }),
 				},
 			}).strictMode();
 
@@ -741,7 +736,7 @@ describe('CommandParser', () => {
 		it('should handle invalid number conversion', async () => {
 			const parser = new CommandParser({
 				io,
-				flags: { count: { type: 'number' } },
+				flags: { count: Flags.number() },
 				args: {},
 			});
 
@@ -754,7 +749,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
-					level: { type: 'enum', options: ['debug', 'info', 'warn'] as const },
+					level: Flags.enum({ options: ['debug', 'info', 'warn'] as const }),
 				},
 				args: {},
 			});
@@ -767,7 +762,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
-					level: { type: 'enum', options: ['debug', 'info'] as const },
+					level: Flags.enum({ options: ['debug', 'info'] as const }),
 				},
 				args: {},
 			});
@@ -779,7 +774,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
-					level: { type: 'enum', options: ['debug', 'info'] as const },
+					level: Flags.enum({ options: ['debug', 'info'] as const }),
 				},
 				args: {},
 			});
@@ -792,7 +787,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
-					port: { type: 'number', min: 1, max: 65535 },
+					port: Flags.number({ min: 1, max: 65535 }),
 				},
 				args: {},
 			});
@@ -805,7 +800,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
-					port: { type: 'number', min: 1, max: 65535 },
+					port: Flags.number({ min: 1, max: 65535 }),
 				},
 				args: {},
 			});
@@ -817,7 +812,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
-					port: { type: 'number', min: 1, max: 65535 },
+					port: Flags.number({ min: 1, max: 65535 }),
 				},
 				args: {},
 			});
@@ -829,7 +824,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
-					config: { type: 'file' },
+					config: Flags.file(),
 				},
 				args: {},
 			});
@@ -842,7 +837,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
-					outDir: { type: 'directory' },
+					outDir: Flags.directory(),
 				},
 				args: {},
 			});
@@ -855,7 +850,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
-					endpoint: { type: 'url' },
+					endpoint: Flags.url(),
 				},
 				args: {},
 			});
@@ -869,7 +864,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
-					endpoint: { type: 'url' },
+					endpoint: Flags.url(),
 				},
 				args: {},
 			});
@@ -881,7 +876,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
-					since: { type: 'custom', parse: (v: string) => new Date(v) },
+					since: Flags.custom({ parse: (v: string) => new Date(v) })(),
 				},
 				args: {},
 			});
@@ -894,12 +889,11 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
-					value: {
-						type: 'custom',
+					value: Flags.custom<string>({
 						parse: (_v: string) => {
 							throw new Error('Bad input');
 						},
-					},
+					})(),
 				},
 				args: {},
 			});
@@ -912,7 +906,7 @@ describe('CommandParser', () => {
 				io,
 				flags: {},
 				args: {
-					format: { type: 'enum', options: ['json', 'csv'] as const },
+					format: Flags.enum({ options: ['json', 'csv'] as const }),
 				},
 			});
 
@@ -925,7 +919,7 @@ describe('CommandParser', () => {
 				io,
 				flags: {},
 				args: {
-					input: { type: 'file' },
+					input: Flags.file(),
 				},
 			});
 
@@ -937,7 +931,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
-					config: { type: 'file', exists: true },
+					config: Flags.file({ exists: true }),
 				},
 				args: {},
 			});
@@ -951,7 +945,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
-					outDir: { type: 'directory', exists: true },
+					outDir: Flags.directory({ exists: true }),
 				},
 				args: {},
 			});
@@ -965,11 +959,10 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
-					since: {
-						type: 'custom',
+					since: Flags.custom({
 						parse: (v: string) => new Date(v),
 						validate: (v: Date) => (isNaN(v.getTime()) ? 'Invalid date' : true),
-					},
+					})(),
 				},
 				args: {},
 			});
@@ -983,11 +976,10 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				io,
 				flags: {
-					since: {
-						type: 'custom',
+					since: Flags.custom({
 						parse: (v: string) => new Date(v),
 						validate: (v: Date) => (isNaN(v.getTime()) ? 'Invalid date' : true),
-					},
+					})(),
 				},
 				args: {},
 			});

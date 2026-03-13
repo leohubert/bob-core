@@ -3,11 +3,9 @@ import { CommandContext } from '../command.js';
 
 export const LoggerVerboseFlag = Flags.boolean({
 	alias: ['v'],
-	parse: (value: any, ctx: CommandContext, cmd) => {
-		const enableVerbose = Flags.boolean().parse(value, ctx, cmd);
-		if (enableVerbose) {
+	handler: (value: boolean, ctx: CommandContext) => {
+		if (value) {
 			ctx.logger.verbose = true;
 		}
-		return enableVerbose;
 	},
 });

@@ -1,4 +1,4 @@
-import { Command as BaseCommand } from '@/src/index.js';
+import { Command as BaseCommand, CommandWithSignature as BaseCommandWithSignature } from '@/src/index.js';
 
 import { LoggerVerboseFlag } from './options/LoggerVerboseOption.js';
 
@@ -11,8 +11,8 @@ export type CommandContext = {
 	};
 };
 
-export abstract class Command extends BaseCommand<CommandContext> {
-	static baseFlags = {
+export abstract class Command extends BaseCommandWithSignature<CommandContext> {
+	static override baseFlags = {
 		...BaseCommand.baseFlags,
 		verbose: LoggerVerboseFlag,
 	};

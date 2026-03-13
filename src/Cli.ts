@@ -59,7 +59,7 @@ export class Cli<C extends ContextDefinition = ContextDefinition> {
 		return this;
 	}
 
-	async withCommands(...commands: Array<typeof Command | Command<C> | string>) {
+	async withCommands(...commands: Array<typeof Command<C> | Command<C> | string>) {
 		for (const command of commands) {
 			if (typeof command === 'string') {
 				await this.commandRegistry.loadCommandsPath(command);
@@ -83,7 +83,7 @@ export class Cli<C extends ContextDefinition = ContextDefinition> {
 		return await this.runCommand(this.helpCommand);
 	}
 
-	protected registerCommand(command: typeof Command) {
+	protected registerCommand(command: typeof Command<C>) {
 		this.commandRegistry.registerCommand(command);
 	}
 }

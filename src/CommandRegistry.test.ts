@@ -2,8 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Command } from '@/src/Command.js';
 import { CommandRegistry } from '@/src/CommandRegistry.js';
+import { Flags } from '@/src/Flags.js';
 import { Logger } from '@/src/Logger.js';
-import { ArgumentsSchema, FlagsSchema } from '@/src/lib/types.js';
+import { ArgumentsSchema } from '@/src/lib/types.js';
 
 function makeCommand(name: string, handler?: (...args: any[]) => any) {
 	return class extends Command {
@@ -160,7 +161,7 @@ describe('CommandRegistry', () => {
 
 			class TestCmd extends Command {
 				static command = 'test';
-				static args = { file: { type: 'string' } } satisfies ArgumentsSchema;
+				static args = { file: Flags.string() } satisfies ArgumentsSchema;
 				async handle(ctx: any, parsed: any) {
 					return handlerFn(ctx, parsed);
 				}

@@ -42,6 +42,7 @@ export default class NewTestCommand extends Command {
 
 	async handle(ctx: any, { flags, args }: Parsed<typeof NewTestCommand>) {
 		const _test = flags.anotherTest || flags.force;
+		const toto = args.tags;
 		console.log('test command', { flags, args });
 	}
 }

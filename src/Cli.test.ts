@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Cli, CliOptions } from '@/src/Cli.js';
 import { Command } from '@/src/Command.js';
+import { Flags } from '@/src/Flags.js';
 import { TestLogger, newTestLogger } from '@/src/fixtures.test.js';
 import { ArgumentsSchema } from '@/src/lib/types.js';
 
@@ -130,7 +131,7 @@ describe('Cli', () => {
 
 			class TestCmdWithArgs extends Command {
 				static command = 'test-args';
-				static args = { file: { type: 'string' } } satisfies ArgumentsSchema;
+				static args = { file: Flags.string() } satisfies ArgumentsSchema;
 				async handle(ctx: any, parsed: any) {
 					return localHandlerFn(ctx, parsed);
 				}

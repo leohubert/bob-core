@@ -2,6 +2,8 @@ export * from './Command.js';
 export * from './CommandIO.js';
 export * from './CommandParser.js';
 export * from './CommandRegistry.js';
+export * from './CommandSignatureParser.js';
+export * from './CommandWithSignature.js';
 export * from './Cli.js';
 export * from './Logger.js';
 export * from './ExceptionHandler.js';
