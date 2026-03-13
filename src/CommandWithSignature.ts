@@ -14,7 +14,10 @@ export abstract class CommandWithSignature<C extends ContextDefinition = Context
 
 	// Derive command name from signature for CommandRegistry
 	static get command(): string {
-		return this.signature.split(/\s/)[0] || '';
+		const ctor = this as typeof CommandWithSignature;
+		const signature = ctor.signature ?? this.signature;
+
+		return signature.split(/\s/)[0] || '';
 	}
 
 	async run(runOpts: CommandRunOption<C>): Promise<number | void> {
@@ -34,11 +37,11 @@ export abstract class CommandWithSignature<C extends ContextDefinition = Context
 	}
 
 	/**
-	 * Convenience accessor for a parsed flag value.
+	 * Convenience accessor for a parsed option value.
 	 */
-	protected flag<T = string>(key: string): T | null;
-	protected flag<T = string>(key: string, defaultValue: T): NoInfer<T>;
-	protected flag<T = string>(key: string, defaultValue: T | null = null): NoInfer<T> | null {
+	protected option<T = string>(key: string): T | null;
+	protected option<T = string>(key: string, defaultValue: T): NoInfer<T>;
+	protected option<T = string>(key: string, defaultValue: T | null = null): NoInfer<T> | null {
 		return this.parser.flag(key, defaultValue as any) as any;
 	}
 
