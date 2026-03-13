@@ -36,21 +36,33 @@ export abstract class CommandWithSignature<C extends ContextDefinition = Context
 		return super.run(runOpts);
 	}
 
-	/**
-	 * Convenience accessor for a parsed option value.
-	 */
 	protected option<T = string>(key: string): T | null;
 	protected option<T = string>(key: string, defaultValue: T): NoInfer<T>;
 	protected option<T = string>(key: string, defaultValue: T | null = null): NoInfer<T> | null {
 		return this.parser.flag(key, defaultValue as any) as any;
 	}
 
-	/**
-	 * Convenience accessor for a parsed argument value.
-	 */
 	protected argument<T = string>(key: string): T | null;
 	protected argument<T = string>(key: string, defaultValue: T): NoInfer<T>;
 	protected argument<T = string>(key: string, defaultValue: T | null = null): NoInfer<T> | null {
 		return this.parser.argument(key, defaultValue as any) as any;
+	}
+
+	// Prompt utils
+
+	async askForConfirmation(...opts: Parameters<typeof this.io.askForConfirmation>): ReturnType<typeof this.io.askForConfirmation> {
+		return this.io.askForConfirmation(...opts);
+	}
+
+	async askForInput(...opts: Parameters<typeof this.io.askForInput>): ReturnType<typeof this.io.askForInput> {
+		return this.io.askForInput(...opts);
+	}
+
+	async askForSelect(...opts: Parameters<typeof this.io.askForSelect>): ReturnType<typeof this.io.askForSelect> {
+		return this.io.askForSelect(...opts);
+	}
+
+	newLoader(...opts: Parameters<typeof this.io.newLoader>): ReturnType<typeof this.io.newLoader> {
+		return this.io.newLoader(...opts);
 	}
 }
