@@ -1,5 +1,5 @@
 export * from './BobError.js';
-export * from './BadCommandParameter.js';
+export * from './BadCommandArgument.js';
 export * from './BadCommandFlag.js';
 export * from './InvalidOption.js';
 export * from './CommandNotFoundError.js';

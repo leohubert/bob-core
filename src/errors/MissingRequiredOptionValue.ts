@@ -9,6 +9,8 @@ export class MissingRequiredOptionValue extends BobError {
 	}
 
 	pretty(logger: Logger): void {
-		logger.log(`${chalk.white.bgRed(' ERROR ')} Option ${chalk.bold.yellow(this.option)} is required.`);
+		logger.log('');
+		logger.log(`  ${chalk.bold.white.bgRed(' ERROR ')} Option ${chalk.bold.yellow(this.option)} is required.`);
+		logger.log('');
 	}
 }

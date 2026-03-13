@@ -1,35 +1,58 @@
-import type { BooleanFlagDef, CustomFlagDef, DirectoryFlagDef, EnumFlagDef, FileFlagDef, NumberFlagDef, StringFlagDef, UrlFlagDef } from '@/src/lib/types.js';
+import fs from 'node:fs';
+
+import {
+	BooleanFlagDef,
+	CustomFlagDef,
+	DirectoryFlagDef,
+	EnumFlagDef,
+	FileFlagDef,
+	FlagInput,
+	FlagValidationResult,
+	NumberFlagDef,
+	StringFlagDef,
+	UrlFlagDef,
+} from '@/src/lib/types.js';
 
 export const Flags = {
-	string<const T extends Partial<Omit<StringFlagDef, 'type'>> = {}>(opts?: T): StringFlagDef & T {
+	string<const T extends FlagInput<StringFlagDef>>(opts?: T): StringFlagDef & T {
 		return {
-			default: opts?.multiple ? ([] as any) : null,
+			default: opts?.multiple ? [] : null,
+			validate(value: string): FlagValidationResult {
+				if (opts?.secret) return true; // skip validation for secret flags
+				if (opts?.required && (value === null || value === '')) return 'is required';
+				return true;
+			},
+			parse: (value: any): string => {
+				if (typeof value === 'boolean') {
+					throw new Error(`Expected a string, got boolean "${value}"`);
+				}
+				return String(value);
+			},
 			...opts,
 			type: 'string',
-			parse: (value: any): string => String(value),
-		} as any;
+		} as StringFlagDef & T;
 	},
 
-	number<const T extends Partial<Omit<NumberFlagDef, 'type'>> = {}>(opts?: T): NumberFlagDef & T {
+	number<const T extends FlagInput<NumberFlagDef>>(opts?: T): NumberFlagDef & T {
 		return {
-			default: opts?.multiple ? ([] as any) : null,
+			default: opts?.multiple ? [] : null,
+			validate(value: number) {
+				if (isNaN(value)) return 'must be a valid number';
+				if (opts?.min !== undefined && value < opts.min) return `is below minimum ${opts.min}`;
+				if (opts?.max !== undefined && value > opts.max) return `exceeds maximum ${opts.max}`;
+				return true;
+			},
+			parse: (value: any): number => {
+				return typeof value === 'number' ? value : Number(value);
+			},
 			...opts,
 			type: 'number',
-			parse: (value: any) => {
-				const parsed = typeof value === 'number' ? value : Number(value);
-				if (isNaN(parsed)) throw new Error(`Invalid number: ${value}`);
-				if (opts?.min !== undefined && parsed < opts.min) throw new Error(`Value ${parsed} is below minimum ${opts.min}`);
-				if (opts?.max !== undefined && parsed > opts.max) throw new Error(`Value ${parsed} exceeds maximum ${opts.max}`);
-				return parsed;
-			},
-		} as any;
+		} as NumberFlagDef & T;
 	},
 
-	boolean<const T extends Partial<Omit<BooleanFlagDef, 'type'>> = {}>(opts?: T): BooleanFlagDef & T {
+	boolean<const T extends FlagInput<BooleanFlagDef>>(opts?: T): BooleanFlagDef & T {
 		return {
 			default: false,
-			...opts,
-			type: 'boolean',
 			parse: (value: any): boolean => {
 				if (typeof value === 'boolean') return value;
 				const val = String(value).toLowerCase();
@@ -37,68 +60,84 @@ export const Flags = {
 				if (val === 'false' || val === '0') return false;
 				return Boolean(value);
 			},
-		} as any;
+			...opts,
+			type: 'boolean',
+		} as BooleanFlagDef & T;
 	},
 
-	enum<const T extends readonly string[], const U extends Partial<Omit<EnumFlagDef<T>, 'type' | 'options'>> = {}>(
-		opts: { options: T } & U,
-	): EnumFlagDef<T> & U {
+	enum<const T extends readonly string[], const U extends FlagInput<EnumFlagDef<T>, 'options'>>(opts: { options: T } & U): EnumFlagDef<T> & U {
 		return {
-			default: opts.multiple ? ([] as any) : null,
+			default: opts.multiple ? [] : null,
+			validate(value: T[number]) {
+				if (!opts.options.includes(value)) {
+					return `must be one of: ${opts.options.map(o => `"${o}"`).join(', ')}`;
+				}
+				return true;
+			},
+			parse: (value: any): T[number] => {
+				return String(value) as T[number];
+			},
 			...opts,
 			type: 'enum',
-			parse: (value: any) => {
-				const str = String(value);
-				if (!opts.options.includes(str)) throw new Error(`Expected one of [${opts.options.join(', ')}], got "${str}"`);
-				return str as unknown as T;
-			},
-		} as any;
+		} as EnumFlagDef<T> & U;
 	},
 
-	file<const T extends Partial<Omit<FileFlagDef, 'type'>> = {}>(opts?: T): FileFlagDef & T {
+	file<const T extends FlagInput<FileFlagDef>>(opts?: T): FileFlagDef & T {
 		return {
 			default: null,
+			parse: (input: any) => String(input),
+			validate(value: string): FlagValidationResult {
+				if (opts?.exists) {
+					const isFileExist = fs.existsSync(value);
+					if (!isFileExist) {
+						return `file does not exist`;
+					}
+				}
+				return true;
+			},
 			...opts,
 			type: 'file',
-			parse: (input: any) => String(input),
-		} as any;
+		} as FileFlagDef & T;
 	},
 
-	directory<const T extends Partial<Omit<DirectoryFlagDef, 'type'>> = {}>(opts?: T): DirectoryFlagDef & T {
+	directory<const T extends FlagInput<DirectoryFlagDef>>(opts?: T): DirectoryFlagDef & T {
 		return {
 			default: null,
+			parse: (input: any) => String(input),
+			validate(value: string): FlagValidationResult {
+				if (opts?.exists) {
+					const isDirectoryExist = fs.existsSync(value) && fs.lstatSync(value).isDirectory();
+					if (!isDirectoryExist) {
+						return `directory does not exist`;
+					}
+				}
+				return true;
+			},
 			...opts,
 			type: 'directory',
-			parse: (input: any) => String(input),
-		} as any;
+		} as DirectoryFlagDef & T;
 	},
 
-	url<const T extends Partial<Omit<UrlFlagDef, 'type'>> = {}>(opts?: T): UrlFlagDef & T {
+	url<const T extends FlagInput<UrlFlagDef>>(opts?: T): UrlFlagDef & T {
 		return {
 			default: null,
+			parse: (input: any) => {
+				return new URL(String(input));
+			},
 			...opts,
 			type: 'url',
-			parse: (input: any) => {
-				const str = String(input);
-				try {
-					return new URL(str);
-				} catch {
-					throw new Error(`Invalid URL: "${str}"`);
-				}
-			},
-		} as any;
+		} as UrlFlagDef & T;
 	},
 
-	custom<T>(
-		defaults: { parse: (value: string) => T } & Partial<Omit<CustomFlagDef<T>, 'type' | 'parse'>>,
-	): <const U extends Partial<Omit<CustomFlagDef<T>, 'type' | 'parse'>> = {}>(overrides?: U) => CustomFlagDef<T> & U {
-		return (overrides?) => ({
-			default: (defaults.multiple || overrides?.multiple ? [] : null) as any,
-			...defaults,
-			...overrides,
-			type: 'custom',
-			parse: defaults.parse,
-		}) as any;
+	custom<T>(defaults?: FlagInput<CustomFlagDef<T>>): <const U extends FlagInput<CustomFlagDef<T>>>(overrides?: U) => CustomFlagDef<T> & U {
+		return <const U extends FlagInput<CustomFlagDef<T>>>(overrides?: U) =>
+			({
+				default: defaults?.multiple || overrides?.multiple ? [] : null,
+				parse: (input: any) => input,
+				...defaults,
+				...overrides,
+				type: 'custom',
+			}) as CustomFlagDef<T> & U;
 	},
 };
 

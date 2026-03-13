@@ -70,7 +70,7 @@ describe('Cli', () => {
 	});
 
 	describe('Command execution', () => {
-		let handlerFn: ReturnType<typeof vi.fn>;
+		let handlerFn: ReturnType<typeof vi.fn<(...args: any[]) => any>>;
 		let expectedResult: number;
 
 		beforeEach(async () => {

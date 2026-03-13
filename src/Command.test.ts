@@ -37,7 +37,7 @@ describe('Command', () => {
 	});
 
 	describe('Running commands', () => {
-		let handlerFn: ReturnType<typeof vi.fn>;
+		let handlerFn: ReturnType<typeof vi.fn<(...args: any[]) => any>>;
 		let handlerResult: number | void;
 
 		beforeEach(() => {

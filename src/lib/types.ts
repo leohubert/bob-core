@@ -5,72 +5,51 @@ export type BaseFlagConfig<T> = {
 	description?: string;
 	alias?: string | Array<string>;
 	required?: boolean;
-	secret?: boolean;
-	default?: T | null;
-	parse: (input: any, ctx: ContextDefinition) => T;
+	default?: T | T[] | null;
+	multiple?: boolean;
+	help?: string;
+	parse: (input: string, ctx: ContextDefinition) => T;
+	validate?(value: T): FlagValidationResult;
 	handler?(value: T, ctx: ContextDefinition, cmd: typeof Command): { shouldStop: boolean } | void;
 };
 
 // === Per-type definitions (discriminated union members) ===
 
-export type StringFlagDef = BaseFlagConfig<string> & { type: 'string'; multiple?: boolean };
-export type NumberFlagDef = BaseFlagConfig<number> & { type: 'number'; multiple?: boolean; min?: number; max?: number };
+export type StringFlagDef = BaseFlagConfig<string> & { type: 'string'; secret?: boolean };
+export type NumberFlagDef = BaseFlagConfig<number> & { type: 'number'; min?: number; max?: number };
 export type BooleanFlagDef = BaseFlagConfig<boolean> & { type: 'boolean' };
 
-export type EnumFlagDef<T extends readonly string[] = readonly string[]> = BaseFlagConfig<T> & {
+export type EnumFlagDef<T extends readonly string[] = readonly string[]> = BaseFlagConfig<T[number]> & {
 	type: 'enum';
 	options: T;
-	multiple?: boolean;
 };
 
-export type FileFlagDef = BaseFlagConfig<string> & { type: 'file'; multiple?: boolean; exists?: boolean };
-export type DirectoryFlagDef = BaseFlagConfig<string> & { type: 'directory'; multiple?: boolean; exists?: boolean };
-export type UrlFlagDef = BaseFlagConfig<URL> & { type: 'url'; multiple?: boolean };
+export type FileFlagDef = BaseFlagConfig<string> & { type: 'file'; exists?: boolean };
+export type DirectoryFlagDef = BaseFlagConfig<string> & { type: 'directory'; exists?: boolean };
+export type UrlFlagDef = BaseFlagConfig<URL> & { type: 'url' };
 
-export type CustomFlagDef<R = unknown> = BaseFlagConfig<R> & {
-	type: 'custom';
-	parse: (value: string) => R;
-	validate?: (value: R) => true | string | Promise<true | string>;
-	multiple?: boolean;
-};
+export type CustomFlagDef<R = unknown> = BaseFlagConfig<R> & { type: 'custom' };
 
 // === Flag = discriminated union of all definitions ===
 
 export type FlagDefinition = StringFlagDef | NumberFlagDef | BooleanFlagDef | EnumFlagDef | FileFlagDef | DirectoryFlagDef | UrlFlagDef | CustomFlagDef<any>;
 
+export type FlagInput<T extends FlagDefinition, K extends string = never> = Partial<Omit<T, 'type' | K>>;
+
+export type FlagValidationResult = true | string | Promise<true | string>;
+
 // === Type inference ===
+
+type MaybeArray<T, O> = O extends { multiple: true } ? T[] : T;
+
+type InferParseReturn<O> = O extends { parse: (...args: any[]) => infer R } ? R : never;
 
 export type FlagType<O extends FlagDefinition> = O extends {
 	type: 'enum';
 	options: infer T extends readonly string[];
-	multiple: true;
 }
-	? T[number][]
-	: O extends { type: 'enum'; options: infer T extends readonly string[] }
-		? T[number]
-		: O extends { type: 'file' | 'directory'; multiple: true }
-			? string[]
-			: O extends { type: 'file' | 'directory' }
-				? string
-				: O extends { type: 'custom'; parse: (value: string) => infer R; multiple: true }
-					? R[]
-					: O extends { type: 'custom'; parse: (value: string) => infer R }
-						? R
-						: O extends { type: 'url'; multiple: true }
-							? URL[]
-							: O extends { type: 'url' }
-								? URL
-								: O extends { type: 'boolean' }
-									? boolean
-									: O extends { type: 'string'; multiple: true }
-										? string[]
-										: O extends { type: 'string' }
-											? string
-											: O extends { type: 'number'; multiple: true }
-												? number[]
-												: O extends { type: 'number' }
-													? number
-													: never;
+	? MaybeArray<T[number], O>
+	: MaybeArray<InferParseReturn<O>, O>;
 
 export type IsRequired<O extends FlagDefinition> = O extends { required: true } ? true : false;
 

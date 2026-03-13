@@ -1,10 +1,12 @@
-import { Flags } from '../../src/index.js';
+import { Flags } from '@/src/Flags.js';
+
 import { CommandContext } from '../command.js';
 
 export const LoggerVerboseFlag = Flags.boolean({
 	alias: ['v'],
 	handler: (value: boolean, ctx: CommandContext) => {
 		if (value) {
+			console.log('Verbose logging enabled');
 			ctx.logger.verbose = true;
 		}
 	},

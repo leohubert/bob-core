@@ -167,13 +167,13 @@ describe('CommandSignatureParser', () => {
 
 			it('should set argument value', async () => {
 				const parser = await parseAndInit('test {arg1}', ['value1']);
-				parser.setArgument('arg1', 'newValue');
+				await parser.setArgument('arg1', 'newValue');
 				expect(parser.argument('arg1')).toBe('newValue');
 			});
 
 			it('should throw error when argument is missing with setArgument', async () => {
 				const parser = await parseAndInit('test {arg1}', []);
-				expect(() => parser.setArgument('arg2' as any, 'newValue')).toThrowError(Error);
+				await expect(parser.setArgument('arg2' as any, 'newValue')).rejects.toThrow(Error);
 			});
 
 			it('should ask for input when argument is missing', async () => {
@@ -189,12 +189,12 @@ describe('CommandSignatureParser', () => {
 				commandIO.askForInput.mockResolvedValue(null);
 
 				const parser = await parseAndInit('test {arg1}', []);
-				await expect(parser.validate()).rejects.toThrowError(MissingRequiredArgumentValue);
+				await expect(parser.validate()).rejects.toThrow(MissingRequiredArgumentValue);
 			});
 
 			it('calling validate should throw with variadic argument missing', async () => {
 				const parser = await parseAndInit('test {arg1*}', []);
-				await expect(parser.validate()).rejects.toThrowError(MissingRequiredArgumentValue);
+				await expect(parser.validate()).rejects.toThrow(MissingRequiredArgumentValue);
 			});
 		});
 

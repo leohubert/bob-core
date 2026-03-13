@@ -103,7 +103,7 @@ export abstract class Command<C extends ContextDefinition = ContextDefinition> {
 				const definition = ctor.flags[flag] || ctor.baseFlags[flag];
 
 				if (definition && definition.handler) {
-					const res = definition.handler(value, runOpts.ctx, ctor);
+					const res = definition.handler(value as never, runOpts.ctx, ctor);
 					if (res && res.shouldStop) {
 						return -1;
 					}

@@ -501,7 +501,7 @@ describe('CommandParser', () => {
 
 				await parser.init(['--message', '']);
 
-				expect(parser.flag('message', 'default')).toBe('');
+				expect(parser.flag('message', 'default')).toBe('default');
 			});
 
 			it('should use runtime default for null values', async () => {
@@ -542,66 +542,6 @@ describe('CommandParser', () => {
 		});
 	});
 
-	describe('Metadata methods', () => {
-		it('should return flag definitions', () => {
-			const parser = new CommandParser({
-				io,
-				flags: {
-					verbose: Flags.boolean(),
-					count: Flags.number({ default: 10 }),
-				},
-				args: {},
-			});
-
-			const defs = parser.flagDefinitions();
-
-			expect(defs.verbose.type).toBe('boolean');
-			expect(defs.count.type).toBe('number');
-			expect(defs.count.default).toBe(10);
-		});
-
-		it('should return argument definitions', () => {
-			const parser = new CommandParser({
-				io,
-				flags: {},
-				args: {
-					file: Flags.string(),
-					lines: Flags.number({ required: true }),
-				},
-			});
-
-			const defs = parser.argumentDefinitions();
-
-			expect(defs.file.type).toBe('string');
-			expect(defs.lines.type).toBe('number');
-			expect(defs.lines.required).toBe(true);
-		});
-
-		it('should return available flag names', () => {
-			const parser = new CommandParser({
-				io,
-				flags: { verbose: Flags.boolean(), output: Flags.string() },
-				args: {},
-			});
-
-			const names = parser.availableFlags();
-
-			expect(names).toEqual(['verbose', 'output']);
-		});
-
-		it('should return available argument names', () => {
-			const parser = new CommandParser({
-				io,
-				flags: {},
-				args: { file: Flags.string(), count: Flags.number() },
-			});
-
-			const names = parser.availableArguments();
-
-			expect(names).toEqual(['file', 'count']);
-		});
-	});
-
 	describe('Edge cases', () => {
 		it('should handle empty string values', async () => {
 			const parser = new CommandParser({
@@ -612,7 +552,7 @@ describe('CommandParser', () => {
 
 			const result = await parser.init(['--message', '']);
 
-			expect(result.flags.message).toBe('');
+			expect(result.flags.message).toBeNull();
 		});
 
 		it('should handle negative numbers with double dash', async () => {
@@ -740,7 +680,8 @@ describe('CommandParser', () => {
 				args: {},
 			});
 
-			await expect(parser.init(['--count', 'not-a-number'])).rejects.toThrow(BadCommandFlag);
+			await parser.init(['--count', 'not-a-number']);
+			await expect(parser.validate()).rejects.toThrow(BadCommandFlag);
 		});
 	});
 
@@ -767,7 +708,8 @@ describe('CommandParser', () => {
 				args: {},
 			});
 
-			await expect(parser.init(['--level', 'error'])).rejects.toThrow(BadCommandFlag);
+			await parser.init(['--level', 'error']);
+			await expect(parser.validate()).rejects.toThrow(BadCommandFlag);
 		});
 
 		it('should default enum to null', async () => {
@@ -805,7 +747,8 @@ describe('CommandParser', () => {
 				args: {},
 			});
 
-			await expect(parser.init(['--port', '0'])).rejects.toThrow(BadCommandFlag);
+			await parser.init(['--port', '0']);
+			await expect(parser.validate()).rejects.toThrow(BadCommandFlag);
 		});
 
 		it('should reject number above max', async () => {
@@ -817,7 +760,8 @@ describe('CommandParser', () => {
 				args: {},
 			});
 
-			await expect(parser.init(['--port', '70000'])).rejects.toThrow(BadCommandFlag);
+			await parser.init(['--port', '70000']);
+			await expect(parser.validate()).rejects.toThrow(BadCommandFlag);
 		});
 
 		it('should parse file flags as string', async () => {

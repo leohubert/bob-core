@@ -2,10 +2,14 @@ import { Command } from '@/src/Command.js';
 import { Args, Flags } from '@/src/Flags.js';
 import { ArgumentsSchema, FlagsSchema, Parsed } from '@/src/lib/types.js';
 
+type Toto = {
+	body: string;
+};
+
 export default class NewTestCommand extends Command {
 	static command = 'new-test-command';
 	static description = 'A new test command that is not implemented yet';
-	static group = 'testing';
+	static group = 'test';
 
 	static args = {
 		name: Args.string({
@@ -38,11 +42,20 @@ export default class NewTestCommand extends Command {
 		anotherTest: Flags.boolean({
 			alias: 'f',
 		}),
+		custom: Flags.custom<Toto>({
+			description: 'Custom test option',
+			help: 'Custom test help option',
+		})({ required: true }),
+		multiple: Flags.number({
+			multiple: true,
+		}),
 	} satisfies FlagsSchema;
 
 	async handle(ctx: any, { flags, args }: Parsed<typeof NewTestCommand>) {
 		const _test = flags.anotherTest || flags.force;
-		const toto = args.tags;
+		const _required = args.tags;
+		const _anotherRequired = flags.anotherTest;
+		const _custom = flags.custom;
 		console.log('test command', { flags, args });
 	}
 }
