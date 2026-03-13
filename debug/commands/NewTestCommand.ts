@@ -49,6 +49,16 @@ export default class NewTestCommand extends Command {
 		multiple: Flags.number({
 			multiple: true,
 		}),
+		async: Flags.number({
+			multiple: true,
+			default: () => {
+				return new Promise(resolve => {
+					setTimeout(() => {
+						resolve([1, 2, 3]);
+					}, 4000);
+				});
+			},
+		}),
 	} satisfies FlagsSchema;
 
 	async handle(ctx: any, { flags, args }: Parsed<typeof NewTestCommand>) {

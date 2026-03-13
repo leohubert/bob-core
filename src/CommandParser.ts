@@ -298,6 +298,10 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends Argument
 	 */
 	private async parseValue(value: any, definition: FlagDefinition, meta?: { name: string; isArg?: boolean }): Promise<any> {
 		if (this.isEmptyValue(value)) {
+			if (typeof definition.default === 'function') {
+				return await definition.default();
+			}
+
 			return definition.default;
 		}
 

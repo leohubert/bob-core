@@ -5,7 +5,7 @@ export type BaseFlagConfig<T> = {
 	description?: string;
 	alias?: string | Array<string>;
 	required?: boolean;
-	default?: T | T[] | null;
+	default?: T | T[] | null | (() => Promise<T | T[] | null>);
 	multiple?: boolean;
 	help?: string;
 	parse: (input: string, ctx: ContextDefinition) => T;
