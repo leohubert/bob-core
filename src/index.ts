@@ -1,5 +1,5 @@
 export * from './Command.js';
-export * from './CommandIO.js';
+export * from './ux/index.js';
 export * from './CommandParser.js';
 export * from './CommandRegistry.js';
 export * from './CommandSignatureParser.js';
@@ -9,7 +9,8 @@ export * from './Logger.js';
 export * from './ExceptionHandler.js';
 export * from './StringSimilarity.js';
 export * from './lib/types.js';
-export * from './Flags.js';
+export * from './flags/index.js';
+export * from './lib/promptHelpers.js';
 export * from './errors/index.js';
 export * from './options/index.js';
 export * from './contracts/index.js';

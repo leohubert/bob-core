@@ -1,9 +1,9 @@
 import { MaybeMockedDeep } from '@vitest/spy';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { CommandIO } from '@/src/CommandIO.js';
 import { CommandParser } from '@/src/CommandParser.js';
 import { CommandSignatureParser } from '@/src/CommandSignatureParser.js';
+import { UX } from '@/src/ux/index.js';
 import { MissingRequiredArgumentValue } from '@/src/errors/MissingRequiredArgumentValue.js';
 import { TestLogger, newTestLogger } from '@/src/fixtures.test.js';
 
@@ -112,12 +112,12 @@ describe('CommandSignatureParser', () => {
 	});
 
 	describe('integration with CommandParser', () => {
-		let commandIO: MaybeMockedDeep<CommandIO>;
+		let ux: MaybeMockedDeep<UX>;
 		let logger: TestLogger;
 
 		beforeAll(() => {
 			logger = newTestLogger();
-			commandIO = vi.mockObject(new CommandIO({ logger }));
+			ux = vi.mockObject(new UX());
 		});
 
 		beforeEach(() => {
@@ -127,7 +127,7 @@ describe('CommandSignatureParser', () => {
 		async function parseAndInit(signature: string, args: string[], helperDefinitions: Record<string, string> = {}) {
 			const parsed = CommandSignatureParser.parse(signature, helperDefinitions);
 			const parser = new CommandParser({
-				io: commandIO,
+				ux,
 				ctx: {},
 				flags: parsed.flags,
 				args: parsed.args,
@@ -177,7 +177,7 @@ describe('CommandSignatureParser', () => {
 			});
 
 			it('should ask for input when argument is missing', async () => {
-				commandIO.askForInput.mockResolvedValue('inputValue');
+				ux.askForInput.mockResolvedValue('inputValue');
 
 				const parser = await parseAndInit('test {arg1}', []);
 				await parser.validate();
@@ -185,8 +185,8 @@ describe('CommandSignatureParser', () => {
 				expect(parser.argument('arg1')).toBe('inputValue');
 			});
 
-			it('should throw error when argument is missing and CommandIO returns null', async () => {
-				commandIO.askForInput.mockResolvedValue(null);
+			it('should throw error when argument is missing and UX returns null', async () => {
+				ux.askForInput.mockResolvedValue(null);
 
 				const parser = await parseAndInit('test {arg1}', []);
 				await expect(parser.validate()).rejects.toThrow(MissingRequiredArgumentValue);

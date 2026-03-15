@@ -1,5 +1,5 @@
 import { Command } from '@/src/Command.js';
-import { Flags } from '@/src/Flags.js';
+import { Flags } from '@/src/flags/index.js';
 import { FlagsSchema, Parsed } from '@/src/lib/types.js';
 
 const dateFlag = Flags.custom<Date>({
@@ -17,8 +17,8 @@ export default class ExtendedTypesCommand extends Command {
 	static flags = {
 		level: Flags.enum({ options: ['debug', 'info', 'warn', 'error'] as const, description: 'Log level' }),
 		port: Flags.number({ min: 1, max: 65535, default: 3000, description: 'Server port' }),
-		config: Flags.file({ description: 'Config file path', required: true }),
-		outDir: Flags.directory({ description: 'Output directory' }),
+		config: Flags.file({ description: 'Config file path', required: true, exists: true }),
+		outDir: Flags.directory({ description: 'Output directory', required: true, exists: true }),
 		endpoint: Flags.url({ description: 'API endpoint URL' }),
 		since: dateFlag({ description: 'Start date' }),
 	} satisfies FlagsSchema;
@@ -28,13 +28,13 @@ export default class ExtendedTypesCommand extends Command {
 	} satisfies FlagsSchema;
 
 	async handle(_ctx: any, { flags, args }: Parsed<typeof ExtendedTypesCommand>) {
-		this.io.log('Extended types demo:');
-		this.io.log(`  level:    ${flags.level}`);
-		this.io.log(`  port:     ${flags.port}`);
-		this.io.log(`  config:   ${flags.config}`);
-		this.io.log(`  outDir:   ${flags.outDir}`);
-		this.io.log(`  endpoint: ${flags.endpoint ?? null}`);
-		this.io.log(`  since:    ${flags.since?.toISOString() ?? null}`);
-		this.io.log(`  format:   ${args.format}`);
+		this.logger.log('Extended types demo:');
+		this.logger.log(`  level:    ${flags.level}`);
+		this.logger.log(`  port:     ${flags.port}`);
+		this.logger.log(`  config:   ${flags.config}`);
+		this.logger.log(`  outDir:   ${flags.outDir}`);
+		this.logger.log(`  endpoint: ${flags.endpoint ?? null}`);
+		this.logger.log(`  since:    ${flags.since?.toISOString() ?? null}`);
+		this.logger.log(`  format:   ${args.format}`);
 	}
 }

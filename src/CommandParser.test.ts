@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { CommandIO } from '@/src/CommandIO.js';
 import { CommandParser } from '@/src/CommandParser.js';
-import { Flags } from '@/src/Flags.js';
+import { UX } from '@/src/ux/index.js';
+import { Flags } from '@/src/flags/index.js';
 import { BadCommandFlag } from '@/src/errors/BadCommandFlag.js';
 import { InvalidFlag } from '@/src/errors/InvalidFlag.js';
 import { MissingRequiredArgumentValue } from '@/src/errors/MissingRequiredArgumentValue.js';
@@ -11,20 +11,18 @@ import { TooManyArguments } from '@/src/errors/TooManyArguments.js';
 import { TestLogger, newTestLogger } from '@/src/fixtures.test.js';
 
 describe('CommandParser', () => {
-	let io: CommandIO;
+	let ux: UX;
 	let logger: TestLogger;
 
 	beforeEach(() => {
 		logger = newTestLogger();
-		io = new CommandIO({
-			logger: logger,
-		});
+		ux = new UX();
 	});
 
 	describe('Basic parsing', () => {
 		it('should parse empty arguments', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {},
 				args: {},
 			});
@@ -37,7 +35,7 @@ describe('CommandParser', () => {
 
 		it('should parse boolean options', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: { verbose: Flags.boolean(), debug: Flags.boolean() },
 				args: {},
 			});
@@ -50,7 +48,7 @@ describe('CommandParser', () => {
 
 		it('should default boolean options to false', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: { verbose: Flags.boolean() },
 				args: {},
 			});
@@ -62,7 +60,7 @@ describe('CommandParser', () => {
 
 		it('should parse string options', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: { name: Flags.string(), output: Flags.string() },
 				args: {},
 			});
@@ -75,7 +73,7 @@ describe('CommandParser', () => {
 
 		it('should parse number options', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: { count: Flags.number(), limit: Flags.number() },
 				args: {},
 			});
@@ -88,7 +86,7 @@ describe('CommandParser', () => {
 
 		it('should parse positional arguments', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {},
 				args: { file: Flags.string(), lines: Flags.number() },
 			});
@@ -101,7 +99,7 @@ describe('CommandParser', () => {
 
 		it('should parse mixed options and arguments', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: { verbose: Flags.boolean() },
 				args: { file: Flags.string() },
 			});
@@ -116,7 +114,7 @@ describe('CommandParser', () => {
 	describe('Option definitions', () => {
 		it('should handle options with descriptions', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {
 					verbose: Flags.boolean({ description: 'Enable verbose output' }),
 				},
@@ -130,7 +128,7 @@ describe('CommandParser', () => {
 
 		it('should handle required options', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {
 					name: Flags.string({ required: true }),
 				},
@@ -144,7 +142,7 @@ describe('CommandParser', () => {
 
 		it('should handle default values', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {
 					port: Flags.number({ default: 8080 }),
 					host: Flags.string({ default: 'localhost' }),
@@ -160,7 +158,7 @@ describe('CommandParser', () => {
 
 		it('should override default values when provided', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {
 					port: Flags.number({ default: 8080 }),
 				},
@@ -176,7 +174,7 @@ describe('CommandParser', () => {
 	describe('Option aliases', () => {
 		it('should handle single character aliases', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {
 					verbose: Flags.boolean({ alias: 'v' }),
 				},
@@ -190,7 +188,7 @@ describe('CommandParser', () => {
 
 		it('should handle multiple aliases', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {
 					output: Flags.string({ alias: ['o', 'out'] }),
 				},
@@ -201,7 +199,7 @@ describe('CommandParser', () => {
 			expect(result1.flags.output).toBe('file.txt');
 
 			const parser2 = new CommandParser({
-				io,
+				ux,
 				flags: {
 					output: Flags.string({ alias: ['o', 'out'] }),
 				},
@@ -216,7 +214,7 @@ describe('CommandParser', () => {
 	describe('Array options', () => {
 		it('should parse string array options', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {
 					files: Flags.string({ multiple: true }),
 				},
@@ -230,7 +228,7 @@ describe('CommandParser', () => {
 
 		it('should parse number array options', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {
 					ports: Flags.number({ multiple: true }),
 				},
@@ -244,7 +242,7 @@ describe('CommandParser', () => {
 
 		it('should default to empty array when no values provided', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {
 					tags: Flags.string({ multiple: true }),
 				},
@@ -258,7 +256,7 @@ describe('CommandParser', () => {
 
 		it('should use custom default array when no values provided', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {
 					tags: Flags.string({ multiple: true, default: ['tag1', 'tag2'] as any }),
 				},
@@ -274,7 +272,7 @@ describe('CommandParser', () => {
 	describe('Variadic arguments', () => {
 		it('should collect all remaining arguments as variadic', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {},
 				args: {
 					files: Flags.string({ multiple: true }),
@@ -288,7 +286,7 @@ describe('CommandParser', () => {
 
 		it('should handle variadic after regular arguments', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {},
 				args: {
 					command: Flags.string(),
@@ -304,7 +302,7 @@ describe('CommandParser', () => {
 
 		it('should default variadic to empty array when no values', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {},
 				args: {
 					files: Flags.string({ multiple: true }),
@@ -320,12 +318,12 @@ describe('CommandParser', () => {
 	describe('Validation', () => {
 		it('should validate required options that have no default', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {
 					name: Flags.string({ required: false }),
 				},
 				args: {},
-			});
+			}).disablePrompting();
 
 			// Set up parser state manually to test validate() method
 			await parser.init([]);
@@ -340,7 +338,7 @@ describe('CommandParser', () => {
 
 		it('should validate required arguments', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {},
 				args: {
 					file: Flags.string({ required: true }),
@@ -354,7 +352,7 @@ describe('CommandParser', () => {
 
 		it('should pass validation when all required values provided', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {
 					name: Flags.string({ required: true }),
 				},
@@ -370,7 +368,7 @@ describe('CommandParser', () => {
 
 		it('should throw InvalidOption for unknown options', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {
 					verbose: Flags.boolean(),
 				},
@@ -382,7 +380,7 @@ describe('CommandParser', () => {
 
 		it('should not throw on unknown flags when allowUnknownFlags is set', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {
 					verbose: Flags.boolean(),
 				},
@@ -399,7 +397,7 @@ describe('CommandParser', () => {
 	describe('Accessor methods', () => {
 		it('should retrieve flag values', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: { verbose: Flags.boolean(), name: Flags.string() },
 				args: {},
 			});
@@ -412,7 +410,7 @@ describe('CommandParser', () => {
 
 		it('should retrieve argument values', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {},
 				args: { file: Flags.string(), count: Flags.number() },
 			});
@@ -425,7 +423,7 @@ describe('CommandParser', () => {
 
 		it('should throw error when accessing options before init', () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: { verbose: Flags.boolean() },
 				args: {},
 			});
@@ -435,7 +433,7 @@ describe('CommandParser', () => {
 
 		it('should throw error when accessing arguments before init', () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {},
 				args: { file: Flags.string() },
 			});
@@ -446,7 +444,7 @@ describe('CommandParser', () => {
 		describe('Runtime default values', () => {
 			it('should return runtime default for empty array options', async () => {
 				const parser = new CommandParser({
-					io,
+					ux,
 					flags: { tags: Flags.string({ multiple: true }) },
 					args: {},
 				});
@@ -458,7 +456,7 @@ describe('CommandParser', () => {
 
 			it('should not use runtime default for non-empty array options', async () => {
 				const parser = new CommandParser({
-					io,
+					ux,
 					flags: { tags: Flags.string({ multiple: true }) },
 					args: {},
 				});
@@ -470,7 +468,7 @@ describe('CommandParser', () => {
 
 			it('should not use runtime default for false boolean values', async () => {
 				const parser = new CommandParser({
-					io,
+					ux,
 					flags: { flag: Flags.boolean() },
 					args: {},
 				});
@@ -482,7 +480,7 @@ describe('CommandParser', () => {
 
 			it('should not use runtime default for zero number values', async () => {
 				const parser = new CommandParser({
-					io,
+					ux,
 					flags: { count: Flags.number() },
 					args: {},
 				});
@@ -494,7 +492,7 @@ describe('CommandParser', () => {
 
 			it('should not use runtime default for empty string values', async () => {
 				const parser = new CommandParser({
-					io,
+					ux,
 					flags: { message: Flags.string() },
 					args: {},
 				});
@@ -506,7 +504,7 @@ describe('CommandParser', () => {
 
 			it('should use runtime default for null values', async () => {
 				const parser = new CommandParser({
-					io,
+					ux,
 					flags: { name: Flags.string() },
 					args: {},
 				});
@@ -518,7 +516,7 @@ describe('CommandParser', () => {
 
 			it('should return runtime default for empty array arguments', async () => {
 				const parser = new CommandParser({
-					io,
+					ux,
 					flags: {},
 					args: { files: Flags.string({ multiple: true }) },
 				});
@@ -530,7 +528,7 @@ describe('CommandParser', () => {
 
 			it('should not use runtime default for non-empty array arguments', async () => {
 				const parser = new CommandParser({
-					io,
+					ux,
 					flags: {},
 					args: { files: Flags.string({ multiple: true }) },
 				});
@@ -545,7 +543,7 @@ describe('CommandParser', () => {
 	describe('Edge cases', () => {
 		it('should handle empty string values', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: { message: Flags.string() },
 				args: {},
 			});
@@ -557,7 +555,7 @@ describe('CommandParser', () => {
 
 		it('should handle negative numbers with double dash', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: { offset: Flags.number() },
 				args: {},
 			});
@@ -569,7 +567,7 @@ describe('CommandParser', () => {
 
 		it('should handle floating point numbers', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: { ratio: Flags.number() },
 				args: {},
 			});
@@ -581,7 +579,7 @@ describe('CommandParser', () => {
 
 		it('should handle options with equals sign syntax', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: { name: Flags.string() },
 				args: {},
 			});
@@ -593,7 +591,7 @@ describe('CommandParser', () => {
 
 		it('should handle mixed positional and flag ordering', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: { verbose: Flags.boolean() },
 				args: { file: Flags.string(), lines: Flags.number() },
 			});
@@ -609,7 +607,7 @@ describe('CommandParser', () => {
 	describe('Strict mode', () => {
 		it('should throw TooManyArguments when extra positional args are provided', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {},
 				args: { file: Flags.string() },
 			}).strictMode();
@@ -619,7 +617,7 @@ describe('CommandParser', () => {
 
 		it('should pass when exact number of arguments are provided', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {},
 				args: { file: Flags.string(), count: Flags.number() },
 			}).strictMode();
@@ -632,7 +630,7 @@ describe('CommandParser', () => {
 
 		it('should pass when fewer arguments are provided (missing args handled by validation)', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {},
 				args: { file: Flags.string(), count: Flags.number() },
 			}).strictMode();
@@ -645,7 +643,7 @@ describe('CommandParser', () => {
 
 		it('should not reject extra args when strict mode is off', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {},
 				args: { file: Flags.string() },
 			});
@@ -657,7 +655,7 @@ describe('CommandParser', () => {
 
 		it('should not reject extra args consumed by variadic arguments', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {},
 				args: {
 					command: Flags.string(),
@@ -672,10 +670,128 @@ describe('CommandParser', () => {
 		});
 	});
 
+	describe('Ask delegation and flag prompting', () => {
+		it('should call custom ask override during argument validation', async () => {
+			const customAsk = async () => 'prompted-value';
+
+			const parser = new CommandParser({
+				ux,
+				flags: {},
+				args: {
+					name: Flags.string({ required: true, ask: customAsk }),
+				},
+			});
+
+			await parser.init([]);
+			await parser.validate();
+
+			expect(parser.argument('name')).toBe('prompted-value');
+		});
+
+		it('should prompt for missing required flags (not just arguments)', async () => {
+			const customAsk = async () => 'flag-value';
+
+			const parser = new CommandParser({
+				ux,
+				flags: {
+					name: Flags.string({ required: true, ask: customAsk }),
+				},
+				args: {},
+			});
+
+			await parser.init([]);
+			await parser.validate();
+
+			expect(parser.flag('name')).toBe('flag-value');
+		});
+
+		it('should throw when ask returns null for required argument', async () => {
+			const customAsk = async () => null;
+
+			const parser = new CommandParser({
+				ux,
+				flags: {},
+				args: {
+					name: Flags.string({ required: true, ask: customAsk }),
+				},
+			});
+
+			await parser.init([]);
+
+			await expect(parser.validate()).rejects.toThrow(MissingRequiredArgumentValue);
+		});
+
+		it('should throw when ask returns null for required flag', async () => {
+			const customAsk = async () => null;
+
+			const parser = new CommandParser({
+				ux,
+				flags: {
+					name: Flags.string({ required: true, ask: customAsk }),
+				},
+				args: {},
+			});
+
+			await parser.init([]);
+
+			await expect(parser.validate()).rejects.toThrow(MissingRequiredFlagValue);
+		});
+
+		it('should throw for required flags without ask when prompting disabled', async () => {
+			const parser = new CommandParser({
+				ux,
+				flags: {
+					name: Flags.string({ required: true }),
+				},
+				args: {},
+			}).disablePrompting();
+
+			await parser.init([]);
+
+			await expect(parser.validate()).rejects.toThrow(MissingRequiredFlagValue);
+		});
+
+		it('should not prompt for flags that already have values', async () => {
+			let askCalled = false;
+			const customAsk = async () => {
+				askCalled = true;
+				return 'should-not-be-used';
+			};
+
+			const parser = new CommandParser({
+				ux,
+				flags: {
+					name: Flags.string({ required: true, ask: customAsk }),
+				},
+				args: {},
+			});
+
+			await parser.init(['--name', 'provided']);
+			await parser.validate();
+
+			expect(askCalled).toBe(false);
+			expect(parser.flag('name')).toBe('provided');
+		});
+
+		it('custom flag type should not have a default ask', async () => {
+			const parser = new CommandParser({
+				ux,
+				flags: {
+					value: Flags.custom<string>()({ required: true }),
+				},
+				args: {},
+			});
+
+			await parser.init([]);
+
+			await expect(parser.validate()).rejects.toThrow(MissingRequiredFlagValue);
+		});
+	});
+
 	describe('Type conversion errors', () => {
 		it('should handle invalid number conversion', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: { count: Flags.number() },
 				args: {},
 			});
@@ -687,7 +803,7 @@ describe('CommandParser', () => {
 	describe('Extended types', () => {
 		it('should parse enum flags', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {
 					level: Flags.enum({ options: ['debug', 'info', 'warn'] as const }),
 				},
@@ -700,20 +816,19 @@ describe('CommandParser', () => {
 
 		it('should reject invalid enum value', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {
 					level: Flags.enum({ options: ['debug', 'info'] as const }),
 				},
 				args: {},
 			});
 
-			await parser.init(['--level', 'error']);
-			await expect(parser.validate()).rejects.toThrow(BadCommandFlag);
+			await expect(parser.init(['--level', 'error'])).rejects.toThrow(BadCommandFlag);
 		});
 
 		it('should default enum to null', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {
 					level: Flags.enum({ options: ['debug', 'info'] as const }),
 				},
@@ -726,7 +841,7 @@ describe('CommandParser', () => {
 
 		it('should parse number flags with min/max', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {
 					port: Flags.number({ min: 1, max: 65535 }),
 				},
@@ -739,33 +854,31 @@ describe('CommandParser', () => {
 
 		it('should reject number below min', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {
 					port: Flags.number({ min: 1, max: 65535 }),
 				},
 				args: {},
 			});
 
-			await parser.init(['--port', '0']);
-			await expect(parser.validate()).rejects.toThrow(BadCommandFlag);
+			await expect(parser.init(['--port', '0'])).rejects.toThrow(BadCommandFlag);
 		});
 
 		it('should reject number above max', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {
 					port: Flags.number({ min: 1, max: 65535 }),
 				},
 				args: {},
 			});
 
-			await parser.init(['--port', '70000']);
-			await expect(parser.validate()).rejects.toThrow(BadCommandFlag);
+			await expect(parser.init(['--port', '70000'])).rejects.toThrow(BadCommandFlag);
 		});
 
 		it('should parse file flags as string', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {
 					config: Flags.file(),
 				},
@@ -778,7 +891,7 @@ describe('CommandParser', () => {
 
 		it('should parse directory flags as string', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {
 					outDir: Flags.directory(),
 				},
@@ -791,7 +904,7 @@ describe('CommandParser', () => {
 
 		it('should parse url flags as URL object', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {
 					endpoint: Flags.url(),
 				},
@@ -805,7 +918,7 @@ describe('CommandParser', () => {
 
 		it('should reject invalid url', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {
 					endpoint: Flags.url(),
 				},
@@ -817,7 +930,7 @@ describe('CommandParser', () => {
 
 		it('should parse custom flags', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {
 					since: Flags.custom({ parse: (v: string) => new Date(v) })(),
 				},
@@ -830,7 +943,7 @@ describe('CommandParser', () => {
 
 		it('should handle custom parse errors', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {
 					value: Flags.custom<string>({
 						parse: (_v: string) => {
@@ -846,7 +959,7 @@ describe('CommandParser', () => {
 
 		it('should parse enum arguments', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {},
 				args: {
 					format: Flags.enum({ options: ['json', 'csv'] as const }),
@@ -859,7 +972,7 @@ describe('CommandParser', () => {
 
 		it('should parse file arguments', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {},
 				args: {
 					input: Flags.file(),
@@ -870,64 +983,148 @@ describe('CommandParser', () => {
 			expect(result.args.input).toBe('/path/to/file.txt');
 		});
 
-		it('should validate file existence in validate()', async () => {
+		it('should validate file existence at init', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {
 					config: Flags.file({ exists: true }),
 				},
 				args: {},
 			});
 
-			await parser.init(['--config', '/nonexistent/file.txt']);
-
-			await expect(parser.validate()).rejects.toThrow(BadCommandFlag);
+			await expect(parser.init(['--config', '/nonexistent/file.txt'])).rejects.toThrow(BadCommandFlag);
 		});
 
-		it('should validate directory existence in validate()', async () => {
+		it('should validate directory existence at init', async () => {
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {
 					outDir: Flags.directory({ exists: true }),
 				},
 				args: {},
 			});
 
-			await parser.init(['--outDir', '/nonexistent/dir']);
-
-			await expect(parser.validate()).rejects.toThrow(BadCommandFlag);
+			await expect(parser.init(['--outDir', '/nonexistent/dir'])).rejects.toThrow(BadCommandFlag);
 		});
 
-		it('should validate custom validate function in validate()', async () => {
+		it('should reject custom parse that throws ValidationError', async () => {
+			const { ValidationError } = await import('@/src/errors/ValidationError.js');
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {
 					since: Flags.custom({
-						parse: (v: string) => new Date(v),
-						validate: (v: Date) => (isNaN(v.getTime()) ? 'Invalid date' : true),
+						parse: (v: string) => {
+							const d = new Date(v);
+							if (isNaN(d.getTime())) throw new ValidationError('Invalid date');
+							return d;
+						},
 					})(),
 				},
 				args: {},
 			});
 
-			await parser.init(['--since', 'not-a-date']);
-
-			await expect(parser.validate()).rejects.toThrow(BadCommandFlag);
+			await expect(parser.init(['--since', 'not-a-date'])).rejects.toThrow(BadCommandFlag);
 		});
 
-		it('should pass custom validate for valid values', async () => {
+		it('should pass custom parse for valid values', async () => {
+			const { ValidationError } = await import('@/src/errors/ValidationError.js');
 			const parser = new CommandParser({
-				io,
+				ux,
 				flags: {
 					since: Flags.custom({
-						parse: (v: string) => new Date(v),
-						validate: (v: Date) => (isNaN(v.getTime()) ? 'Invalid date' : true),
+						parse: (v: string) => {
+							const d = new Date(v);
+							if (isNaN(d.getTime())) throw new ValidationError('Invalid date');
+							return d;
+						},
 					})(),
 				},
 				args: {},
 			});
 
-			await parser.init(['--since', '2024-01-01']);
+			const result = await parser.init(['--since', '2024-01-01']);
+			expect(result.flags.since).toBeInstanceOf(Date);
+		});
+
+		it('should reject invalid enum value at init', async () => {
+			const parser = new CommandParser({
+				ux,
+				flags: {
+					level: Flags.enum({ options: ['a', 'b'] as const }),
+				},
+				args: {},
+			});
+
+			await expect(parser.init(['--level', 'c'])).rejects.toThrow(BadCommandFlag);
+		});
+	});
+
+	describe('Validation pipeline', () => {
+		it('should validate prompted flag values through parse', async () => {
+			const { ValidationError } = await import('@/src/errors/ValidationError.js');
+			const customAsk = async () => 'prompted';
+
+			const parser = new CommandParser({
+				ux,
+				flags: {
+					name: Flags.custom<string>({
+						parse: (v: string) => {
+							if (v === 'prompted') throw new ValidationError('not allowed');
+							return v;
+						},
+						ask: customAsk,
+					})({ required: true }),
+				},
+				args: {},
+			});
+
+			await parser.init([]);
+
+			await expect(parser.validate()).rejects.toThrow(BadCommandFlag);
+		});
+
+		it('should validate prompted argument values through parse', async () => {
+			const { ValidationError } = await import('@/src/errors/ValidationError.js');
+			const customAsk = async () => 'prompted';
+
+			const parser = new CommandParser({
+				ux,
+				flags: {},
+				args: {
+					name: Flags.custom<string>({
+						parse: (v: string) => {
+							if (v === 'prompted') throw new ValidationError('not allowed');
+							return v;
+						},
+						ask: customAsk,
+					})({ required: true }),
+				},
+			});
+
+			await parser.init([]);
+
+			await expect(parser.validate()).rejects.toThrow('not allowed');
+		});
+
+		it('should pass validation for valid prompted values', async () => {
+			const { ValidationError } = await import('@/src/errors/ValidationError.js');
+			const customAsk = async () => 'valid';
+
+			const parser = new CommandParser({
+				ux,
+				flags: {
+					name: Flags.custom<string>({
+						parse: (v: string) => {
+							if (v === 'invalid') throw new ValidationError('not allowed');
+							return v;
+						},
+						ask: customAsk,
+					})({ required: true }),
+				},
+				args: {},
+			});
+
+			await parser.init([]);
 
 			await expect(parser.validate()).resolves.toBeUndefined();
 		});

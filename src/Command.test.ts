@@ -2,7 +2,7 @@ import { faker } from '@faker-js/faker';
 import { beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 
 import { Command, CommandRunOption } from '@/src/Command.js';
-import { Flags } from '@/src/Flags.js';
+import { Flags } from '@/src/flags/index.js';
 import { TooManyArguments } from '@/src/errors/TooManyArguments.js';
 import { TestLogger, newTestLogger } from '@/src/fixtures.test.js';
 import { ArgumentsSchema, FlagType, FlagsSchema, Parsed } from '@/src/lib/types.js';
@@ -256,6 +256,7 @@ describe('Command', () => {
 		it('should validate required options', async () => {
 			class TestCmd extends Command {
 				static command = 'test';
+				static disablePrompting = true;
 				static flags = { name: Flags.string({ required: true }) } satisfies FlagsSchema;
 				async handle() {
 					return 0;

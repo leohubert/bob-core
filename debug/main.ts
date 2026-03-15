@@ -10,7 +10,7 @@ class TestCommand extends Command {
 
 	protected async handle(): Promise<number | void> {
 		const res = await this.ctx.bambooClient.getProjects();
-		this.io.info(res);
+		this.logger.info(res);
 		throw new Error('Method not implemented.');
 	}
 }

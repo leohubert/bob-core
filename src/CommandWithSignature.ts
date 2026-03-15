@@ -10,15 +10,10 @@ import { ContextDefinition } from '@/src/lib/types.js';
  */
 export abstract class CommandWithSignature<C extends ContextDefinition = ContextDefinition> extends Command<C> {
 	static signature: string = '';
-	signature: string = '';
-	helperDefinitions: Record<string, string> = {};
+	static helperDefinitions: Record<string, string> = {};
 
 	// Derive command name from signature for CommandRegistry
 	static get command(): string {
-		if (!this.signature) {
-			this.signature = new (this as any)().signature;
-		}
-
 		return this.signature.split(/\s/)[0] || '';
 	}
 
@@ -27,7 +22,7 @@ export abstract class CommandWithSignature<C extends ContextDefinition = Context
 
 		// Lazily parse signature once per subclass
 		if (ctor.signature && !Object.prototype.hasOwnProperty.call(ctor, '_signatureParsed')) {
-			const parsed = CommandSignatureParser.parse(ctor.signature, this.helperDefinitions);
+			const parsed = CommandSignatureParser.parse(ctor.signature, ctor.helperDefinitions);
 			const ownFlags = Object.prototype.hasOwnProperty.call(ctor, 'flags') ? ctor.flags : {};
 			const ownArgs = Object.prototype.hasOwnProperty.call(ctor, 'args') ? ctor.args : {};
 			ctor.flags = { ...parsed.flags, ...ownFlags };

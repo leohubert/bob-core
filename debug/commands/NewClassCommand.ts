@@ -1,5 +1,5 @@
 import { Command } from '@/src/Command.js';
-import { Flags } from '@/src/Flags.js';
+import { Flags } from '@/src/flags/index.js';
 import { FlagsSchema, Parsed } from '@/src/lib/types.js';
 
 type Context = {

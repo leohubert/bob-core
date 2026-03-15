@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Command } from '@/src/Command.js';
 import { CommandRegistry } from '@/src/CommandRegistry.js';
-import { Flags } from '@/src/Flags.js';
+import { Flags } from '@/src/flags/index.js';
 import { Logger } from '@/src/Logger.js';
 import { ArgumentsSchema } from '@/src/lib/types.js';
 

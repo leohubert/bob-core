@@ -1,7 +1,6 @@
-import chalk from 'chalk';
 import minimist from 'minimist';
 
-import { CommandIO } from '@/src/CommandIO.js';
+import { UX } from '@/src/ux/index.js';
 import { InvalidFlag } from '@/src/errors/InvalidFlag.js';
 import { MissingRequiredArgumentValue } from '@/src/errors/MissingRequiredArgumentValue.js';
 import { MissingRequiredFlagValue } from '@/src/errors/MissingRequiredFlagValue.js';
@@ -19,14 +18,14 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends Argument
 	protected args: ArgumentsSchema;
 	protected parsedArguments: FlagsObject<Arguments> | null = null;
 
-	protected io: CommandIO;
+	protected ux: UX;
 
 	protected shouldPromptForMissingFlags = true;
 	protected shouldValidateUnknownFlags = true;
 	protected shouldRejectExtraArguments = false;
 
-	constructor(protected opts: { flags: Flags; args: Arguments; ctx?: ContextDefinition; io: CommandIO }) {
-		this.io = opts.io;
+	constructor(protected opts: { flags: Flags; args: Arguments; ctx?: ContextDefinition; ux: UX }) {
+		this.ux = opts.ux;
 		this.flags = opts.flags;
 		this.args = opts.args;
 	}
@@ -65,31 +64,29 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends Argument
 	async validate(): Promise<void> {
 		for (const key in this.flags) {
 			const flagDefinition: FlagDefinition = this.flags[key];
-			const flagValue = this.parsedFlags?.[key];
+			let flagValue = this.parsedFlags?.[key];
 			const isEmpty = this.isEmptyValue(flagValue);
-			const isMultiple = 'multiple' in flagDefinition && flagDefinition.multiple;
 
 			if (flagDefinition.required && isEmpty) {
-				throw new MissingRequiredFlagValue(key);
-			}
+				if (!this.shouldPromptForMissingFlags) {
+					throw new MissingRequiredFlagValue(key);
+				}
 
-			if (!isEmpty && flagDefinition.validate) {
-				const valuesToValidate: any[] = isMultiple && Array.isArray(flagValue) ? flagValue : [flagValue];
+				const newValue = await this.promptForArgument(key, flagDefinition);
 
-				for (const value of valuesToValidate) {
-					const result = await flagDefinition.validate(value as never);
-					if (result !== true) {
-						throw new BadCommandFlag({ flag: key, reason: result, value: value });
-					}
+				if (newValue !== null && this.parsedFlags) {
+					flagValue = await this.parseValue(newValue, flagDefinition, { name: key });
+					(this.parsedFlags as any)[key] = flagValue;
+				} else {
+					throw new MissingRequiredFlagValue(key);
 				}
 			}
 		}
 
 		for (const key in this.args) {
 			const argDefinition = this.args[key];
-			const argValue = this.parsedArguments?.[key];
+			let argValue = this.parsedArguments?.[key];
 			const isEmpty = this.isEmptyValue(argValue);
-			const isMultiple = 'multiple' in argDefinition && argDefinition.multiple;
 
 			if (argDefinition.required && isEmpty) {
 				if (!this.shouldPromptForMissingFlags) {
@@ -99,21 +96,10 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends Argument
 				const newValue = await this.promptForArgument(key, argDefinition);
 
 				if (newValue && this.parsedArguments) {
-					(this.parsedArguments as any)[key] = await this.parseValue(newValue, argDefinition, { name: key, isArg: true });
-					continue;
-				}
-
-				throw new MissingRequiredArgumentValue(key);
-			}
-
-			if (!isEmpty && argDefinition.validate) {
-				const valuesToValidate: any[] = isMultiple && Array.isArray(argValue) ? argValue : [argValue];
-
-				for (const value of valuesToValidate) {
-					const result = await argDefinition.validate(value as never);
-					if (result !== true) {
-						throw new BadCommandArgument({ arg: key, reason: result, value: value });
-					}
+					argValue = await this.parseValue(newValue, argDefinition, { name: key, isArg: true });
+					(this.parsedArguments as any)[key] = argValue;
+				} else {
+					throw new MissingRequiredArgumentValue(key);
 				}
 			}
 		}
@@ -146,13 +132,6 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends Argument
 			throw new InvalidFlag(name as string, this.flags);
 		}
 
-		if (this.flags[name].validate) {
-			const validationResult = await this.flags[name].validate(value as never);
-			if (validationResult !== true) {
-				throw new BadCommandFlag({ flag: name as string, reason: validationResult, value: value });
-			}
-		}
-
 		(this.parsedFlags as any)[name] = value;
 	}
 
@@ -181,13 +160,6 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends Argument
 		}
 		if (!(name in this.args)) {
 			throw new BadCommandArgument({ arg: name as string, reason: `Argument "${name as string}" is not recognized` });
-		}
-
-		if (this.args[name].validate) {
-			const validationResult = await this.args[name].validate(value as never);
-			if (validationResult !== true) {
-				throw new BadCommandArgument({ arg: name as string, reason: validationResult, value: value });
-			}
 		}
 
 		(this.parsedArguments as any)[name] = value;
@@ -324,6 +296,7 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends Argument
 		try {
 			return definition.parse(value, this.opts.ctx);
 		} catch (e) {
+			if (e instanceof BadCommandFlag || e instanceof BadCommandArgument) throw e;
 			if (!meta) throw e;
 			const reason = e instanceof Error ? e.message : String(e);
 			throw meta.isArg ? new BadCommandArgument({ arg: meta.name, value, reason }) : new BadCommandFlag({ flag: meta.name, value, reason });
@@ -350,75 +323,14 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends Argument
 	}
 
 	/**
-	 * Prompts the user to provide a missing argument value via CommandIO
-	 * Used by validate() when shouldPromptForMissingArgs is enabled
-	 * @param argumentName - The name of the missing argument
-	 * @param definition - The argument's definition for type and description
-	 * @returns The user-provided value, or null if none given
+	 * Prompts the user to provide a missing flag/argument value via its `ask` method
+	 * Used by validate() when shouldPromptForMissingFlags is enabled
+	 * @param name - The name of the missing flag/argument
+	 * @param definition - The flag's definition (must have an `ask` method)
+	 * @returns The user-provided value, or null if `ask` is not defined
 	 */
-	protected async promptForArgument(argumentName: string, definition: FlagDefinition): Promise<string | number | string[] | null> {
-		const type = definition.type;
-
-		// For enum type, show a select prompt
-		if (type === 'enum' && definition.options) {
-			let promptText = `${chalk.yellow.bold(argumentName)} is required`;
-			if (definition.description) {
-				promptText += `: ${chalk.gray(`(${definition.description})`)}`;
-			}
-			promptText += ` ${chalk.green('(enum)')}\n`;
-
-			const choices = definition.options.map(o => ({ title: o, value: o }));
-			return await this.io.askForSelect(promptText, choices);
-		}
-
-		const isMultiple = 'multiple' in definition && definition.multiple;
-
-		// For non-promptable types, skip
-		if (!isMultiple && !['string', 'number'].includes(type as string)) {
-			return null;
-		}
-
-		let promptText = `${chalk.yellow.bold(argumentName)} is required`;
-		if (definition.description) {
-			promptText += `: ${chalk.gray(`(${definition.description})`)}`;
-		}
-		promptText += ` ${chalk.green(`(${type}${isMultiple ? '[]' : ''})`)}\n`;
-
-		if (isMultiple) {
-			promptText += 'Please provide one or more values, separated by commas:\n';
-
-			return await this.io.askForList(promptText, undefined, {
-				separator: ',',
-				validate: (value: string) => {
-					if (this.isEmptyValue(value) && definition.required) {
-						return 'Please enter at least one value';
-					}
-
-					for (const val of value.split(',')) {
-						const validate = definition.validate ? definition.validate(val as never) : true;
-						if (validate !== true) {
-							return typeof validate === 'string' ? `${val} ${validate}` : `Invalid value: "${val.trim()}"`;
-						}
-					}
-
-					return true;
-				},
-			});
-		}
-
-		return await this.io.askForInput(promptText, undefined, {
-			type: type === 'number' ? 'number' : 'secret' in definition && definition.secret ? 'password' : 'text',
-			validate: (value: string | number) => {
-				if (this.isEmptyValue(value) && definition.required) {
-					return 'This value is required';
-				}
-
-				const validate = definition.validate ? definition.validate(value as never) : true;
-				if (validate !== true) {
-					return typeof validate === 'string' ? validate : `Invalid value`;
-				}
-				return true;
-			},
-		});
+	protected async promptForArgument(name: string, definition: FlagDefinition): Promise<string | number | string[] | boolean | null> {
+		if (!definition.ask) return null;
+		return definition.ask({ name, ux: this.ux, definition });
 	}
 }

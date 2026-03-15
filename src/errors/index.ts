@@ -6,3 +6,4 @@ export * from './CommandNotFoundError.js';
 export * from './MissingRequiredArgumentValue.js';
 export * from './MissingRequiredFlagValue.js';
 export * from './TooManyArguments.js';
+export * from './ValidationError.js';

@@ -1,4 +1,4 @@
-import { Args, Flags } from '@/src/Flags.js';
+import { Args, Flags } from '@/src/flags/index.js';
 import { ArgumentsSchema, FlagDefinition, FlagsSchema } from '@/src/lib/types.js';
 
 /**

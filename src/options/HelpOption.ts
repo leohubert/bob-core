@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 
 import { Command } from '@/src/Command.js';
-import { Flags } from '@/src/Flags.js';
+import { Flags } from '@/src/flags/index.js';
 import { generateSpace } from '@/src/lib/string.js';
 import { ContextDefinition, FlagDefinition } from '@/src/lib/types.js';
 

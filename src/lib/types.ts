@@ -1,5 +1,12 @@
 // === Base config shared by all flag definition types ===
 import { Command } from '@/src/Command.js';
+import type { UX } from '@/src/ux/index.js';
+
+export type FlagAskContext = {
+	name: string;
+	ux: UX;
+	definition: FlagDefinition;
+};
 
 export type BaseFlagConfig<T> = {
 	description?: string;
@@ -8,9 +15,9 @@ export type BaseFlagConfig<T> = {
 	default?: T | T[] | null | (() => Promise<T | T[] | null>);
 	multiple?: boolean;
 	help?: string;
-	parse: (input: string, ctx: ContextDefinition) => T;
-	validate?(value: T): FlagValidationResult;
+	parse: (input: any, ctx: ContextDefinition) => T;
 	handler?(value: T, ctx: ContextDefinition, cmd: typeof Command): { shouldStop: boolean } | void;
+	ask?(ctx: FlagAskContext): Promise<string | string[] | number | boolean | null>;
 };
 
 // === Per-type definitions (discriminated union members) ===
@@ -35,8 +42,6 @@ export type CustomFlagDef<R = unknown> = BaseFlagConfig<R> & { type: 'custom' };
 export type FlagDefinition = StringFlagDef | NumberFlagDef | BooleanFlagDef | EnumFlagDef | FileFlagDef | DirectoryFlagDef | UrlFlagDef | CustomFlagDef<any>;
 
 export type FlagInput<T extends FlagDefinition, K extends string = never> = Partial<Omit<T, 'type' | K>>;
-
-export type FlagValidationResult = true | string | Promise<true | string>;
 
 // === Type inference ===
 

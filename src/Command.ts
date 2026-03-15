@@ -1,6 +1,6 @@
-import { CommandIO, CommandIOOptions } from '@/src/CommandIO.js';
 import { CommandParser } from '@/src/CommandParser.js';
 import { Logger } from '@/src/Logger.js';
+import { UX } from '@/src/ux/index.js';
 import { ArgumentsSchema, ContextDefinition, FlagsSchema, Parsed } from '@/src/lib/types.js';
 import { HelpCommandFlag } from '@/src/options/index.js';
 
@@ -41,7 +41,8 @@ export abstract class Command<C extends ContextDefinition = ContextDefinition> {
 	static strictMode: boolean = false;
 
 	protected ctx!: C;
-	protected io!: CommandIO;
+	protected logger!: Logger;
+	protected ux!: UX;
 	protected parser!: CommandParser<FlagsSchema, FlagsSchema>;
 
 	protected preHandle?(): Promise<void | number>;
@@ -51,36 +52,32 @@ export abstract class Command<C extends ContextDefinition = ContextDefinition> {
 		help: HelpCommandFlag,
 	};
 
-	protected newCommandParser(opts: {
-		flags: FlagsSchema;
-		args: ArgumentsSchema;
-		ctx: ContextDefinition;
-		io: CommandIO;
-	}): CommandParser<FlagsSchema, FlagsSchema> {
+	protected newCommandParser(opts: { flags: FlagsSchema; args: ArgumentsSchema; ctx: ContextDefinition; ux: UX }): CommandParser<FlagsSchema, FlagsSchema> {
 		return new CommandParser({
-			io: opts.io,
+			ux: opts.ux,
 			ctx: opts.ctx,
 			flags: opts.flags,
 			args: opts.args,
 		});
 	}
 
-	protected newCommandIO(opts: CommandIOOptions): CommandIO {
-		return new CommandIO(opts);
+	protected newUX(): UX {
+		return new UX();
 	}
 
 	async run(runOpts: CommandRunOption<C>): Promise<number | void> {
 		const ctor = this.constructor as typeof Command;
 
 		this.ctx = runOpts.ctx;
-		this.io = this.newCommandIO({ logger: runOpts.logger });
+		this.logger = runOpts.logger;
+		this.ux = this.newUX();
 
 		let handlerInput: { flags: Record<string, any>; args: Record<string, any> };
 
 		if (!('flags' in runOpts)) {
 			this.parser = this.newCommandParser({
 				ctx: this.ctx,
-				io: this.io,
+				ux: this.ux,
 				flags: ctor.disableDefaultOptions ? ctor.flags : { ...ctor.baseFlags, ...ctor.flags },
 				args: ctor.args,
 			});

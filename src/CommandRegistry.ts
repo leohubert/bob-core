@@ -3,9 +3,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { Command } from '@/src/Command.js';
-import { CommandIO, CommandIOOptions } from '@/src/CommandIO.js';
 import { Logger } from '@/src/Logger.js';
 import { StringSimilarity } from '@/src/StringSimilarity.js';
+import { UX } from '@/src/ux/index.js';
 import { CommandNotFoundError } from '@/src/errors/CommandNotFoundError.js';
 import { isBobCommandClass } from '@/src/lib/helpers.js';
 import { ContextDefinition } from '@/src/lib/types.js';
@@ -15,24 +15,19 @@ export type FileImporter = (filePath: string) => Promise<unknown>;
 
 export type CommandRegistryOptions = {
 	logger?: Logger;
+	ux?: UX;
 	stringSimilarity?: StringSimilarity;
 };
 
 export class CommandRegistry {
 	private readonly commands: Record<string, typeof Command> = {};
-	protected readonly io!: CommandIO;
+	protected readonly ux: UX;
 	protected readonly logger: Logger;
 	private readonly stringSimilarity: StringSimilarity;
 
-	protected newCommandIO(opts: CommandIOOptions): CommandIO {
-		return new CommandIO(opts);
-	}
-
 	constructor(opts?: CommandRegistryOptions) {
 		this.logger = opts?.logger ?? new Logger();
-		this.io = this.newCommandIO({
-			logger: this.logger,
-		});
+		this.ux = opts?.ux ?? new UX();
 		this.stringSimilarity = opts?.stringSimilarity ?? new StringSimilarity();
 	}
 
@@ -151,9 +146,9 @@ export class CommandRegistry {
 		}
 
 		if (similarCommands.length) {
-			this.io.error(`${chalk.bgRed(' ERROR ')} Command ${chalk.yellow(command)} not found.\n`);
+			this.logger.error(`${chalk.bgRed(' ERROR ')} Command ${chalk.yellow(command)} not found.\n`);
 
-			const commandToRun = await this.io.askForSelect(chalk.green('Did you mean to run one of these commands instead?'), similarCommands);
+			const commandToRun = await this.ux.askForSelect(chalk.green('Did you mean to run one of these commands instead?'), similarCommands);
 			if (commandToRun) {
 				return commandToRun;
 			}
@@ -163,9 +158,9 @@ export class CommandRegistry {
 	}
 
 	private async askRunSimilarCommand(command: string, commandToAsk: string): Promise<boolean> {
-		this.io.error(`${chalk.bgRed(' ERROR ')} Command ${chalk.yellow(command)} not found.\n`);
+		this.logger.error(`${chalk.bgRed(' ERROR ')} Command ${chalk.yellow(command)} not found.\n`);
 
-		return this.io.askForConfirmation(`${chalk.green(`Do you want to run ${chalk.yellow(commandToAsk)} instead?`)} `);
+		return this.ux.askForConfirmation(`${chalk.green(`Do you want to run ${chalk.yellow(commandToAsk)} instead?`)} `);
 	}
 
 	private async *listCommandsFiles(basePath: string): AsyncIterableIterator<string> {

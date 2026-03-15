@@ -1,4 +1,4 @@
-import { Flags } from '@/src/Flags.js';
+import { Flags } from '@/src/flags/index.js';
 
 import { CommandContext } from '../command.js';
 

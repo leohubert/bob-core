@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { CommandIO, CommandIOOptions } from '@/src/CommandIO.js';
 import { CommandWithSignature } from '@/src/CommandWithSignature.js';
+import { UX } from '@/src/ux/index.js';
 import { MissingRequiredArgumentValue } from '@/src/errors/MissingRequiredArgumentValue.js';
 import { TestLogger, newTestLogger } from '@/src/fixtures.test.js';
 import { Parsed } from '@/src/lib/types.js';
@@ -10,8 +10,8 @@ class MockCommand extends CommandWithSignature {
 	static override signature = 'mockCommand {argument} {--option}';
 	static override description = 'This is a mock command for testing';
 
-	protected newCommandIO(opts: CommandIOOptions): CommandIO {
-		return vi.mockObject(new CommandIO(opts));
+	protected newUX(): UX {
+		return vi.mockObject(new UX());
 	}
 
 	async handle(_ctx: any, { flags, args }: Parsed<any>): Promise<number | void> {

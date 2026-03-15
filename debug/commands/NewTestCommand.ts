@@ -1,5 +1,5 @@
 import { Command } from '@/src/Command.js';
-import { Args, Flags } from '@/src/Flags.js';
+import { Args, Flags } from '@/src/flags/index.js';
 import { ArgumentsSchema, FlagsSchema, Parsed } from '@/src/lib/types.js';
 
 type Toto = {
