@@ -15,7 +15,7 @@ export default class ExtendedTypesCommand extends Command {
 	static description = 'Showcase new extended flag types (enum, file, url, custom)';
 
 	static flags = {
-		level: Flags.enum({ options: ['debug', 'info', 'warn', 'error'] as const, description: 'Log level' }),
+		level: Flags.enum({ options: ['debug', 'info', 'warn', 'error'] as const, description: 'Log level', required: true }),
 		port: Flags.number({ min: 1, max: 65535, default: 3000, description: 'Server port' }),
 		config: Flags.file({ description: 'Config file path', required: true, exists: true }),
 		outDir: Flags.directory({ description: 'Output directory', required: true, exists: true }),
@@ -28,6 +28,19 @@ export default class ExtendedTypesCommand extends Command {
 	} satisfies FlagsSchema;
 
 	async handle(_ctx: any, { flags, args }: Parsed<typeof ExtendedTypesCommand>) {
+		const toto = await this.ux.askForSearch('Select an option', term => {
+			return [
+				{
+					name: 'Cat',
+					value: 'cat',
+				},
+				{
+					name: 'Dog',
+					value: 'dog',
+				},
+			];
+		});
+
 		this.logger.log('Extended types demo:');
 		this.logger.log(`  level:    ${flags.level}`);
 		this.logger.log(`  port:     ${flags.port}`);
@@ -36,5 +49,6 @@ export default class ExtendedTypesCommand extends Command {
 		this.logger.log(`  endpoint: ${flags.endpoint ?? null}`);
 		this.logger.log(`  since:    ${flags.since?.toISOString() ?? null}`);
 		this.logger.log(`  format:   ${args.format}`);
+		this.logger.log(`  toto:   ${toto}`);
 	}
 }
