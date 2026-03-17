@@ -12,7 +12,7 @@ export type BaseFlagConfig<T> = {
 	description?: string;
 	alias?: string | Array<string>;
 	required?: boolean;
-	default?: T | T[] | null | (() => Promise<T | T[] | null>);
+	default?: T | T[] | null | ((ctx: ContextDefinition) => Promise<T | T[] | null>);
 	multiple?: boolean;
 	help?: string;
 	parse: (input: any, ctx: ContextDefinition) => T;
@@ -78,8 +78,8 @@ export type ArgumentsObject<Arguments extends ArgumentsSchema> = {
 
 export type ContextDefinition = any;
 
-export type InferFlags<T> = T extends { flags: infer O extends FlagsSchema } ? O : any;
-export type InferArgs<T> = T extends { args: infer A extends ArgumentsSchema } ? A : any;
+export type InferFlags<T> = T extends { flags: infer O extends FlagsSchema } ? O : FlagsSchema;
+export type InferArgs<T> = T extends { args: infer A extends ArgumentsSchema } ? A : ArgumentsSchema;
 export type Parsed<T> = {
 	flags: FlagsObject<InferFlags<T>>;
 	args: ArgumentsObject<InferArgs<T>>;

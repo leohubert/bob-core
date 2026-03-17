@@ -1,5 +1,5 @@
-import { askForMultipleValues, formatPromptMessage } from '@/src/flags/helpers.js';
 import { ValidationError } from '@/src/errors/ValidationError.js';
+import { askForMultipleValues, formatPromptMessage } from '@/src/flags/helpers.js';
 import type { FlagAskContext, FlagInput, NumberFlagDef } from '@/src/lib/types.js';
 
 export function numberFlag<const T extends FlagInput<NumberFlagDef>>(opts?: T): NumberFlagDef & T {

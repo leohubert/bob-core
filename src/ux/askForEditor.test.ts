@@ -29,9 +29,7 @@ describe('askForEditor', () => {
 
 		await askForEditor('Edit', { default: 'initial', postfix: '.md' });
 
-		expect(editor).toHaveBeenCalledWith(
-			expect.objectContaining({ default: 'initial', postfix: '.md' }),
-		);
+		expect(editor).toHaveBeenCalledWith(expect.objectContaining({ default: 'initial', postfix: '.md' }));
 	});
 
 	it('should return null on cancel', async () => {

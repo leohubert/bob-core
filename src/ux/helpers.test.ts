@@ -14,6 +14,13 @@ describe('withCancelHandling', () => {
 		expect(result).toBe('fallback');
 	});
 
+	it('should return fallback on ExitPromptError from different package instance', async () => {
+		const foreignError = new Error('User force closed the prompt with SIGINT');
+		foreignError.name = 'ExitPromptError';
+		const result = await withCancelHandling(() => Promise.reject(foreignError), 'fallback');
+		expect(result).toBe('fallback');
+	});
+
 	it('should re-throw non-ExitPromptError errors', async () => {
 		await expect(withCancelHandling(() => Promise.reject(new Error('other')), 'fallback')).rejects.toThrow('other');
 	});

@@ -1,11 +1,11 @@
 import minimist from 'minimist';
 
-import { UX } from '@/src/ux/index.js';
 import { InvalidFlag } from '@/src/errors/InvalidFlag.js';
 import { MissingRequiredArgumentValue } from '@/src/errors/MissingRequiredArgumentValue.js';
 import { MissingRequiredFlagValue } from '@/src/errors/MissingRequiredFlagValue.js';
 import { BadCommandArgument, BadCommandFlag, TooManyArguments } from '@/src/errors/index.js';
 import { ArgumentsObject, ArgumentsSchema, ContextDefinition, FlagDefinition, FlagReturnType, FlagsObject, FlagsSchema } from '@/src/lib/types.js';
+import { UX } from '@/src/ux/index.js';
 
 /**
  * Parses command-line arguments into typed flags and arguments
@@ -74,7 +74,7 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends Argument
 
 				const newValue = await this.promptForArgument(key, flagDefinition);
 
-				if (newValue !== null && this.parsedFlags) {
+				if (newValue != null && this.parsedFlags) {
 					flagValue = await this.parseValue(newValue, flagDefinition, { name: key });
 					(this.parsedFlags as any)[key] = flagValue;
 				} else {
@@ -95,7 +95,7 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends Argument
 
 				const newValue = await this.promptForArgument(key, argDefinition);
 
-				if (newValue && this.parsedArguments) {
+				if (newValue != null && this.parsedArguments) {
 					argValue = await this.parseValue(newValue, argDefinition, { name: key, isArg: true });
 					(this.parsedArguments as any)[key] = argValue;
 				} else {
@@ -187,7 +187,8 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends Argument
 		for (const key in this.flags) {
 			validOptionNames.add(key);
 			const flagDetails = this.flags[key];
-			for (const alias of flagDetails.alias ?? []) {
+			const aliases = Array.isArray(flagDetails.alias) ? flagDetails.alias : flagDetails.alias ? [flagDetails.alias] : [];
+			for (const alias of aliases) {
 				validOptionNames.add(alias);
 			}
 		}

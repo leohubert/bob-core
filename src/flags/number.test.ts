@@ -46,20 +46,20 @@ describe('Flags.number()', () => {
 	});
 
 	it('should infer number with multiple as array', () => {
-		const flag = Flags.number({ multiple: true });
-		type Result = FlagType<typeof flag>;
+		const _flag = Flags.number({ multiple: true });
+		type Result = FlagType<typeof _flag>;
 		expectTypeOf<Result>().toEqualTypeOf<number[]>();
 	});
 
 	it('should remove null from required number flag', () => {
-		const flag = Flags.number({ required: true });
-		type Result = FlagReturnType<typeof flag>;
+		const _flag = Flags.number({ required: true });
+		type Result = FlagReturnType<typeof _flag>;
 		expectTypeOf<Result>().toEqualTypeOf<number>();
 	});
 
 	it('should remove null from required multiple number flag', () => {
-		const flag = Flags.number({ required: true, multiple: true });
-		type Result = FlagReturnType<typeof flag>;
+		const _flag = Flags.number({ required: true, multiple: true });
+		type Result = FlagReturnType<typeof _flag>;
 		expectTypeOf<Result>().toEqualTypeOf<number[]>();
 	});
 });

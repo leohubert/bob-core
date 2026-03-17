@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CommandWithSignature } from '@/src/CommandWithSignature.js';
-import { UX } from '@/src/ux/index.js';
 import { MissingRequiredArgumentValue } from '@/src/errors/MissingRequiredArgumentValue.js';
 import { TestLogger, newTestLogger } from '@/src/fixtures.test.js';
 import { Parsed } from '@/src/lib/types.js';
+import { UX } from '@/src/ux/index.js';
 
 class MockCommand extends CommandWithSignature {
 	static override signature = 'mockCommand {argument} {--option}';

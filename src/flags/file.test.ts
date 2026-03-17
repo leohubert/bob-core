@@ -21,14 +21,14 @@ describe('Flags.file()', () => {
 	});
 
 	it('should infer file as string', () => {
-		const flag = Flags.file();
-		type Result = FlagType<typeof flag>;
+		const _flag = Flags.file();
+		type Result = FlagType<typeof _flag>;
 		expectTypeOf<Result>().toEqualTypeOf<string>();
 	});
 
 	it('should remove null from required file flag', () => {
-		const flag = Flags.file({ required: true });
-		type Result = FlagReturnType<typeof flag>;
+		const _flag = Flags.file({ required: true });
+		type Result = FlagReturnType<typeof _flag>;
 		expectTypeOf<Result>().toEqualTypeOf<string>();
 	});
 

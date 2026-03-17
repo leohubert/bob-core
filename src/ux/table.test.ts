@@ -61,7 +61,7 @@ describe('table', () => {
 	});
 
 	it('should apply format function to values', () => {
-		table([{ price: 42 }], [{ key: 'price', format: (v) => `$${v}` }]);
+		table([{ price: 42 }], [{ key: 'price', format: v => `$${v}` }]);
 
 		const dataRow = consoleSpy.mock.calls[2][0];
 		expect(dataRow).toContain('$42');

@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Cli, CliOptions } from '@/src/Cli.js';
 import { Command } from '@/src/Command.js';
-import { Flags } from '@/src/flags/index.js';
 import { TestLogger, newTestLogger } from '@/src/fixtures.test.js';
+import { Flags } from '@/src/flags/index.js';
 import { ArgumentsSchema } from '@/src/lib/types.js';
 
 function makeCommand(name: string, handler?: (...args: any[]) => any) {

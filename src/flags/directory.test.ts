@@ -21,8 +21,8 @@ describe('Flags.directory()', () => {
 	});
 
 	it('should infer directory as string', () => {
-		const flag = Flags.directory();
-		type Result = FlagType<typeof flag>;
+		const _flag = Flags.directory();
+		type Result = FlagType<typeof _flag>;
 		expectTypeOf<Result>().toEqualTypeOf<string>();
 	});
 

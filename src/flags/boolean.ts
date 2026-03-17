@@ -1,3 +1,4 @@
+import { ValidationError } from '@/src/errors/ValidationError.js';
 import { formatPromptMessage } from '@/src/flags/helpers.js';
 import type { BooleanFlagDef, FlagAskContext, FlagInput } from '@/src/lib/types.js';
 
@@ -13,7 +14,7 @@ export function booleanFlag<const T extends FlagInput<BooleanFlagDef>>(opts?: T)
 			const val = String(value).toLowerCase();
 			if (val === 'true' || val === '1') return true;
 			if (val === 'false' || val === '0') return false;
-			return Boolean(value);
+			throw new ValidationError(`Invalid boolean value: "${value}". Expected true, false, 1, or 0.`);
 		},
 		...opts,
 		type: 'boolean',

@@ -1,5 +1,5 @@
-import { formatPromptMessage } from '@/src/flags/helpers.js';
 import { ValidationError } from '@/src/errors/ValidationError.js';
+import { formatPromptMessage } from '@/src/flags/helpers.js';
 import type { EnumFlagDef, FlagAskContext, FlagInput } from '@/src/lib/types.js';
 
 export function enumFlag<const T extends readonly string[], const U extends FlagInput<EnumFlagDef<T>, 'options'>>(

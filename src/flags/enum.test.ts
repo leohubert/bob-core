@@ -21,8 +21,8 @@ describe('Flags.enum()', () => {
 	});
 
 	it('should infer enum values type', () => {
-		const flag = Flags.enum({ options: ['debug', 'info', 'warn'] as const });
-		type Result = FlagType<typeof flag>;
+		const _flag = Flags.enum({ options: ['debug', 'info', 'warn'] as const });
+		type Result = FlagType<typeof _flag>;
 		expectTypeOf<Result>().toEqualTypeOf<'debug' | 'info' | 'warn'>();
 	});
 
@@ -33,14 +33,14 @@ describe('Flags.enum()', () => {
 	});
 
 	it('should infer enum with multiple as array', () => {
-		const flag = Flags.enum({ options: ['a', 'b'] as const, multiple: true });
-		type Result = FlagType<typeof flag>;
+		const _flag = Flags.enum({ options: ['a', 'b'] as const, multiple: true });
+		type Result = FlagType<typeof _flag>;
 		expectTypeOf<Result>().toEqualTypeOf<('a' | 'b')[]>();
 	});
 
 	it('should remove null from required enum flag', () => {
-		const flag = Flags.enum({ options: ['a', 'b'] as const, required: true });
-		type Result = FlagReturnType<typeof flag>;
+		const _flag = Flags.enum({ options: ['a', 'b'] as const, required: true });
+		type Result = FlagReturnType<typeof _flag>;
 		expectTypeOf<Result>().toEqualTypeOf<'a' | 'b'>();
 	});
 });

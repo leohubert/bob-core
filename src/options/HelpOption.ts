@@ -7,20 +7,19 @@ import { ContextDefinition, FlagDefinition } from '@/src/lib/types.js';
 
 function getTypeDisplay(details: FlagDefinition): string {
 	const type = details.type;
-	if (Array.isArray(type)) return `[${type[0]}]`;
 	if (type === 'enum' && details.options) return `enum: ${details.options.join('|')}`;
 	return type;
 }
 
 export const HelpCommandFlag = Flags.boolean({
 	alias: ['h'],
-	handler: (value: boolean, ctx: ContextDefinition, cmd: typeof Command) => {
+	handler: (value: boolean, _ctx: ContextDefinition, cmd: typeof Command) => {
 		if (!value) {
 			return { shouldStop: false };
 		}
 
 		const argumentDefinitions = cmd.args;
-		const flagDefinitions = cmd.flags;
+		const flagDefinitions = { ...cmd.baseFlags, ...cmd.flags };
 
 		const availableArguments: [string, FlagDefinition][] = Object.entries(argumentDefinitions);
 		const availableFlags: [string, FlagDefinition][] = Object.entries(flagDefinitions);

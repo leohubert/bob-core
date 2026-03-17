@@ -41,20 +41,20 @@ describe('Flags.string()', () => {
 	});
 
 	it('should infer string with multiple as array', () => {
-		const flag = Flags.string({ multiple: true });
-		type Result = FlagType<typeof flag>;
+		const _flag = Flags.string({ multiple: true });
+		type Result = FlagType<typeof _flag>;
 		expectTypeOf<Result>().toEqualTypeOf<string[]>();
 	});
 
 	it('should remove null from required string flag', () => {
-		const flag = Flags.string({ required: true });
-		type Result = FlagReturnType<typeof flag>;
+		const _flag = Flags.string({ required: true });
+		type Result = FlagReturnType<typeof _flag>;
 		expectTypeOf<Result>().toEqualTypeOf<string>();
 	});
 
 	it('should include null for optional flag', () => {
-		const flag = Flags.string();
-		type Result = FlagReturnType<typeof flag>;
+		const _flag = Flags.string();
+		type Result = FlagReturnType<typeof _flag>;
 		expectTypeOf<Result>().toEqualTypeOf<string | null>();
 	});
 });

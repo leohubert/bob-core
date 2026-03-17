@@ -31,9 +31,7 @@ describe('askForNumber', () => {
 
 		await askForNumber('Enter', { min: 0, max: 10, step: 1 });
 
-		expect(numberPrompt).toHaveBeenCalledWith(
-			expect.objectContaining({ min: 0, max: 10, step: 1 }),
-		);
+		expect(numberPrompt).toHaveBeenCalledWith(expect.objectContaining({ min: 0, max: 10, step: 1 }));
 	});
 
 	it('should return null when result is undefined', async () => {

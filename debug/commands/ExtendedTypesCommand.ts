@@ -20,6 +20,12 @@ export default class ExtendedTypesCommand extends Command {
 		config: Flags.file({ description: 'Config file path', required: true, exists: true }),
 		outDir: Flags.directory({ description: 'Output directory', required: true, exists: true }),
 		endpoint: Flags.url({ description: 'API endpoint URL' }),
+		test: Flags.string({
+			description: 'A simple string flag',
+			default: async ctx => {
+				return 'oui';
+			},
+		}),
 		since: dateFlag({ description: 'Start date' }),
 	} satisfies FlagsSchema;
 
@@ -28,7 +34,7 @@ export default class ExtendedTypesCommand extends Command {
 	} satisfies FlagsSchema;
 
 	async handle(_ctx: any, { flags, args }: Parsed<typeof ExtendedTypesCommand>) {
-		const toto = await this.ux.askForSearch('Select an option', term => {
+		const toto = await this.ux.askForSearch('Select an option', _term => {
 			return [
 				{
 					name: 'Cat',

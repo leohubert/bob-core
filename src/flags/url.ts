@@ -1,3 +1,4 @@
+import { ValidationError } from '@/src/errors/ValidationError.js';
 import { askForSingleInput } from '@/src/flags/helpers.js';
 import type { FlagAskContext, FlagInput, UrlFlagDef } from '@/src/lib/types.js';
 
@@ -6,7 +7,11 @@ export function urlFlag<const T extends FlagInput<UrlFlagDef>>(opts?: T): UrlFla
 		default: null,
 		ask: async (ctx: FlagAskContext) => askForSingleInput(ctx),
 		parse: (input: any) => {
-			return new URL(String(input));
+			try {
+				return new URL(String(input));
+			} catch {
+				throw new ValidationError(`Invalid URL: "${input}"`);
+			}
 		},
 		...opts,
 		type: 'url',

@@ -1,8 +1,8 @@
 import { CommandParser } from '@/src/CommandParser.js';
 import { Logger } from '@/src/Logger.js';
-import { UX } from '@/src/ux/index.js';
 import { ArgumentsSchema, ContextDefinition, FlagsSchema, Parsed } from '@/src/lib/types.js';
 import { HelpCommandFlag } from '@/src/options/index.js';
+import { UX } from '@/src/ux/index.js';
 
 export type CommandRunExample = {
 	description: string;

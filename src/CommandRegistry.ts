@@ -5,10 +5,10 @@ import path from 'node:path';
 import { Command } from '@/src/Command.js';
 import { Logger } from '@/src/Logger.js';
 import { StringSimilarity } from '@/src/StringSimilarity.js';
-import { UX } from '@/src/ux/index.js';
 import { CommandNotFoundError } from '@/src/errors/CommandNotFoundError.js';
 import { isBobCommandClass } from '@/src/lib/helpers.js';
 import { ContextDefinition } from '@/src/lib/types.js';
+import { UX } from '@/src/ux/index.js';
 
 export type CommandResolver = (path: string) => Promise<typeof Command | null>;
 export type FileImporter = (filePath: string) => Promise<unknown>;
@@ -112,7 +112,7 @@ export class CommandRegistry {
 				if (suggestedCommand) {
 					return await this.runCommand(ctx, suggestedCommand, ...args);
 				}
-				return 1;
+				throw new CommandNotFoundError(command);
 			}
 			commandInstance = new (CommandClass as unknown as new () => Command)();
 		} else if (isBobCommandClass(command)) {

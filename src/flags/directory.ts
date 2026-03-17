@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 
-import { formatPromptMessage } from '@/src/flags/helpers.js';
 import { ValidationError } from '@/src/errors/ValidationError.js';
+import { formatPromptMessage } from '@/src/flags/helpers.js';
 import type { DirectoryFlagDef, FlagAskContext, FlagInput } from '@/src/lib/types.js';
 
 export function directoryFlag<const T extends FlagInput<DirectoryFlagDef>>(opts?: T): DirectoryFlagDef & T {

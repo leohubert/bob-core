@@ -3,9 +3,8 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CommandParser } from '@/src/CommandParser.js';
 import { CommandSignatureParser } from '@/src/CommandSignatureParser.js';
-import { UX } from '@/src/ux/index.js';
 import { MissingRequiredArgumentValue } from '@/src/errors/MissingRequiredArgumentValue.js';
-import { TestLogger, newTestLogger } from '@/src/fixtures.test.js';
+import { UX } from '@/src/ux/index.js';
 
 describe('CommandSignatureParser', () => {
 	describe('parse()', () => {
@@ -113,10 +112,7 @@ describe('CommandSignatureParser', () => {
 
 	describe('integration with CommandParser', () => {
 		let ux: MaybeMockedDeep<UX>;
-		let logger: TestLogger;
-
 		beforeAll(() => {
-			logger = newTestLogger();
 			ux = vi.mockObject(new UX());
 		});
 

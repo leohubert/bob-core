@@ -27,9 +27,7 @@ describe('askForPassword', () => {
 
 		await askForPassword('Enter', { mask: '*' });
 
-		expect(password).toHaveBeenCalledWith(
-			expect.objectContaining({ mask: '*' }),
-		);
+		expect(password).toHaveBeenCalledWith(expect.objectContaining({ mask: '*' }));
 	});
 
 	it('should return null on cancel', async () => {

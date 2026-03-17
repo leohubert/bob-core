@@ -1,21 +1,17 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { CommandParser } from '@/src/CommandParser.js';
-import { UX } from '@/src/ux/index.js';
-import { Flags } from '@/src/flags/index.js';
 import { BadCommandFlag } from '@/src/errors/BadCommandFlag.js';
 import { InvalidFlag } from '@/src/errors/InvalidFlag.js';
 import { MissingRequiredArgumentValue } from '@/src/errors/MissingRequiredArgumentValue.js';
 import { MissingRequiredFlagValue } from '@/src/errors/MissingRequiredFlagValue.js';
 import { TooManyArguments } from '@/src/errors/TooManyArguments.js';
-import { TestLogger, newTestLogger } from '@/src/fixtures.test.js';
+import { Flags } from '@/src/flags/index.js';
+import { UX } from '@/src/ux/index.js';
 
 describe('CommandParser', () => {
 	let ux: UX;
-	let logger: TestLogger;
-
 	beforeEach(() => {
-		logger = newTestLogger();
 		ux = new UX();
 	});
 
@@ -1127,6 +1123,175 @@ describe('CommandParser', () => {
 			await parser.init([]);
 
 			await expect(parser.validate()).resolves.toBeUndefined();
+		});
+	});
+
+	describe('setFlag()', () => {
+		it('should update a parsed flag value', async () => {
+			const parser = new CommandParser({
+				ux,
+				flags: { name: Flags.string() },
+				args: {},
+			});
+
+			await parser.init(['--name', 'original']);
+			await parser.setFlag('name', 'updated');
+
+			expect(parser.flag('name')).toBe('updated');
+		});
+
+		it('should throw if init() has not been called', async () => {
+			const parser = new CommandParser({
+				ux,
+				flags: { name: Flags.string() },
+				args: {},
+			});
+
+			await expect(parser.setFlag('name', 'value')).rejects.toThrow('Flags have not been parsed yet');
+		});
+
+		it('should throw for unrecognized flag name', async () => {
+			const parser = new CommandParser({
+				ux,
+				flags: { name: Flags.string() },
+				args: {},
+			});
+
+			await parser.init([]);
+
+			await expect(parser.setFlag('unknown' as any, 'value')).rejects.toThrow(InvalidFlag);
+		});
+	});
+
+	describe('setArgument()', () => {
+		it('should update a parsed argument value', async () => {
+			const parser = new CommandParser({
+				ux,
+				flags: {},
+				args: { file: Flags.string() },
+			});
+
+			await parser.init(['original.txt']);
+			await parser.setArgument('file', 'updated.txt');
+
+			expect(parser.argument('file')).toBe('updated.txt');
+		});
+
+		it('should throw if init() has not been called', async () => {
+			const parser = new CommandParser({
+				ux,
+				flags: {},
+				args: { file: Flags.string() },
+			});
+
+			await expect(parser.setArgument('file', 'value')).rejects.toThrow('Arguments have not been parsed yet');
+		});
+
+		it('should throw for unrecognized argument name', async () => {
+			const parser = new CommandParser({
+				ux,
+				flags: {},
+				args: { file: Flags.string() },
+			});
+
+			await parser.init([]);
+
+			await expect(parser.setArgument('unknown' as any, 'value')).rejects.toThrow('not recognized');
+		});
+	});
+
+	describe('Async default functions', () => {
+		it('should resolve async default for flags', async () => {
+			const parser = new CommandParser({
+				ux,
+				flags: {
+					name: Flags.string({ default: async () => 'async-default' }),
+				},
+				args: {},
+			});
+
+			const result = await parser.init([]);
+
+			expect(result.flags.name).toBe('async-default');
+		});
+
+		it('should resolve async default for arguments', async () => {
+			const parser = new CommandParser({
+				ux,
+				flags: {},
+				args: {
+					file: Flags.string({ default: async () => 'async-file.txt' }),
+				},
+			});
+
+			const result = await parser.init([]);
+
+			expect(result.args.file).toBe('async-file.txt');
+		});
+
+		it('should not call async default when value is provided', async () => {
+			let defaultCalled = false;
+			const parser = new CommandParser({
+				ux,
+				flags: {
+					name: Flags.string({
+						default: async () => {
+							defaultCalled = true;
+							return 'async-default';
+						},
+					}),
+				},
+				args: {},
+			});
+
+			const result = await parser.init(['--name', 'provided']);
+
+			expect(defaultCalled).toBe(false);
+			expect(result.flags.name).toBe('provided');
+		});
+	});
+
+	describe('Boolean flag validation', () => {
+		it('should reject invalid boolean string values', async () => {
+			const parser = new CommandParser({
+				ux,
+				flags: { force: Flags.boolean() },
+				args: {},
+			});
+
+			await expect(parser.init(['--force=banana'])).rejects.toThrow(BadCommandFlag);
+		});
+
+		it('should reject --flag=no as invalid', async () => {
+			const parser = new CommandParser({
+				ux,
+				flags: { force: Flags.boolean() },
+				args: {},
+			});
+
+			await expect(parser.init(['--force=no'])).rejects.toThrow(BadCommandFlag);
+		});
+	});
+
+	describe('String alias in validateUnknownFlags', () => {
+		it('should handle string alias correctly (not iterate characters)', async () => {
+			const parser = new CommandParser({
+				ux,
+				flags: {
+					verbose: Flags.boolean({ alias: 'v' }),
+				},
+				args: {},
+			});
+
+			// -v should be valid (alias), -e should be invalid (not a character of 'v')
+			await expect(parser.init(['-v'])).resolves.toBeTruthy();
+			await expect(
+				new CommandParser({
+					ux,
+					flags: { verbose: Flags.boolean({ alias: 'v' }) },
+					args: {},
+				}).init(['-e']),
+			).rejects.toThrow(InvalidFlag);
 		});
 	});
 });
