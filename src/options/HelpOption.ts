@@ -38,6 +38,11 @@ export const HelpCommandFlag = Flags.boolean({
 		console.log(chalk.yellow('Description:'));
 		console.log(`  ${cmd.description}\n`);
 
+		if (cmd.aliases.length > 0) {
+			console.log(chalk.yellow('Aliases:'));
+			console.log(`  ${cmd.aliases.join(', ')}\n`);
+		}
+
 		console.log(chalk.yellow('Usage:'));
 		console.log(`  ${cmd.command} ${requiredArguments.length > 0 ? requiredArguments.map(([name]) => `<${name}>`).join(' ') : '\b'} [options]`);
 

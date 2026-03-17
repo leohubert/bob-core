@@ -6,9 +6,10 @@ import { Logger } from '@/src/Logger.js';
 import { Flags } from '@/src/flags/index.js';
 import { ArgumentsSchema } from '@/src/lib/types.js';
 
-function makeCommand(name: string, handler?: (...args: any[]) => any) {
+function makeCommand(name: string, handler?: (...args: any[]) => any, aliases: string[] = []) {
 	return class extends Command {
 		static command = name;
+		static aliases = aliases;
 		async handle(...args: any[]) {
 			return handler?.(...args) ?? 0;
 		}
@@ -176,6 +177,58 @@ describe('CommandRegistry', () => {
 					args: expect.objectContaining({ file: 'test.txt' }),
 				}),
 			);
+		});
+	});
+
+	describe('Command aliases', () => {
+		it('should resolve command by alias', async () => {
+			const handlerFn = vi.fn().mockResolvedValue(0);
+			registry.registerCommand(makeCommand('deploy', handlerFn, ['d', 'dep']));
+
+			await registry.runCommand({}, 'd');
+
+			expect(handlerFn).toHaveBeenCalled();
+		});
+
+		it('should include aliases in getAvailableCommands', () => {
+			registry.registerCommand(makeCommand('deploy', undefined, ['d', 'dep']));
+
+			const available = registry.getAvailableCommands();
+			expect(available).toContain('deploy');
+			expect(available).toContain('d');
+			expect(available).toContain('dep');
+		});
+
+		it('should not include duplicates in getCommands', () => {
+			registry.registerCommand(makeCommand('deploy', undefined, ['d', 'dep']));
+
+			const commands = registry.getCommands();
+			expect(commands).toHaveLength(1);
+		});
+
+		it('should throw when alias conflicts with existing command name', () => {
+			registry.registerCommand(makeCommand('d'));
+
+			expect(() => registry.registerCommand(makeCommand('deploy', undefined, ['d']))).toThrow('Alias d conflicts with an existing command name.');
+		});
+
+		it('should throw when alias conflicts with another alias', () => {
+			registry.registerCommand(makeCommand('deploy', undefined, ['d']));
+
+			expect(() => registry.registerCommand(makeCommand('download', undefined, ['d']))).toThrow('Alias d already registered.');
+		});
+
+		it('should throw when command name conflicts with existing alias', () => {
+			registry.registerCommand(makeCommand('deploy', undefined, ['d']));
+
+			expect(() => registry.registerCommand(makeCommand('d'))).toThrow('Command name d conflicts with an existing alias.');
+		});
+
+		it('should bypass alias conflicts with force flag', () => {
+			registry.registerCommand(makeCommand('deploy', undefined, ['d']));
+			registry.registerCommand(makeCommand('download', undefined, ['d']), true);
+
+			expect(registry.getAvailableCommands()).toContain('download');
 		});
 	});
 

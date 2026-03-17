@@ -183,6 +183,26 @@ describe('Cli', () => {
 		});
 	});
 
+	describe('Command aliases', () => {
+		it('should run command by alias through cli.runCommand', async () => {
+			const handlerFn = vi.fn().mockResolvedValue(0);
+
+			class DeployCmd extends Command {
+				static command = 'deploy';
+				static aliases = ['d'];
+				async handle() {
+					return handlerFn();
+				}
+			}
+
+			await cli.withCommands(new DeployCmd());
+			const result = await cli.runCommand('d');
+
+			expect(handlerFn).toHaveBeenCalled();
+			expect(result).toBe(0);
+		});
+	});
+
 	describe('Command resolver', () => {
 		it('should allow setting custom command resolver', () => {
 			const resolver = vi.fn();

@@ -6,6 +6,7 @@ import { Command, CommandContext } from './command.js';
 
 class TestCommand extends Command {
 	static command = 'test';
+	static aliases = ['t', 'bb'];
 	static description = 'This is a test command';
 
 	protected async handle(): Promise<number | void> {

@@ -324,6 +324,29 @@ describe('Command', () => {
 		});
 	});
 
+	describe('Aliases', () => {
+		it('should default to empty array', () => {
+			class TestCmd extends Command {
+				static command = 'test';
+				async handle() {
+					return 0;
+				}
+			}
+			expect(TestCmd.aliases).toEqual([]);
+		});
+
+		it('should allow defining aliases on a command', () => {
+			class TestCmd extends Command {
+				static command = 'deploy';
+				static aliases = ['d', 'dep'];
+				async handle() {
+					return 0;
+				}
+			}
+			expect(TestCmd.aliases).toEqual(['d', 'dep']);
+		});
+	});
+
 	describe('Disable default options', () => {
 		it('should not include help option when default options are disabled', async () => {
 			const handlerFn = vi.fn().mockReturnValue(0);

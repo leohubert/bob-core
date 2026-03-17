@@ -34,7 +34,13 @@ ${chalk.yellow('Usage')}:
 ${chalk.yellow('Available commands')}:
 `);
 
-		const maxCommandLength = Math.max(...commands.map(Cmd => Cmd.command.length)) ?? 0;
+		const maxCommandLength =
+			Math.max(
+				...commands.map(Cmd => {
+					const aliasDisplay = Cmd.aliases.length > 0 ? ` (${Cmd.aliases.join(', ')})` : '';
+					return Cmd.command.length + aliasDisplay.length;
+				}),
+			) ?? 0;
 		const commandByGroups: { [key: string]: Array<typeof Command> } = {};
 
 		for (const Cmd of commands) {
@@ -61,11 +67,13 @@ ${chalk.yellow('Available commands')}:
 			const sortedGroupCommands = groupCommands.sort((a, b) => a.command.toLowerCase().localeCompare(b.command.toLowerCase()));
 
 			for (const Cmd of sortedGroupCommands) {
-				let spaces = generateSpace(maxCommandLength - Cmd.command.length);
+				const aliasDisplay = Cmd.aliases.length > 0 ? chalk.gray(` (${Cmd.aliases.join(', ')})`) : '';
+				const displayLength = Cmd.command.length + (Cmd.aliases.length > 0 ? ` (${Cmd.aliases.join(', ')})`.length : 0);
+				let spaces = generateSpace(maxCommandLength - displayLength);
 				if (isGrouped) {
 					spaces = spaces.slice(2);
 				}
-				this.logger.log(`${isGrouped ? '  ' : ''}${chalk.green(Cmd.command)} ${spaces} ${Cmd.description}`);
+				this.logger.log(`${isGrouped ? '  ' : ''}${chalk.green(Cmd.command)}${aliasDisplay} ${spaces} ${Cmd.description}`);
 			}
 		}
 	}

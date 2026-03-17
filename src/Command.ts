@@ -33,6 +33,7 @@ export abstract class Command<C extends ContextDefinition = ContextDefinition> {
 	static flags: FlagsSchema = {};
 	static examples: CommandRunExample[] = [];
 	static hidden: boolean = false;
+	static aliases: string[] = [];
 
 	// Static configuration options
 	static disableDefaultOptions: boolean = false;

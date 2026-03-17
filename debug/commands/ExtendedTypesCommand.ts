@@ -22,7 +22,7 @@ export default class ExtendedTypesCommand extends Command {
 		endpoint: Flags.url({ description: 'API endpoint URL' }),
 		test: Flags.string({
 			description: 'A simple string flag',
-			default: async ctx => {
+			default: async () => {
 				return 'oui';
 			},
 		}),

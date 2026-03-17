@@ -21,6 +21,7 @@ export type CommandRegistryOptions = {
 
 export class CommandRegistry {
 	private readonly commands: Record<string, typeof Command> = {};
+	private readonly aliases: Record<string, string> = {};
 	protected readonly ux: UX;
 	protected readonly logger: Logger;
 	private readonly stringSimilarity: StringSimilarity;
@@ -32,7 +33,7 @@ export class CommandRegistry {
 	}
 
 	getAvailableCommands(): string[] {
-		return Object.keys(this.commands);
+		return [...Object.keys(this.commands), ...Object.keys(this.aliases)];
 	}
 
 	getCommands(): Array<typeof Command> {
@@ -83,7 +84,22 @@ export class CommandRegistry {
 		if (!force && this.commands[commandName]) {
 			throw new Error(`Command ${commandName} already registered.`);
 		}
+
+		if (!force && this.aliases[commandName]) {
+			throw new Error(`Command name ${commandName} conflicts with an existing alias.`);
+		}
+
 		this.commands[commandName] = command;
+
+		for (const alias of command.aliases) {
+			if (!force && this.commands[alias]) {
+				throw new Error(`Alias ${alias} conflicts with an existing command name.`);
+			}
+			if (!force && this.aliases[alias]) {
+				throw new Error(`Alias ${alias} already registered.`);
+			}
+			this.aliases[alias] = commandName;
+		}
 	}
 
 	async loadCommandsPath(commandsPath: string) {
@@ -106,7 +122,7 @@ export class CommandRegistry {
 		let commandInstance: Command;
 
 		if (typeof command === 'string') {
-			const CommandClass = this.commands[command];
+			const CommandClass = this.commands[command] ?? this.commands[this.aliases[command]];
 			if (!CommandClass) {
 				const suggestedCommand = await this.suggestCommand(command);
 				if (suggestedCommand) {
