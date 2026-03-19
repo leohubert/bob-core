@@ -1,10 +1,11 @@
-import { Args, Flags } from '@/src/flags/index.js';
-import { ArgumentsSchema, FlagDefinition, FlagsSchema } from '@/src/lib/types.js';
+import { Args } from '@/src/args/index.js';
+import { Flags } from '@/src/flags/index.js';
+import { ArgDefinition, ArgsSchema, FlagDefinition, FlagsSchema } from '@/src/lib/types.js';
 
 /**
  * @deprecated This class is deprecated and will be removed in future versions. Use CommandParser with explicit schema definitions instead.
  * Parses command signature strings like "command {arg} {--option}" into
- * FlagsSchema and ArgumentsSchema using Flags/Args factories.
+ * FlagsSchema and ArgsSchema using Flags/Args factories.
  */
 export class CommandSignatureParser {
 	/**
@@ -14,22 +15,22 @@ export class CommandSignatureParser {
 	 * CommandSignatureParser.parse('migrate {name} {--force}')
 	 * // => { command: 'migrate', flags: { force: Flags.boolean() }, args: { name: Args.string({ required: true }) } }
 	 */
-	static parse(signature: string, helperDefinitions: Record<string, string> = {}): { command: string; flags: FlagsSchema; args: ArgumentsSchema } {
+	static parse(signature: string, helperDefinitions: Record<string, string> = {}): { command: string; flags: FlagsSchema; args: ArgsSchema } {
 		const [command, ...signatureParams] = signature
 			.split(/\{(.*?)\}/g)
 			.map(param => param.trim())
 			.filter(Boolean);
 
 		const flags: FlagsSchema = {};
-		const args: ArgumentsSchema = {};
+		const args: ArgsSchema = {};
 
 		for (const paramSignature of signatureParams) {
-			const { name, isFlag, definition } = CommandSignatureParser.parseParamSignature(paramSignature, helperDefinitions);
+			const result = CommandSignatureParser.parseParamSignature(paramSignature, helperDefinitions);
 
-			if (isFlag) {
-				flags[name] = definition;
+			if (result.isFlag) {
+				flags[result.name] = result.definition as FlagDefinition;
 			} else {
-				args[name] = definition;
+				args[result.name] = result.definition as ArgDefinition;
 			}
 		}
 
@@ -37,7 +38,7 @@ export class CommandSignatureParser {
 	}
 
 	/**
-	 * Parses a single parameter signature into a FlagDefinition.
+	 * Parses a single parameter signature into a FlagDefinition or ArgDefinition.
 	 *
 	 * Signature syntax:
 	 * - {arg}          -> required string argument
@@ -55,7 +56,7 @@ export class CommandSignatureParser {
 	private static parseParamSignature(
 		paramSignature: string,
 		helperDefinitions: Record<string, string>,
-	): { name: string; isFlag: boolean; definition: FlagDefinition } {
+	): { name: string; isFlag: boolean; definition: FlagDefinition | ArgDefinition } {
 		let name = paramSignature;
 		let isFlag = false;
 		let description: string | undefined;
@@ -124,7 +125,6 @@ export class CommandSignatureParser {
 		// Variadic marker {arg*}
 		if (name.endsWith('*')) {
 			isMultiple = true;
-			isRequired = true;
 			defaultValue = [];
 			name = name.slice(0, -1);
 		}
@@ -132,31 +132,47 @@ export class CommandSignatureParser {
 		// Resolve description from helperDefinitions
 		description = description ?? helperDefinitions[name] ?? helperDefinitions[`--${name}`];
 
-		// Build the FlagDefinition using Flags/Args factories
-		let definition: FlagDefinition;
-		const factory = isFlag ? Flags : Args;
+		// Build the definition using Flags/Args factories
+		let definition: FlagDefinition | ArgDefinition;
 
-		if (isBooleanType) {
-			definition = Flags.boolean({
-				description,
-				alias,
-				...(defaultValue !== undefined ? { default: defaultValue } : {}),
-			});
-		} else if (isMultiple) {
-			definition = factory.string({
-				description,
-				alias,
-				multiple: true,
-				...(isRequired ? { required: true } : {}),
-				default: defaultValue ?? [],
-			});
+		if (isFlag) {
+			if (isBooleanType) {
+				definition = Flags.boolean({
+					description,
+					alias,
+					...(defaultValue !== undefined ? { default: defaultValue } : {}),
+				});
+			} else if (isMultiple) {
+				definition = Flags.string({
+					description,
+					alias,
+					multiple: true,
+					...(isRequired ? { required: true } : {}),
+					default: defaultValue ?? [],
+				});
+			} else {
+				definition = Flags.string({
+					description,
+					alias,
+					...(isRequired ? { required: true } : {}),
+					...(defaultValue !== undefined ? { default: defaultValue } : {}),
+				});
+			}
 		} else {
-			definition = factory.string({
-				description,
-				alias,
-				...(isRequired ? { required: true } : {}),
-				...(defaultValue !== undefined ? { default: defaultValue } : {}),
-			});
+			if (isMultiple) {
+				definition = Args.string({
+					description,
+					multiple: true,
+					...(isRequired ? { required: true } : {}),
+					default: defaultValue ?? [],
+				});
+			} else {
+				definition = Args.string({
+					description,
+					...(isRequired ? { required: true } : {}),
+					...(defaultValue !== undefined ? { default: defaultValue } : {}),
+				});
+			}
 		}
 
 		return { name, isFlag, definition };

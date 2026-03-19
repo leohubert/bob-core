@@ -1,6 +1,6 @@
 import { CommandParser } from '@/src/CommandParser.js';
 import { Logger } from '@/src/Logger.js';
-import { ArgumentsSchema, ContextDefinition, FlagOpts, FlagsSchema, Parsed } from '@/src/lib/types.js';
+import { ArgsSchema, ContextDefinition, FlagOpts, FlagsSchema, Parsed } from '@/src/lib/types.js';
 import { HelpCommandFlag } from '@/src/options/index.js';
 import { UX } from '@/src/ux/index.js';
 
@@ -29,7 +29,7 @@ export abstract class Command<C extends ContextDefinition = ContextDefinition> {
 	static command: string = '';
 	static description: string = '';
 	static group?: string;
-	static args: ArgumentsSchema = {};
+	static args: ArgsSchema = {};
 	static flags: FlagsSchema = {};
 	static examples: CommandRunExample[] = [];
 	static hidden: boolean = false;
@@ -44,7 +44,7 @@ export abstract class Command<C extends ContextDefinition = ContextDefinition> {
 	protected ctx!: C;
 	protected logger!: Logger;
 	protected ux!: UX;
-	protected parser!: CommandParser<FlagsSchema, FlagsSchema>;
+	protected parser!: CommandParser<FlagsSchema, ArgsSchema>;
 
 	protected preHandle?(): Promise<void | number>;
 	protected abstract handle(ctx: C, parsed: Parsed<any>): Promise<number | void> | number | void;
@@ -53,7 +53,7 @@ export abstract class Command<C extends ContextDefinition = ContextDefinition> {
 		help: HelpCommandFlag,
 	};
 
-	protected newCommandParser(opts: { flags: FlagsSchema; args: ArgumentsSchema; ctx: ContextDefinition; ux: UX; cmd: typeof Command }): CommandParser<FlagsSchema, FlagsSchema> {
+	protected newCommandParser(opts: { flags: FlagsSchema; args: ArgsSchema; ctx: ContextDefinition; ux: UX; cmd: typeof Command }): CommandParser<FlagsSchema, ArgsSchema> {
 		return new CommandParser({
 			ux: opts.ux,
 			ctx: opts.ctx,

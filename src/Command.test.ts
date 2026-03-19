@@ -4,8 +4,9 @@ import { beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { Command, CommandRunOption } from '@/src/Command.js';
 import { TooManyArguments } from '@/src/errors/TooManyArguments.js';
 import { TestLogger, newTestLogger } from '@/src/fixtures.test.js';
+import { Args } from '@/src/args/index.js';
 import { Flags } from '@/src/flags/index.js';
-import { ArgumentsSchema, FlagType, FlagsSchema, Parsed } from '@/src/lib/types.js';
+import { ArgsSchema, FlagType, FlagsSchema, Parsed } from '@/src/lib/types.js';
 
 describe('Command', () => {
 	let logger: TestLogger;
@@ -91,7 +92,7 @@ describe('Command', () => {
 			class TestCmd extends Command {
 				static command = 'test';
 				static flags = { verbose: Flags.boolean() } satisfies FlagsSchema;
-				static args = { file: Flags.string() } satisfies ArgumentsSchema;
+				static args = { file: Args.string() } satisfies ArgsSchema;
 				async handle(ctx: any, parsed: any) {
 					handlerFn(ctx, parsed);
 					return 0;
@@ -117,7 +118,7 @@ describe('Command', () => {
 			class TestCmd extends Command {
 				static command = 'test';
 				static flags = { verbose: Flags.boolean() } satisfies FlagsSchema;
-				static args = { file: Flags.string() } satisfies ArgumentsSchema;
+				static args = { file: Args.string() } satisfies ArgsSchema;
 				async handle(ctx: any, parsed: any) {
 					handlerFn(ctx, parsed);
 					return 0;
@@ -271,7 +272,7 @@ describe('Command', () => {
 			class TestCmd extends Command {
 				static command = 'test';
 				static disablePrompting = true;
-				static args = { file: Flags.string({ required: true }) } satisfies ArgumentsSchema;
+				static args = { file: Args.string({ required: true }) } satisfies ArgsSchema;
 				async handle() {
 					return 0;
 				}
@@ -285,7 +286,7 @@ describe('Command', () => {
 			class TestCmd extends Command {
 				static command = 'test';
 				static flags = { name: Flags.string({ required: true }) } satisfies FlagsSchema;
-				static args = { file: Flags.string({ required: true }) } satisfies ArgumentsSchema;
+				static args = { file: Args.string({ required: true }) } satisfies ArgsSchema;
 				async handle() {
 					return 0;
 				}
@@ -404,7 +405,7 @@ describe('Command', () => {
 			class TestCmd extends Command {
 				static command = 'test';
 				static strictMode = true;
-				static args = { file: Flags.string() } satisfies ArgumentsSchema;
+				static args = { file: Args.string() } satisfies ArgsSchema;
 				async handle() {
 					return 0;
 				}
@@ -425,7 +426,7 @@ describe('Command', () => {
 			class TestCmd extends Command {
 				static command = 'test';
 				static strictMode = true;
-				static args = { file: Flags.string() } satisfies ArgumentsSchema;
+				static args = { file: Args.string() } satisfies ArgsSchema;
 				async handle() {
 					return handlerFn();
 				}
@@ -465,7 +466,7 @@ describe('Command', () => {
 		it('should maintain type safety through static args', async () => {
 			class TestCmd extends Command {
 				static command = 'test';
-				static args = { file: Flags.string(), lines: Flags.number() } satisfies ArgumentsSchema;
+				static args = { file: Args.string(), lines: Args.number() } satisfies ArgsSchema;
 				async handle(ctx: any, { args }: Parsed<typeof TestCmd>) {
 					// Type checking
 					const _file: string | null = args.file;
@@ -481,9 +482,9 @@ describe('Command', () => {
 			});
 		});
 
-		it('should infer enum type from Parsed', () => {
+		it('should infer option type from Parsed', () => {
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			const flagDef = Flags.enum({ options: ['debug', 'info', 'warn'] as const });
+			const flagDef = Flags.option({ options: ['debug', 'info', 'warn'] as const });
 			type Result = FlagType<typeof flagDef>;
 			expectTypeOf<Result>().toEqualTypeOf<'debug' | 'info' | 'warn'>();
 		});

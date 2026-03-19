@@ -1,7 +1,7 @@
 import { Command, CommandContext } from '../../command.js';
 
 export default class SubCommand extends Command {
-	static override signature = 'sub {name*}';
+	static override signature = 'sub {name*?}';
 	static override description = 'sub command description';
 
 	static override disablePrompting = true;

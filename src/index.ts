@@ -9,6 +9,7 @@ export * from './Logger.js';
 export * from './StringSimilarity.js';
 export * from './contracts/index.js';
 export * from './errors/index.js';
+export * from './args/index.js';
 export * from './flags/index.js';
 export * from './lib/types.js';
 export * from './options/index.js';

@@ -1,18 +1,18 @@
 import { ValidationError } from '@/src/errors/ValidationError.js';
 import { formatPromptMessage } from '@/src/flags/helpers.js';
-import type { FlagInput, FlagOpts, NumberFlagDef } from '@/src/lib/types.js';
+import type { ArgInput, ArgOpts, NumberArgDef } from '@/src/lib/types.js';
 import { parseNumber } from '@/src/shared/parsers.js';
 
-export function numberFlag<const T extends FlagInput<NumberFlagDef>>(opts?: T): NumberFlagDef & T {
+export function numberArg<const T extends ArgInput<NumberArgDef>>(opts?: T): NumberArgDef & T {
 	return {
 		default: opts?.multiple ? [] : null,
-		ask: async (flagOpts: FlagOpts) => {
-			const def = flagOpts.definition;
+		ask: async (argOpts: ArgOpts) => {
+			const def = argOpts.definition;
 			const isMultiple = 'multiple' in def && def.multiple;
-			const promptText = formatPromptMessage(flagOpts.name, def);
+			const promptText = formatPromptMessage(argOpts.name, def);
 
 			if (isMultiple) {
-				return await flagOpts.ux.askForList(promptText + 'Please provide one or more values, separated by commas:\n', {
+				return await argOpts.ux.askForList(promptText + 'Please provide one or more values, separated by commas:\n', {
 					separator: ',',
 					validate: (value: string) => {
 						if ((value === null || value === undefined || value.trim() === '') && def.required) {
@@ -22,7 +22,7 @@ export function numberFlag<const T extends FlagInput<NumberFlagDef>>(opts?: T): 
 							const trimmed = raw.trim();
 							if (trimmed === '') continue;
 							try {
-								def.parse(trimmed, flagOpts);
+								def.parse(trimmed, argOpts);
 							} catch (e) {
 								if (e instanceof ValidationError) return `"${trimmed}": ${e.message}`;
 								return `"${trimmed}": Invalid value`;
@@ -33,14 +33,14 @@ export function numberFlag<const T extends FlagInput<NumberFlagDef>>(opts?: T): 
 				});
 			}
 
-			return await flagOpts.ux.askForNumber(promptText, {
+			return await argOpts.ux.askForNumber(promptText, {
 				validate: (value: number | undefined) => {
 					if (value === undefined && def.required) {
 						return 'This value is required';
 					}
 					if (value !== undefined) {
 						try {
-							def.parse(String(value), flagOpts);
+							def.parse(String(value), argOpts);
 						} catch (e) {
 							return e instanceof ValidationError ? e.message : 'Invalid value';
 						}
@@ -49,8 +49,8 @@ export function numberFlag<const T extends FlagInput<NumberFlagDef>>(opts?: T): 
 				},
 			});
 		},
-		parse: (value: string | number, _opts: FlagOpts): number => parseNumber(value, { min: opts?.min, max: opts?.max }),
+		parse: (value: string | number, _opts: ArgOpts): number => parseNumber(value, { min: opts?.min, max: opts?.max }),
 		...opts,
 		type: 'number',
-	} as NumberFlagDef & T;
+	} as NumberArgDef & T;
 }

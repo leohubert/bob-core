@@ -2,11 +2,11 @@ import chalk from 'chalk';
 
 import { Flags } from '@/src/flags/index.js';
 import { generateSpace } from '@/src/lib/string.js';
-import { FlagDefinition, FlagOpts } from '@/src/lib/types.js';
+import { ArgDefinition, FlagDefinition, FlagOpts } from '@/src/lib/types.js';
 
-function getTypeDisplay(details: FlagDefinition): string {
+function getTypeDisplay(details: FlagDefinition | ArgDefinition): string {
 	const type = details.type;
-	if (type === 'enum' && details.options) return `enum: ${details.options.join('|')}`;
+	if (type === 'option' && 'options' in details && details.options) return `enum: ${details.options.join('|')}`;
 	return type;
 }
 
@@ -21,7 +21,7 @@ export const HelpCommandFlag = Flags.boolean({
 		const argumentDefinitions = cmd.args;
 		const flagDefinitions = { ...cmd.baseFlags, ...cmd.flags };
 
-		const availableArguments: [string, FlagDefinition][] = Object.entries(argumentDefinitions);
+		const availableArguments: [string, ArgDefinition][] = Object.entries(argumentDefinitions);
 		const availableFlags: [string, FlagDefinition][] = Object.entries(flagDefinitions);
 
 		const flagsWithAlias = availableFlags.map(([name, definition]) => {

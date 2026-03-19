@@ -1,10 +1,9 @@
 import { ValidationError } from '@/src/errors/ValidationError.js';
 import { formatPromptMessage } from '@/src/flags/helpers.js';
-import type { FlagInput, FlagOpts, HasDefault, UrlFlagDef } from '@/src/lib/types.js';
+import type { FlagInput, FlagOpts, UrlFlagDef } from '@/src/lib/types.js';
+import { parseUrl } from '@/src/shared/parsers.js';
 
-type UrlFlagReturn<T> = T extends { default: NonNullable<UrlFlagDef['default']> } ? UrlFlagDef & T & HasDefault : UrlFlagDef & T;
-
-export function urlFlag<const T extends FlagInput<UrlFlagDef>>(opts?: T): UrlFlagReturn<T> {
+export function urlFlag<const T extends FlagInput<UrlFlagDef>>(opts?: T): UrlFlagDef & T {
 	return {
 		default: null,
 		ask: async (flagOpts: FlagOpts) => {
@@ -24,14 +23,8 @@ export function urlFlag<const T extends FlagInput<UrlFlagDef>>(opts?: T): UrlFla
 				},
 			});
 		},
-		parse: (input: string, _opts: FlagOpts) => {
-			try {
-				return new URL(String(input));
-			} catch {
-				throw new ValidationError(`Invalid URL: "${input}"`);
-			}
-		},
+		parse: (input: string, _opts: FlagOpts) => parseUrl(input),
 		...opts,
 		type: 'url',
-	} as UrlFlagReturn<T>;
+	} as UrlFlagDef & T;
 }

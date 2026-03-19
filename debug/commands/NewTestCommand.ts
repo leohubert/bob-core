@@ -1,6 +1,7 @@
 import { Command } from '@/src/Command.js';
-import { Args, Flags } from '@/src/flags/index.js';
-import { ArgumentsSchema, FlagsSchema, Parsed } from '@/src/lib/types.js';
+import { Args } from '@/src/args/index.js';
+import { Flags } from '@/src/flags/index.js';
+import { ArgsSchema, FlagsSchema, Parsed } from '@/src/lib/types.js';
 
 type Toto = {
 	body: string;
@@ -22,7 +23,6 @@ export default class NewTestCommand extends Command {
 			max: 55,
 		}),
 		tests: Args.string({
-			secret: true,
 			required: true,
 			description: 'Age argument',
 			default: () => {
@@ -38,7 +38,7 @@ export default class NewTestCommand extends Command {
 			multiple: true,
 			description: 'Tags',
 		}),
-	} satisfies ArgumentsSchema;
+	} satisfies ArgsSchema;
 
 	static flags = {
 		force: Flags.boolean(),

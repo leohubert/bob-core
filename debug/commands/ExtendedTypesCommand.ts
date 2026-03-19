@@ -1,6 +1,7 @@
 import { Command } from '@/src/Command.js';
+import { Args } from '@/src/args/index.js';
 import { Flags } from '@/src/flags/index.js';
-import { FlagsSchema, Parsed } from '@/src/lib/types.js';
+import { ArgsSchema, FlagsSchema, Parsed } from '@/src/lib/types.js';
 
 const dateFlag = Flags.custom<Date>({
 	parse: (v: string) => {
@@ -12,10 +13,10 @@ const dateFlag = Flags.custom<Date>({
 
 export default class ExtendedTypesCommand extends Command {
 	static command = 'extended-types';
-	static description = 'Showcase new extended flag types (enum, file, url, custom)';
+	static description = 'Showcase new extended flag types (option, file, url, custom)';
 
 	static flags = {
-		level: Flags.enum({ options: ['debug', 'info', 'warn', 'error'] as const, description: 'Log level', required: true }),
+		level: Flags.option({ options: ['debug', 'info', 'warn', 'error'] as const, description: 'Log level', required: true }),
 		port: Flags.number({ min: 1, max: 65535, default: 3000, description: 'Server port' }),
 		config: Flags.file({ description: 'Config file path', required: true, exists: true }),
 		outDir: Flags.directory({ description: 'Output directory', required: true, exists: true }),
@@ -30,8 +31,8 @@ export default class ExtendedTypesCommand extends Command {
 	} satisfies FlagsSchema;
 
 	static args = {
-		format: Flags.enum({ options: ['json', 'csv', 'yaml'] as const, description: 'Output format' }),
-	} satisfies FlagsSchema;
+		format: Args.option({ options: ['json', 'csv', 'yaml'] as const, description: 'Output format' }),
+	} satisfies ArgsSchema;
 
 	async handle(_ctx: any, { flags, args }: Parsed<typeof ExtendedTypesCommand>) {
 		const toto = await this.ux.askForSearch('Select an option', _term => {

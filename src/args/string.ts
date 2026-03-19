@@ -1,18 +1,18 @@
 import { ValidationError } from '@/src/errors/ValidationError.js';
 import { formatPromptMessage } from '@/src/flags/helpers.js';
-import type { FlagInput, FlagOpts, StringFlagDef } from '@/src/lib/types.js';
+import type { ArgInput, ArgOpts, StringArgDef } from '@/src/lib/types.js';
 import { parseString } from '@/src/shared/parsers.js';
 
-export function stringFlag<const T extends FlagInput<StringFlagDef>>(opts?: T): StringFlagDef & T {
+export function stringArg<const T extends ArgInput<StringArgDef>>(opts?: T): StringArgDef & T {
 	return {
 		default: opts?.multiple ? [] : null,
-		ask: async (flagOpts: FlagOpts) => {
-			const def = flagOpts.definition;
+		ask: async (argOpts: ArgOpts) => {
+			const def = argOpts.definition;
 			const isMultiple = 'multiple' in def && def.multiple;
-			const promptText = formatPromptMessage(flagOpts.name, def);
+			const promptText = formatPromptMessage(argOpts.name, def);
 
 			if (isMultiple) {
-				return await flagOpts.ux.askForList(promptText + 'Please provide one or more values, separated by commas:\n', {
+				return await argOpts.ux.askForList(promptText + 'Please provide one or more values, separated by commas:\n', {
 					separator: ',',
 					validate: (value: string) => {
 						if ((value === null || value === undefined || value.trim() === '') && def.required) {
@@ -22,7 +22,7 @@ export function stringFlag<const T extends FlagInput<StringFlagDef>>(opts?: T): 
 							const trimmed = raw.trim();
 							if (trimmed === '') continue;
 							try {
-								def.parse(trimmed, flagOpts);
+								def.parse(trimmed, argOpts);
 							} catch (e) {
 								if (e instanceof ValidationError) return `"${trimmed}": ${e.message}`;
 								return `"${trimmed}": Invalid value`;
@@ -33,30 +33,13 @@ export function stringFlag<const T extends FlagInput<StringFlagDef>>(opts?: T): 
 				});
 			}
 
-			if ('secret' in def && def.secret) {
-				return flagOpts.ux.askForPassword(promptText, {
-					validate: (value: string) => {
-						if ((value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) && def.required) {
-							return 'This value is required';
-						}
-						try {
-							def.parse(value, flagOpts);
-						} catch (e) {
-							if (e instanceof ValidationError) return e.message;
-							return 'Invalid value';
-						}
-						return true;
-					},
-				});
-			}
-
-			return await flagOpts.ux.askForInput(promptText, {
+			return await argOpts.ux.askForInput(promptText, {
 				validate: (value: string) => {
 					if ((value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) && def.required) {
 						return 'This value is required';
 					}
 					try {
-						def.parse(value, flagOpts);
+						def.parse(value, argOpts);
 					} catch (e) {
 						if (e instanceof ValidationError) return e.message;
 						return 'Invalid value';
@@ -65,8 +48,8 @@ export function stringFlag<const T extends FlagInput<StringFlagDef>>(opts?: T): 
 				},
 			});
 		},
-		parse: (value: string, _opts: FlagOpts): string => parseString(value),
+		parse: (value: string, _opts: ArgOpts): string => parseString(value),
 		...opts,
 		type: 'string',
-	} as StringFlagDef & T;
+	} as StringArgDef & T;
 }

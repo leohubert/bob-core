@@ -6,6 +6,7 @@ import { InvalidFlag } from '@/src/errors/InvalidFlag.js';
 import { MissingRequiredArgumentValue } from '@/src/errors/MissingRequiredArgumentValue.js';
 import { MissingRequiredFlagValue } from '@/src/errors/MissingRequiredFlagValue.js';
 import { TooManyArguments } from '@/src/errors/TooManyArguments.js';
+import { Args } from '@/src/args/index.js';
 import { Flags } from '@/src/flags/index.js';
 import { UX } from '@/src/ux/index.js';
 
@@ -84,7 +85,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				ux,
 				flags: {},
-				args: { file: Flags.string(), lines: Flags.number() },
+				args: { file: Args.string(), lines: Args.number() },
 			});
 
 			const result = await parser.init(['test.txt', '50']);
@@ -97,7 +98,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				ux,
 				flags: { verbose: Flags.boolean() },
-				args: { file: Flags.string() },
+				args: { file: Args.string() },
 			});
 
 			const result = await parser.init(['test.txt', '--verbose']);
@@ -271,7 +272,7 @@ describe('CommandParser', () => {
 				ux,
 				flags: {},
 				args: {
-					files: Flags.string({ multiple: true }),
+					files: Args.string({ multiple: true }),
 				},
 			});
 
@@ -285,8 +286,8 @@ describe('CommandParser', () => {
 				ux,
 				flags: {},
 				args: {
-					command: Flags.string(),
-					args: Flags.string({ multiple: true }),
+					command: Args.string(),
+					args: Args.string({ multiple: true }),
 				},
 			});
 
@@ -301,7 +302,7 @@ describe('CommandParser', () => {
 				ux,
 				flags: {},
 				args: {
-					files: Flags.string({ multiple: true }),
+					files: Args.string({ multiple: true }),
 				},
 			});
 
@@ -337,7 +338,7 @@ describe('CommandParser', () => {
 				ux,
 				flags: {},
 				args: {
-					file: Flags.string({ required: true }),
+					file: Args.string({ required: true }),
 				},
 			}).disablePrompting();
 
@@ -353,7 +354,7 @@ describe('CommandParser', () => {
 					name: Flags.string({ required: true }),
 				},
 				args: {
-					file: Flags.string({ required: true }),
+					file: Args.string({ required: true }),
 				},
 			});
 
@@ -408,7 +409,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				ux,
 				flags: {},
-				args: { file: Flags.string(), count: Flags.number() },
+				args: { file: Args.string(), count: Args.number() },
 			});
 
 			await parser.init(['test.txt', '42']);
@@ -431,7 +432,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				ux,
 				flags: {},
-				args: { file: Flags.string() },
+				args: { file: Args.string() },
 			});
 
 			expect(() => parser.argument('file')).toThrow('Arguments have not been parsed yet');
@@ -514,7 +515,7 @@ describe('CommandParser', () => {
 				const parser = new CommandParser({
 					ux,
 					flags: {},
-					args: { files: Flags.string({ multiple: true }) },
+					args: { files: Args.string({ multiple: true }) },
 				});
 
 				await parser.init([]);
@@ -526,7 +527,7 @@ describe('CommandParser', () => {
 				const parser = new CommandParser({
 					ux,
 					flags: {},
-					args: { files: Flags.string({ multiple: true }) },
+					args: { files: Args.string({ multiple: true }) },
 				});
 
 				await parser.init(['a.txt', 'b.txt']);
@@ -589,7 +590,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				ux,
 				flags: { verbose: Flags.boolean() },
-				args: { file: Flags.string(), lines: Flags.number() },
+				args: { file: Args.string(), lines: Args.number() },
 			});
 
 			const result = await parser.init(['test.txt', '100', '--verbose']);
@@ -605,7 +606,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				ux,
 				flags: {},
-				args: { file: Flags.string() },
+				args: { file: Args.string() },
 			}).strictMode();
 
 			await expect(parser.init(['test.txt', 'extra1', 'extra2'])).rejects.toThrow(TooManyArguments);
@@ -615,7 +616,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				ux,
 				flags: {},
-				args: { file: Flags.string(), count: Flags.number() },
+				args: { file: Args.string(), count: Args.number() },
 			}).strictMode();
 
 			const result = await parser.init(['test.txt', '42']);
@@ -628,7 +629,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				ux,
 				flags: {},
-				args: { file: Flags.string(), count: Flags.number() },
+				args: { file: Args.string(), count: Args.number() },
 			}).strictMode();
 
 			const result = await parser.init(['test.txt']);
@@ -641,7 +642,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				ux,
 				flags: {},
-				args: { file: Flags.string() },
+				args: { file: Args.string() },
 			});
 
 			const result = await parser.init(['test.txt', 'extra1', 'extra2']);
@@ -654,8 +655,8 @@ describe('CommandParser', () => {
 				ux,
 				flags: {},
 				args: {
-					command: Flags.string(),
-					args: Flags.string({ multiple: true }),
+					command: Args.string(),
+					args: Args.string({ multiple: true }),
 				},
 			}).strictMode();
 
@@ -674,7 +675,7 @@ describe('CommandParser', () => {
 				ux,
 				flags: {},
 				args: {
-					name: Flags.string({ required: true, ask: customAsk }),
+					name: Args.string({ required: true, ask: customAsk }),
 				},
 			});
 
@@ -708,7 +709,7 @@ describe('CommandParser', () => {
 				ux,
 				flags: {},
 				args: {
-					name: Flags.string({ required: true, ask: customAsk }),
+					name: Args.string({ required: true, ask: customAsk }),
 				},
 			});
 
@@ -797,11 +798,11 @@ describe('CommandParser', () => {
 	});
 
 	describe('Extended types', () => {
-		it('should parse enum flags', async () => {
+		it('should parse option flags', async () => {
 			const parser = new CommandParser({
 				ux,
 				flags: {
-					level: Flags.enum({ options: ['debug', 'info', 'warn'] as const }),
+					level: Flags.option({ options: ['debug', 'info', 'warn'] as const }),
 				},
 				args: {},
 			});
@@ -810,11 +811,11 @@ describe('CommandParser', () => {
 			expect(result.flags.level).toBe('info');
 		});
 
-		it('should reject invalid enum value', async () => {
+		it('should reject invalid option value', async () => {
 			const parser = new CommandParser({
 				ux,
 				flags: {
-					level: Flags.enum({ options: ['debug', 'info'] as const }),
+					level: Flags.option({ options: ['debug', 'info'] as const }),
 				},
 				args: {},
 			});
@@ -822,11 +823,11 @@ describe('CommandParser', () => {
 			await expect(parser.init(['--level', 'error'])).rejects.toThrow(BadCommandFlag);
 		});
 
-		it('should default enum to null', async () => {
+		it('should default option to null', async () => {
 			const parser = new CommandParser({
 				ux,
 				flags: {
-					level: Flags.enum({ options: ['debug', 'info'] as const }),
+					level: Flags.option({ options: ['debug', 'info'] as const }),
 				},
 				args: {},
 			});
@@ -953,12 +954,12 @@ describe('CommandParser', () => {
 			await expect(parser.init(['--value', 'test'])).rejects.toThrow(BadCommandFlag);
 		});
 
-		it('should parse enum arguments', async () => {
+		it('should parse option arguments', async () => {
 			const parser = new CommandParser({
 				ux,
 				flags: {},
 				args: {
-					format: Flags.enum({ options: ['json', 'csv'] as const }),
+					format: Args.option({ options: ['json', 'csv'] as const }),
 				},
 			});
 
@@ -971,7 +972,7 @@ describe('CommandParser', () => {
 				ux,
 				flags: {},
 				args: {
-					input: Flags.file(),
+					input: Args.file(),
 				},
 			});
 
@@ -1042,11 +1043,11 @@ describe('CommandParser', () => {
 			expect(result.flags.since).toBeInstanceOf(Date);
 		});
 
-		it('should reject invalid enum value at init', async () => {
+		it('should reject invalid option value at init', async () => {
 			const parser = new CommandParser({
 				ux,
 				flags: {
-					level: Flags.enum({ options: ['a', 'b'] as const }),
+					level: Flags.option({ options: ['a', 'b'] as const }),
 				},
 				args: {},
 			});
@@ -1087,7 +1088,7 @@ describe('CommandParser', () => {
 				ux,
 				flags: {},
 				args: {
-					name: Flags.custom<string>({
+					name: Args.custom<string>({
 						parse: (v: string) => {
 							if (v === 'prompted') throw new ValidationError('not allowed');
 							return v;
@@ -1168,7 +1169,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				ux,
 				flags: {},
-				args: { file: Flags.string() },
+				args: { file: Args.string() },
 			});
 
 			await parser.init(['original.txt']);
@@ -1181,7 +1182,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				ux,
 				flags: {},
-				args: { file: Flags.string() },
+				args: { file: Args.string() },
 			});
 
 			await expect(parser.setArgument('file', 'value')).rejects.toThrow('Arguments have not been parsed yet');
@@ -1191,7 +1192,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				ux,
 				flags: {},
-				args: { file: Flags.string() },
+				args: { file: Args.string() },
 			});
 
 			await parser.init([]);
@@ -1220,7 +1221,7 @@ describe('CommandParser', () => {
 				ux,
 				flags: {},
 				args: {
-					file: Flags.string({ default: async () => 'async-file.txt' }),
+					file: Args.string({ default: async () => 'async-file.txt' }),
 				},
 			});
 
