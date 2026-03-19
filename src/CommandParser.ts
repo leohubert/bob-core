@@ -4,7 +4,8 @@ import { InvalidFlag } from '@/src/errors/InvalidFlag.js';
 import { MissingRequiredArgumentValue } from '@/src/errors/MissingRequiredArgumentValue.js';
 import { MissingRequiredFlagValue } from '@/src/errors/MissingRequiredFlagValue.js';
 import { BadCommandArgument, BadCommandFlag, TooManyArguments } from '@/src/errors/index.js';
-import { ArgumentsObject, ArgumentsSchema, ContextDefinition, FlagDefinition, FlagReturnType, FlagsObject, FlagsSchema } from '@/src/lib/types.js';
+import { Command } from '@/src/Command.js';
+import { ArgumentsObject, ArgumentsSchema, ContextDefinition, FlagDefinition, FlagOpts, FlagReturnType, FlagsObject, FlagsSchema } from '@/src/lib/types.js';
 import { UX } from '@/src/ux/index.js';
 
 /**
@@ -24,7 +25,7 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends Argument
 	protected shouldValidateUnknownFlags = true;
 	protected shouldRejectExtraArguments = false;
 
-	constructor(protected opts: { flags: Flags; args: Arguments; ctx?: ContextDefinition; ux: UX }) {
+	constructor(protected opts: { flags: Flags; args: Arguments; ctx?: ContextDefinition; ux: UX; cmd?: typeof Command }) {
 		this.ux = opts.ux;
 		this.flags = opts.flags;
 		this.args = opts.args;
@@ -293,9 +294,13 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends Argument
 		return this.safeParse(value, definition, meta);
 	}
 
+	private buildFlagOpts(name: string, definition: FlagDefinition): FlagOpts {
+		return { name, ux: this.ux, ctx: this.opts.ctx, definition, cmd: this.opts.cmd ?? Command };
+	}
+
 	private async safeParse(value: any, definition: FlagDefinition, meta?: { name: string; isArg?: boolean }): Promise<any> {
 		try {
-			return definition.parse(value, this.opts.ctx);
+			return definition.parse(value, this.buildFlagOpts(meta?.name ?? '', definition));
 		} catch (e) {
 			if (e instanceof BadCommandFlag || e instanceof BadCommandArgument) throw e;
 			if (!meta) throw e;
@@ -332,6 +337,6 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends Argument
 	 */
 	protected async promptForArgument(name: string, definition: FlagDefinition): Promise<string | number | string[] | boolean | null> {
 		if (!definition.ask) return null;
-		return definition.ask({ name, ux: this.ux, definition });
+		return definition.ask(this.buildFlagOpts(name, definition));
 	}
 }

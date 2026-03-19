@@ -1,9 +1,12 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
+import { newFlagOpts } from '@/src/fixtures.test.js';
 import { Flags } from '@/src/flags/index.js';
-import type { DirectoryFlagDef, FlagType } from '@/src/lib/types.js';
+import type { DirectoryFlagDef, FlagOpts, FlagReturnType, FlagType } from '@/src/lib/types.js';
 
 describe('Flags.directory()', () => {
+	let flagOpts: FlagOpts;
+
 	it('should create a directory flag definition', () => {
 		const flag = Flags.directory();
 		expect(flag).toMatchObject({ type: 'directory' });
@@ -28,6 +31,19 @@ describe('Flags.directory()', () => {
 
 	it('should reject non-existent directory in parse', () => {
 		const flag = Flags.directory({ exists: true });
-		expect(() => flag.parse('/nonexistent/dir', undefined)).toThrow('directory does not exist');
+		flagOpts = newFlagOpts(flag);
+		expect(() => flag.parse('/nonexistent/dir', flagOpts)).toThrow('directory does not exist');
+	});
+
+	it('should remove null from defaulted directory flag', () => {
+		const _flag = Flags.directory({ default: '/tmp' });
+		type Result = FlagReturnType<typeof _flag>;
+		expectTypeOf<Result>().toEqualTypeOf<string>();
+	});
+
+	it('should remove null from required directory flag', () => {
+		const _flag = Flags.directory({ required: true });
+		type Result = FlagReturnType<typeof _flag>;
+		expectTypeOf<Result>().toEqualTypeOf<string>();
 	});
 });

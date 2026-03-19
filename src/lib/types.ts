@@ -1,30 +1,35 @@
-// === Base config shared by all flag definition types ===
 import { Command } from '@/src/Command.js';
 import type { UX } from '@/src/ux/index.js';
 
-export type FlagAskContext = {
+// === HasDefault branded type ===
+declare const hasDefaultBrand: unique symbol;
+export type HasDefault = { readonly [hasDefaultBrand]: true };
+
+export type FlagOpts<C extends ContextDefinition = ContextDefinition> = {
 	name: string;
 	ux: UX;
+	ctx: C;
 	definition: FlagDefinition;
+	cmd: typeof Command;
 };
 
-export type BaseFlagConfig<T> = {
+export type BaseFlagConfig<T, Input = string> = {
 	description?: string;
 	alias?: string | Array<string>;
 	required?: boolean;
-	default?: T | T[] | null | ((ctx: ContextDefinition) => Promise<T | T[] | null>);
+	default?: T | T[] | null | (() => Promise<T | T[] | null>);
 	multiple?: boolean;
 	help?: string;
-	parse: (input: any, ctx: ContextDefinition) => T;
-	handler?(value: T, ctx: ContextDefinition, cmd: typeof Command): { shouldStop: boolean } | void;
-	ask?(ctx: FlagAskContext): Promise<string | string[] | number | boolean | null>;
+	parse(input: Input, opts: FlagOpts): T;
+	handler?(value: T, opts: FlagOpts): { shouldStop: boolean } | void;
+	ask?(opts: FlagOpts): Promise<T | T[] | null>;
 };
 
 // === Per-type definitions (discriminated union members) ===
 
 export type StringFlagDef = BaseFlagConfig<string> & { type: 'string'; secret?: boolean };
-export type NumberFlagDef = BaseFlagConfig<number> & { type: 'number'; min?: number; max?: number };
-export type BooleanFlagDef = BaseFlagConfig<boolean> & { type: 'boolean' };
+export type NumberFlagDef = BaseFlagConfig<number, string | number> & { type: 'number'; min?: number; max?: number };
+export type BooleanFlagDef = BaseFlagConfig<boolean, string | boolean> & { type: 'boolean' };
 
 export type EnumFlagDef<T extends readonly string[] = readonly string[]> = BaseFlagConfig<T[number]> & {
 	type: 'enum';
@@ -45,7 +50,7 @@ export type FlagInput<T extends FlagDefinition, K extends string = never> = Part
 
 // === Type inference ===
 
-type MaybeArray<T, O> = O extends { multiple: true } ? T[] : T;
+type MaybeArray<T, O> = O extends { multiple: true } ? ([T] extends [Array<unknown>] ? T : T[]) : T;
 
 type InferParseReturn<O> = O extends { parse: (...args: any[]) => infer R } ? R : never;
 
@@ -56,9 +61,9 @@ export type FlagType<O extends FlagDefinition> = O extends {
 	? MaybeArray<T[number], O>
 	: MaybeArray<InferParseReturn<O>, O>;
 
-export type IsRequired<O extends FlagDefinition> = O extends { required: true } ? true : false;
+export type IsGuaranteed<O extends FlagDefinition> = O extends { required: true } ? true : O extends HasDefault ? true : false;
 
-export type FlagReturnType<O extends FlagDefinition> = IsRequired<O> extends true ? FlagType<O> : FlagType<O> | null;
+export type FlagReturnType<O extends FlagDefinition> = IsGuaranteed<O> extends true ? FlagType<O> : FlagType<O> | null;
 
 export type FlagsSchema = {
 	[key: string]: FlagDefinition;

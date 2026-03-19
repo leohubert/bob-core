@@ -1,9 +1,12 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
+import { newFlagOpts } from '@/src/fixtures.test.js';
 import { Flags } from '@/src/flags/index.js';
-import type { FlagType, UrlFlagDef } from '@/src/lib/types.js';
+import type { FlagOpts, FlagReturnType, FlagType, UrlFlagDef } from '@/src/lib/types.js';
 
 describe('Flags.url()', () => {
+	let flagOpts: FlagOpts;
+
 	it('should create a url flag definition', () => {
 		const flag = Flags.url();
 		expect(flag).toMatchObject({ type: 'url' });
@@ -23,13 +26,21 @@ describe('Flags.url()', () => {
 
 	it('should parse valid URLs', () => {
 		const flag = Flags.url();
-		const result = flag.parse('https://example.com', undefined);
+		flagOpts = newFlagOpts(flag);
+		const result = flag.parse('https://example.com', flagOpts);
 		expect(result).toBeInstanceOf(URL);
 		expect(result.href).toBe('https://example.com/');
 	});
 
 	it('should throw on invalid URLs', () => {
 		const flag = Flags.url();
-		expect(() => flag.parse('not-a-url', undefined)).toThrow();
+		flagOpts = newFlagOpts(flag);
+		expect(() => flag.parse('not-a-url', flagOpts)).toThrow();
+	});
+
+	it('should remove null from required url flag', () => {
+		const _flag = Flags.url({ required: true });
+		type Result = FlagReturnType<typeof _flag>;
+		expectTypeOf<Result>().toEqualTypeOf<URL>();
 	});
 });

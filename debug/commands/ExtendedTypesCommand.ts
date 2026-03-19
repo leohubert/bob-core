@@ -3,7 +3,7 @@ import { Flags } from '@/src/flags/index.js';
 import { FlagsSchema, Parsed } from '@/src/lib/types.js';
 
 const dateFlag = Flags.custom<Date>({
-	parse: v => {
+	parse: (v: string) => {
 		const d = new Date(v);
 		if (isNaN(d.getTime())) throw new Error('Invalid date');
 		return d;

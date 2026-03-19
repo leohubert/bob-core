@@ -1,9 +1,8 @@
 import chalk from 'chalk';
 
-import { Command } from '@/src/Command.js';
 import { Flags } from '@/src/flags/index.js';
 import { generateSpace } from '@/src/lib/string.js';
-import { ContextDefinition, FlagDefinition } from '@/src/lib/types.js';
+import { FlagDefinition, FlagOpts } from '@/src/lib/types.js';
 
 function getTypeDisplay(details: FlagDefinition): string {
 	const type = details.type;
@@ -13,11 +12,12 @@ function getTypeDisplay(details: FlagDefinition): string {
 
 export const HelpCommandFlag = Flags.boolean({
 	alias: ['h'],
-	handler: (value: boolean, _ctx: ContextDefinition, cmd: typeof Command) => {
+	handler: (value: boolean, opts: FlagOpts) => {
 		if (!value) {
 			return { shouldStop: false };
 		}
 
+		const cmd = opts.cmd;
 		const argumentDefinitions = cmd.args;
 		const flagDefinitions = { ...cmd.baseFlags, ...cmd.flags };
 

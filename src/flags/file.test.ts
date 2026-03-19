@@ -1,9 +1,12 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
+import { newFlagOpts } from '@/src/fixtures.test.js';
 import { Flags } from '@/src/flags/index.js';
-import type { FileFlagDef, FlagReturnType, FlagType } from '@/src/lib/types.js';
+import type { FileFlagDef, FlagOpts, FlagReturnType, FlagType } from '@/src/lib/types.js';
 
 describe('Flags.file()', () => {
+	let flagOpts: FlagOpts;
+
 	it('should create a file flag definition', () => {
 		const flag = Flags.file();
 		expect(flag).toMatchObject({ type: 'file' });
@@ -34,6 +37,13 @@ describe('Flags.file()', () => {
 
 	it('should reject non-existent file in parse', () => {
 		const flag = Flags.file({ exists: true });
-		expect(() => flag.parse('/nonexistent/path.txt', undefined)).toThrow('file does not exist');
+		flagOpts = newFlagOpts(flag);
+		expect(() => flag.parse('/nonexistent/path.txt', flagOpts)).toThrow('file does not exist');
+	});
+
+	it('should remove null from defaulted file flag', () => {
+		const _flag = Flags.file({ default: '/tmp/config.json' });
+		type Result = FlagReturnType<typeof _flag>;
+		expectTypeOf<Result>().toEqualTypeOf<string>();
 	});
 });

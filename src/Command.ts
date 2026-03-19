@@ -1,6 +1,6 @@
 import { CommandParser } from '@/src/CommandParser.js';
 import { Logger } from '@/src/Logger.js';
-import { ArgumentsSchema, ContextDefinition, FlagsSchema, Parsed } from '@/src/lib/types.js';
+import { ArgumentsSchema, ContextDefinition, FlagOpts, FlagsSchema, Parsed } from '@/src/lib/types.js';
 import { HelpCommandFlag } from '@/src/options/index.js';
 import { UX } from '@/src/ux/index.js';
 
@@ -53,12 +53,13 @@ export abstract class Command<C extends ContextDefinition = ContextDefinition> {
 		help: HelpCommandFlag,
 	};
 
-	protected newCommandParser(opts: { flags: FlagsSchema; args: ArgumentsSchema; ctx: ContextDefinition; ux: UX }): CommandParser<FlagsSchema, FlagsSchema> {
+	protected newCommandParser(opts: { flags: FlagsSchema; args: ArgumentsSchema; ctx: ContextDefinition; ux: UX; cmd: typeof Command }): CommandParser<FlagsSchema, FlagsSchema> {
 		return new CommandParser({
 			ux: opts.ux,
 			ctx: opts.ctx,
 			flags: opts.flags,
 			args: opts.args,
+			cmd: opts.cmd,
 		});
 	}
 
@@ -81,6 +82,7 @@ export abstract class Command<C extends ContextDefinition = ContextDefinition> {
 				ux: this.ux,
 				flags: ctor.disableDefaultOptions ? ctor.flags : { ...ctor.baseFlags, ...ctor.flags },
 				args: ctor.args,
+				cmd: ctor,
 			});
 
 			if (ctor.allowUnknownFlags) {
@@ -101,7 +103,8 @@ export abstract class Command<C extends ContextDefinition = ContextDefinition> {
 				const definition = ctor.flags[flag] || ctor.baseFlags[flag];
 
 				if (definition && definition.handler) {
-					const res = definition.handler(value as never, runOpts.ctx, ctor);
+					const flagOpts: FlagOpts = { name: flag, ux: this.ux, ctx: runOpts.ctx, definition, cmd: ctor };
+					const res = definition.handler(value as never, flagOpts);
 					if (res && res.shouldStop) {
 						return -1;
 					}

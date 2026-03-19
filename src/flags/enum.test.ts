@@ -1,9 +1,12 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
+import { newFlagOpts } from '@/src/fixtures.test.js';
 import { Flags } from '@/src/flags/index.js';
-import type { EnumFlagDef, FlagReturnType, FlagType } from '@/src/lib/types.js';
+import type { EnumFlagDef, FlagOpts, FlagReturnType, FlagType } from '@/src/lib/types.js';
 
 describe('Flags.enum()', () => {
+	let flagOpts: FlagOpts;
+
 	it('should create an enum flag definition', () => {
 		const flag = Flags.enum({ options: ['debug', 'info', 'warn'] as const });
 		expect(flag).toMatchObject({ type: 'enum', options: ['debug', 'info', 'warn'] });
@@ -28,8 +31,9 @@ describe('Flags.enum()', () => {
 
 	it('should validate membership in parse', () => {
 		const flag = Flags.enum({ options: ['a', 'b'] as const });
-		expect(flag.parse('a', undefined)).toBe('a');
-		expect(() => flag.parse('c', undefined)).toThrow('must be one of');
+		flagOpts = newFlagOpts(flag);
+		expect(flag.parse('a', flagOpts)).toBe('a');
+		expect(() => flag.parse('c', flagOpts)).toThrow('must be one of');
 	});
 
 	it('should infer enum with multiple as array', () => {
@@ -42,5 +46,17 @@ describe('Flags.enum()', () => {
 		const _flag = Flags.enum({ options: ['a', 'b'] as const, required: true });
 		type Result = FlagReturnType<typeof _flag>;
 		expectTypeOf<Result>().toEqualTypeOf<'a' | 'b'>();
+	});
+
+	it('should remove null from defaulted enum flag', () => {
+		const _flag = Flags.enum({ options: ['a', 'b'] as const, default: 'a' });
+		type Result = FlagReturnType<typeof _flag>;
+		expectTypeOf<Result>().toEqualTypeOf<'a' | 'b'>();
+	});
+
+	it('should remove null from multiple enum flag', () => {
+		const _flag = Flags.enum({ options: ['a', 'b'] as const, multiple: true });
+		type Result = FlagReturnType<typeof _flag>;
+		expectTypeOf<Result>().toEqualTypeOf<('a' | 'b')[]>();
 	});
 });

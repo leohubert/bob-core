@@ -1,9 +1,12 @@
-import { describe, expect, expectTypeOf, it } from 'vitest';
+import { beforeEach, describe, expect, expectTypeOf, it } from 'vitest';
 
+import { newFlagOpts } from '@/src/fixtures.test.js';
 import { Flags } from '@/src/flags/index.js';
-import type { FlagReturnType, FlagType, StringFlagDef } from '@/src/lib/types.js';
+import type { FlagOpts, FlagReturnType, FlagType, StringFlagDef } from '@/src/lib/types.js';
 
 describe('Flags.string()', () => {
+	let flagOpts: FlagOpts;
+
 	it('should create a string flag definition', () => {
 		const flag = Flags.string();
 		expect(flag).toMatchObject({ type: 'string' });
@@ -32,12 +35,14 @@ describe('Flags.string()', () => {
 
 	it('should parse string values', () => {
 		const flag = Flags.string();
-		expect(flag.parse('hello', undefined)).toBe('hello');
+		flagOpts = newFlagOpts(flag);
+		expect(flag.parse('hello', flagOpts)).toBe('hello');
 	});
 
 	it('should throw on boolean input', () => {
 		const flag = Flags.string();
-		expect(() => flag.parse(true as any, undefined)).toThrow('Expected a string, got boolean');
+		flagOpts = newFlagOpts(flag);
+		expect(() => flag.parse(true as any, flagOpts)).toThrow('Expected a string, got boolean');
 	});
 
 	it('should infer string with multiple as array', () => {
@@ -56,5 +61,17 @@ describe('Flags.string()', () => {
 		const _flag = Flags.string();
 		type Result = FlagReturnType<typeof _flag>;
 		expectTypeOf<Result>().toEqualTypeOf<string | null>();
+	});
+
+	it('should remove null from defaulted string flag', () => {
+		const _flag = Flags.string({ default: 'hello' });
+		type Result = FlagReturnType<typeof _flag>;
+		expectTypeOf<Result>().toEqualTypeOf<string>();
+	});
+
+	it('should remove null from multiple string flag', () => {
+		const _flag = Flags.string({ multiple: true });
+		type Result = FlagReturnType<typeof _flag>;
+		expectTypeOf<Result>().toEqualTypeOf<string[]>();
 	});
 });

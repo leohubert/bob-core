@@ -1,9 +1,12 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
+import { newFlagOpts } from '@/src/fixtures.test.js';
 import { Flags } from '@/src/flags/index.js';
-import type { BooleanFlagDef } from '@/src/lib/types.js';
+import type { BooleanFlagDef, FlagOpts, FlagReturnType } from '@/src/lib/types.js';
 
 describe('Flags.boolean()', () => {
+	let flagOpts: FlagOpts;
+
 	it('should create a boolean flag definition', () => {
 		const flag = Flags.boolean();
 		expect(flag).toMatchObject({ type: 'boolean' });
@@ -22,15 +25,23 @@ describe('Flags.boolean()', () => {
 
 	it('should parse boolean values', () => {
 		const flag = Flags.boolean();
-		expect(flag.parse(true, undefined)).toBe(true);
-		expect(flag.parse(false, undefined)).toBe(false);
+		flagOpts = newFlagOpts(flag);
+		expect(flag.parse(true, flagOpts)).toBe(true);
+		expect(flag.parse(false, flagOpts)).toBe(false);
 	});
 
 	it('should parse string values', () => {
 		const flag = Flags.boolean();
-		expect(flag.parse('true', undefined)).toBe(true);
-		expect(flag.parse('false', undefined)).toBe(false);
-		expect(flag.parse('1', undefined)).toBe(true);
-		expect(flag.parse('0', undefined)).toBe(false);
+		flagOpts = newFlagOpts(flag);
+		expect(flag.parse('true', flagOpts)).toBe(true);
+		expect(flag.parse('false', flagOpts)).toBe(false);
+		expect(flag.parse('1', flagOpts)).toBe(true);
+		expect(flag.parse('0', flagOpts)).toBe(false);
+	});
+
+	it('should always be non-nullable (has default: false)', () => {
+		const _flag = Flags.boolean();
+		type Result = FlagReturnType<typeof _flag>;
+		expectTypeOf<Result>().toEqualTypeOf<boolean>();
 	});
 });

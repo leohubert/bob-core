@@ -1,7 +1,10 @@
 import { Mocked, vi } from 'vitest';
 
+import { Command } from '@/src/Command.js';
 import { Logger } from '@/src/Logger.js';
 import { LoggerContract } from '@/src/contracts/index.js';
+import type { FlagDefinition, FlagOpts } from '@/src/lib/types.js';
+import { UX } from '@/src/ux/index.js';
 
 export type TestLogger = Mocked<Logger>;
 export function newTestLogger(): TestLogger {
@@ -23,5 +26,16 @@ export function newTestLogger(): TestLogger {
 export function newFixtures() {
 	return {
 		logger: newTestLogger(),
+	};
+}
+
+export function newFlagOpts(definition: FlagDefinition, overrides?: Partial<FlagOpts>): FlagOpts {
+	return {
+		name: 'test',
+		ux: new UX(),
+		ctx: undefined,
+		definition,
+		cmd: Command,
+		...overrides,
 	};
 }

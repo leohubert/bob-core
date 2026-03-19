@@ -2,16 +2,18 @@ import fs from 'node:fs';
 
 import { ValidationError } from '@/src/errors/ValidationError.js';
 import { formatPromptMessage } from '@/src/flags/helpers.js';
-import type { FileFlagDef, FlagAskContext, FlagInput } from '@/src/lib/types.js';
+import type { FileFlagDef, FlagInput, FlagOpts, HasDefault } from '@/src/lib/types.js';
 
-export function fileFlag<const T extends FlagInput<FileFlagDef>>(opts?: T): FileFlagDef & T {
+type FileFlagReturn<T> = T extends { default: NonNullable<FileFlagDef['default']> } ? FileFlagDef & T & HasDefault : FileFlagDef & T;
+
+export function fileFlag<const T extends FlagInput<FileFlagDef>>(opts?: T): FileFlagReturn<T> {
 	return {
 		default: null,
-		ask: async (ctx: FlagAskContext) => {
-			const promptText = formatPromptMessage(ctx.name, ctx.definition);
-			return ctx.ux.askForFile(promptText, { basePath: process.cwd() });
+		ask: async (flagOpts: FlagOpts) => {
+			const promptText = formatPromptMessage(flagOpts.name, flagOpts.definition);
+			return flagOpts.ux.askForFile(promptText, { basePath: process.cwd() });
 		},
-		parse: (input: any): string => {
+		parse: (input: string, _opts: FlagOpts): string => {
 			const path = String(input);
 			if (opts?.exists && !fs.existsSync(path)) {
 				throw new ValidationError('file does not exist');
@@ -20,5 +22,5 @@ export function fileFlag<const T extends FlagInput<FileFlagDef>>(opts?: T): File
 		},
 		...opts,
 		type: 'file',
-	} as FileFlagDef & T;
+	} as FileFlagReturn<T>;
 }
