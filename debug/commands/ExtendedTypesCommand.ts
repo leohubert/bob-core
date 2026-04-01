@@ -53,7 +53,7 @@ export default class ExtendedTypesCommand extends Command {
 		this.logger.log(`  port:     ${flags.port}`);
 		this.logger.log(`  config:   ${flags.config}`);
 		this.logger.log(`  outDir:   ${flags.outDir}`);
-		this.logger.log(`  endpoint: ${flags.endpoint ?? null}`);
+		this.logger.log(`  endpoint: ${flags.endpoint}`);
 		this.logger.log(`  since:    ${flags.since?.toISOString() ?? null}`);
 		this.logger.log(`  format:   ${args.format}`);
 		this.logger.log(`  toto:   ${toto}`);

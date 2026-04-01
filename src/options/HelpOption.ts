@@ -2,17 +2,17 @@ import chalk from 'chalk';
 
 import { Flags } from '@/src/flags/index.js';
 import { generateSpace } from '@/src/lib/string.js';
-import { ArgDefinition, FlagDefinition, FlagOpts } from '@/src/lib/types.js';
+import { FlagDefinition, ParameterOpts } from '@/src/lib/types.js';
 
-function getTypeDisplay(details: FlagDefinition | ArgDefinition): string {
+function getTypeDisplay(details: FlagDefinition): string {
 	const type = details.type;
-	if (type === 'option' && 'options' in details && details.options) return `enum: ${details.options.join('|')}`;
-	return type;
+	if (type === 'option' && 'options' in details && (details as any).options) return `enum: ${(details as any).options.join('|')}`;
+	return type ?? 'custom';
 }
 
 export const HelpCommandFlag = Flags.boolean({
 	alias: ['h'],
-	handler: (value: boolean, opts: FlagOpts) => {
+	handler: (value: boolean, opts: ParameterOpts) => {
 		if (!value) {
 			return { shouldStop: false };
 		}
@@ -21,7 +21,7 @@ export const HelpCommandFlag = Flags.boolean({
 		const argumentDefinitions = cmd.args;
 		const flagDefinitions = { ...cmd.baseFlags, ...cmd.flags };
 
-		const availableArguments: [string, ArgDefinition][] = Object.entries(argumentDefinitions);
+		const availableArguments: [string, FlagDefinition][] = Object.entries(argumentDefinitions);
 		const availableFlags: [string, FlagDefinition][] = Object.entries(flagDefinitions);
 
 		const flagsWithAlias = availableFlags.map(([name, definition]) => {

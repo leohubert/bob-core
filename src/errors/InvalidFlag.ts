@@ -25,7 +25,7 @@ export class InvalidFlag extends BobError {
 
 			const rows = options.map(([name, definition]) => {
 				const alias = definition.alias ? (typeof definition.alias === 'string' ? [definition.alias] : definition.alias) : [];
-				const typeDisplay = definition.type === 'option' && 'options' in definition && definition.options ? definition.options.join(' | ') : definition.type;
+				const typeDisplay = definition.type === 'option' && 'options' in definition && (definition as any).options ? (definition as any).options.join(' | ') : definition.type;
 				const nameWithAlias = `--${name}${alias.length > 0 ? alias.map(a => `, -${a}`).join('') : ''}`;
 				return { nameWithAlias, description: definition.description || '', typeDisplay };
 			});

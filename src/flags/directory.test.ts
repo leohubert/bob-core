@@ -2,10 +2,10 @@ import { describe, expect, expectTypeOf, it } from 'vitest';
 
 import { newFlagOpts } from '@/src/fixtures.test.js';
 import { Flags } from '@/src/flags/index.js';
-import type { DirectoryFlagDef, FlagOpts, FlagReturnType, FlagType } from '@/src/lib/types.js';
+import type { FlagDefinition, FlagReturnType, FlagType, ParameterOpts } from '@/src/lib/types.js';
 
 describe('Flags.directory()', () => {
-	let flagOpts: FlagOpts;
+	let flagOpts: ParameterOpts;
 
 	it('should create a directory flag definition', () => {
 		const flag = Flags.directory();
@@ -20,7 +20,7 @@ describe('Flags.directory()', () => {
 
 	it('should have correct type', () => {
 		const flag = Flags.directory();
-		expectTypeOf(flag).toMatchTypeOf<DirectoryFlagDef>();
+		expectTypeOf(flag).toMatchTypeOf<FlagDefinition>();
 	});
 
 	it('should infer directory as string', () => {

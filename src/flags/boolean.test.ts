@@ -2,10 +2,10 @@ import { describe, expect, expectTypeOf, it } from 'vitest';
 
 import { newFlagOpts } from '@/src/fixtures.test.js';
 import { Flags } from '@/src/flags/index.js';
-import type { BooleanFlagDef, FlagOpts, FlagReturnType } from '@/src/lib/types.js';
+import type { FlagDefinition, FlagReturnType, ParameterOpts } from '@/src/lib/types.js';
 
 describe('Flags.boolean()', () => {
-	let flagOpts: FlagOpts;
+	let flagOpts: ParameterOpts;
 
 	it('should create a boolean flag definition', () => {
 		const flag = Flags.boolean();
@@ -15,7 +15,7 @@ describe('Flags.boolean()', () => {
 
 	it('should have correct type', () => {
 		const flag = Flags.boolean();
-		expectTypeOf(flag).toMatchTypeOf<BooleanFlagDef>();
+		expectTypeOf(flag).toMatchTypeOf<FlagDefinition & { type: 'boolean' }>();
 	});
 
 	it('should default to false', () => {

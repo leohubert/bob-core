@@ -2,10 +2,10 @@ import { describe, expect, expectTypeOf, it } from 'vitest';
 
 import { newFlagOpts } from '@/src/fixtures.test.js';
 import { Flags } from '@/src/flags/index.js';
-import type { FlagOpts, FlagReturnType, FlagType, NumberFlagDef } from '@/src/lib/types.js';
+import type { FlagDefinition, FlagReturnType, FlagType, ParameterOpts } from '@/src/lib/types.js';
 
 describe('Flags.number()', () => {
-	let flagOpts: FlagOpts;
+	let flagOpts: ParameterOpts;
 
 	it('should create a number flag definition', () => {
 		const flag = Flags.number();
@@ -20,7 +20,7 @@ describe('Flags.number()', () => {
 
 	it('should have correct type', () => {
 		const flag = Flags.number({ min: 1, max: 100 });
-		expectTypeOf(flag).toMatchTypeOf<NumberFlagDef>();
+		expectTypeOf(flag).toMatchTypeOf<FlagDefinition>();
 	});
 
 	it('should parse numeric strings', () => {

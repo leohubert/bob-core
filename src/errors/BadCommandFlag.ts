@@ -4,7 +4,7 @@ import { Logger } from '@/src/Logger.js';
 import { BobError } from '@/src/errors/BobError.js';
 import { FlagDefinition } from '@/src/lib/types.js';
 
-export type FlagProps = {
+export type BadFlagParams = {
 	flag: string;
 	value?: any;
 	reason?: string;
@@ -12,7 +12,7 @@ export type FlagProps = {
 
 export class BadCommandFlag extends BobError {
 	constructor(
-		public readonly param: FlagProps,
+		public readonly param: BadFlagParams,
 		public readonly flagDefinition?: FlagDefinition,
 	) {
 		let message = `Flag "${param.flag}" value is invalid.`;

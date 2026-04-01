@@ -1,7 +1,7 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
 import { Flags } from '@/src/flags/index.js';
-import type { CustomFlagDef, FlagReturnType, FlagType } from '@/src/lib/types.js';
+import type { FlagDefinition, FlagReturnType, FlagType } from '@/src/lib/types.js';
 
 describe('Flags.custom()', () => {
 	it('should return a factory function', () => {
@@ -43,7 +43,7 @@ describe('Flags.custom()', () => {
 			parse: (v: string) => new Date(v),
 		});
 		const flag = dateFlag();
-		expectTypeOf(flag).toMatchTypeOf<CustomFlagDef<Date>>();
+		expectTypeOf(flag).toMatchTypeOf<FlagDefinition>();
 	});
 
 	it('should infer custom return type', () => {

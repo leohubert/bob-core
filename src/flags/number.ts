@@ -1,56 +1,9 @@
-import { ValidationError } from '@/src/errors/ValidationError.js';
-import { formatPromptMessage } from '@/src/flags/helpers.js';
-import type { FlagInput, FlagOpts, NumberFlagDef } from '@/src/lib/types.js';
+import { custom } from '@/src/flags/custom.js';
+import { buildNumberAsk } from '@/src/shared/ask-helpers.js';
 import { parseNumber } from '@/src/shared/parsers.js';
 
-export function numberFlag<const T extends FlagInput<NumberFlagDef>>(opts?: T): NumberFlagDef & T {
-	return {
-		default: opts?.multiple ? [] : null,
-		ask: async (flagOpts: FlagOpts) => {
-			const def = flagOpts.definition;
-			const isMultiple = 'multiple' in def && def.multiple;
-			const promptText = formatPromptMessage(flagOpts.name, def);
-
-			if (isMultiple) {
-				return await flagOpts.ux.askForList(promptText + 'Please provide one or more values, separated by commas:\n', {
-					separator: ',',
-					validate: (value: string) => {
-						if ((value === null || value === undefined || value.trim() === '') && def.required) {
-							return 'Please enter at least one value';
-						}
-						for (const raw of value.split(',')) {
-							const trimmed = raw.trim();
-							if (trimmed === '') continue;
-							try {
-								def.parse(trimmed, flagOpts);
-							} catch (e) {
-								if (e instanceof ValidationError) return `"${trimmed}": ${e.message}`;
-								return `"${trimmed}": Invalid value`;
-							}
-						}
-						return true;
-					},
-				});
-			}
-
-			return await flagOpts.ux.askForNumber(promptText, {
-				validate: (value: number | undefined) => {
-					if (value === undefined && def.required) {
-						return 'This value is required';
-					}
-					if (value !== undefined) {
-						try {
-							def.parse(String(value), flagOpts);
-						} catch (e) {
-							return e instanceof ValidationError ? e.message : 'Invalid value';
-						}
-					}
-					return true;
-				},
-			});
-		},
-		parse: (value: string | number, _opts: FlagOpts): number => parseNumber(value, { min: opts?.min, max: opts?.max }),
-		...opts,
-		type: 'number',
-	} as NumberFlagDef & T;
-}
+export const numberFlag = custom<number, { min?: number; max?: number }>({
+	parse: (v: any, opts): number => parseNumber(v, { min: opts.definition.min, max: opts.definition.max }),
+	ask: buildNumberAsk,
+	type: 'number',
+});

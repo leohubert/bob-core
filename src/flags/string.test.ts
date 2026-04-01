@@ -2,10 +2,10 @@ import { beforeEach, describe, expect, expectTypeOf, it } from 'vitest';
 
 import { newFlagOpts } from '@/src/fixtures.test.js';
 import { Flags } from '@/src/flags/index.js';
-import type { FlagOpts, FlagReturnType, FlagType, StringFlagDef } from '@/src/lib/types.js';
+import type { FlagDefinition, FlagReturnType, FlagType, ParameterOpts } from '@/src/lib/types.js';
 
 describe('Flags.string()', () => {
-	let flagOpts: FlagOpts;
+	let flagOpts: ParameterOpts;
 
 	it('should create a string flag definition', () => {
 		const flag = Flags.string();
@@ -20,7 +20,7 @@ describe('Flags.string()', () => {
 
 	it('should have correct type', () => {
 		const flag = Flags.string();
-		expectTypeOf(flag).toMatchTypeOf<StringFlagDef>();
+		expectTypeOf(flag).toMatchTypeOf<FlagDefinition & { type: 'string' }>();
 	});
 
 	it('should default to null for single', () => {

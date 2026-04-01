@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { CommandParser } from '@/src/CommandParser.js';
+import { Args } from '@/src/args/index.js';
 import { BadCommandFlag } from '@/src/errors/BadCommandFlag.js';
 import { InvalidFlag } from '@/src/errors/InvalidFlag.js';
 import { MissingRequiredArgumentValue } from '@/src/errors/MissingRequiredArgumentValue.js';
 import { MissingRequiredFlagValue } from '@/src/errors/MissingRequiredFlagValue.js';
 import { TooManyArguments } from '@/src/errors/TooManyArguments.js';
-import { Args } from '@/src/args/index.js';
 import { Flags } from '@/src/flags/index.js';
 import { UX } from '@/src/ux/index.js';
 
@@ -942,7 +942,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				ux,
 				flags: {
-					value: Flags.custom<string>({
+					value: Flags.custom({
 						parse: (_v: string) => {
 							throw new Error('Bad input');
 						},
@@ -1064,7 +1064,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				ux,
 				flags: {
-					name: Flags.custom<string>({
+					name: Flags.custom({
 						parse: (v: string) => {
 							if (v === 'prompted') throw new ValidationError('not allowed');
 							return v;
@@ -1088,7 +1088,7 @@ describe('CommandParser', () => {
 				ux,
 				flags: {},
 				args: {
-					name: Args.custom<string>({
+					name: Args.custom({
 						parse: (v: string) => {
 							if (v === 'prompted') throw new ValidationError('not allowed');
 							return v;
@@ -1110,7 +1110,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				ux,
 				flags: {
-					name: Flags.custom<string>({
+					name: Flags.custom({
 						parse: (v: string) => {
 							if (v === 'invalid') throw new ValidationError('not allowed');
 							return v;

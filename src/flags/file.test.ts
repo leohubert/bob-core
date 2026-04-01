@@ -2,10 +2,10 @@ import { describe, expect, expectTypeOf, it } from 'vitest';
 
 import { newFlagOpts } from '@/src/fixtures.test.js';
 import { Flags } from '@/src/flags/index.js';
-import type { FileFlagDef, FlagOpts, FlagReturnType, FlagType } from '@/src/lib/types.js';
+import type { FlagDefinition, FlagReturnType, FlagType, ParameterOpts } from '@/src/lib/types.js';
 
 describe('Flags.file()', () => {
-	let flagOpts: FlagOpts;
+	let flagOpts: ParameterOpts;
 
 	it('should create a file flag definition', () => {
 		const flag = Flags.file();
@@ -20,7 +20,7 @@ describe('Flags.file()', () => {
 
 	it('should have correct type', () => {
 		const flag = Flags.file();
-		expectTypeOf(flag).toMatchTypeOf<FileFlagDef>();
+		expectTypeOf(flag).toMatchTypeOf<FlagDefinition>();
 	});
 
 	it('should infer file as string', () => {

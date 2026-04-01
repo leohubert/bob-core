@@ -2,10 +2,10 @@ import { describe, expect, expectTypeOf, it } from 'vitest';
 
 import { newFlagOpts } from '@/src/fixtures.test.js';
 import { Flags } from '@/src/flags/index.js';
-import type { FlagOpts, FlagReturnType, FlagType, UrlFlagDef } from '@/src/lib/types.js';
+import type { FlagDefinition, FlagReturnType, FlagType, ParameterOpts } from '@/src/lib/types.js';
 
 describe('Flags.url()', () => {
-	let flagOpts: FlagOpts;
+	let flagOpts: ParameterOpts;
 
 	it('should create a url flag definition', () => {
 		const flag = Flags.url();
@@ -15,7 +15,7 @@ describe('Flags.url()', () => {
 
 	it('should have correct type', () => {
 		const flag = Flags.url();
-		expectTypeOf(flag).toMatchTypeOf<UrlFlagDef>();
+		expectTypeOf(flag).toMatchTypeOf<FlagDefinition & { type: 'url' }>();
 	});
 
 	it('should infer url as URL', () => {

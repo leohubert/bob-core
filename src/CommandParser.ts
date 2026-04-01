@@ -5,20 +5,10 @@ import { InvalidFlag } from '@/src/errors/InvalidFlag.js';
 import { MissingRequiredArgumentValue } from '@/src/errors/MissingRequiredArgumentValue.js';
 import { MissingRequiredFlagValue } from '@/src/errors/MissingRequiredFlagValue.js';
 import { BadCommandArgument, BadCommandFlag, TooManyArguments } from '@/src/errors/index.js';
-import {
-	ArgDefinition,
-	ArgOpts,
-	ArgReturnType,
-	ArgsObject,
-	ArgsSchema,
-	ContextDefinition,
-	FlagDefinition,
-	FlagOpts,
-	FlagReturnType,
-	FlagsObject,
-	FlagsSchema,
-} from '@/src/lib/types.js';
+import { ArgsObject, ArgsSchema, ContextDefinition, FlagDefinition, FlagReturnType, FlagsObject, FlagsSchema, ParameterOpts } from '@/src/lib/types.js';
 import { UX } from '@/src/ux/index.js';
+
+type ParameterKind = 'flag' | 'arg';
 
 /**
  * Parses command-line arguments into typed flags and arguments
@@ -29,7 +19,7 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends ArgsSche
 	protected parsedFlags: FlagsObject<Flags> | null = null;
 
 	protected args: ArgsSchema;
-	protected parsedArguments: ArgsObject<Arguments> | null = null;
+	protected parsedArgs: ArgsObject<Arguments> | null = null;
 
 	protected ux: UX;
 
@@ -62,11 +52,11 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends ArgsSche
 			this.validateUnknownFlags(rawFlags);
 		}
 		this.parsedFlags = await this.handleOptions(rawFlags);
-		this.parsedArguments = await this.handleArguments(rawArgs);
+		this.parsedArgs = await this.handleArguments(rawArgs);
 
 		return {
 			flags: this.parsedFlags,
-			args: this.parsedArguments,
+			args: this.parsedArgs,
 		};
 	}
 
@@ -75,47 +65,8 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends ArgsSche
 	 * @throws {Error} If validation fails
 	 */
 	async validate(): Promise<void> {
-		for (const key in this.flags) {
-			const flagDefinition: FlagDefinition = this.flags[key];
-			let flagValue = this.parsedFlags?.[key];
-			const isEmpty = this.isEmptyValue(flagValue);
-
-			if (flagDefinition.required && isEmpty) {
-				if (!this.shouldPromptForMissingFlags) {
-					throw new MissingRequiredFlagValue(key);
-				}
-
-				const newValue = await this.promptForFlag(key, flagDefinition);
-
-				if (newValue != null && this.parsedFlags) {
-					flagValue = await this.parseFlagValue(newValue, flagDefinition, { name: key });
-					(this.parsedFlags as any)[key] = flagValue;
-				} else {
-					throw new MissingRequiredFlagValue(key);
-				}
-			}
-		}
-
-		for (const key in this.args) {
-			const argDefinition: ArgDefinition = this.args[key];
-			let argValue = this.parsedArguments?.[key];
-			const isEmpty = this.isEmptyValue(argValue);
-
-			if (argDefinition.required && isEmpty) {
-				if (!this.shouldPromptForMissingFlags) {
-					throw new MissingRequiredArgumentValue(key);
-				}
-
-				const newValue = await this.promptForArg(key, argDefinition);
-
-				if (newValue != null && this.parsedArguments) {
-					argValue = await this.parseArgValue(newValue, argDefinition, { name: key });
-					(this.parsedArguments as any)[key] = argValue;
-				} else {
-					throw new MissingRequiredArgumentValue(key);
-				}
-			}
-		}
+		await this.validateSchema(this.flags, this.parsedFlags, 'flag');
+		await this.validateSchema(this.args, this.parsedArgs, 'arg');
 	}
 
 	/**
@@ -155,27 +106,27 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends ArgsSche
 	 * @returns The typed argument value
 	 * @throws {Error} If init() has not been called yet
 	 */
-	argument<ArgName extends keyof Arguments>(name: ArgName, defaultValue?: ArgReturnType<Arguments[ArgName]>): ArgReturnType<Arguments[ArgName]> {
-		if (!this.parsedArguments) {
+	argument<ArgName extends keyof Arguments>(name: ArgName, defaultValue?: FlagReturnType<Arguments[ArgName]>): FlagReturnType<Arguments[ArgName]> {
+		if (!this.parsedArgs) {
 			throw new Error('Arguments have not been parsed yet. Call init() first.');
 		}
 
-		if (this.isEmptyValue(this.parsedArguments[name]) && defaultValue !== undefined) {
+		if (this.isEmptyValue(this.parsedArgs[name]) && defaultValue !== undefined) {
 			return defaultValue;
 		}
 
-		return this.parsedArguments[name];
+		return this.parsedArgs[name];
 	}
 
-	async setArgument<ArgName extends keyof Arguments>(name: ArgName, value: ArgReturnType<Arguments[ArgName]>): Promise<void> {
-		if (!this.parsedArguments) {
+	async setArgument<ArgName extends keyof Arguments>(name: ArgName, value: FlagReturnType<Arguments[ArgName]>): Promise<void> {
+		if (!this.parsedArgs) {
 			throw new Error('Arguments have not been parsed yet. Call init() first.');
 		}
 		if (!(name in this.args)) {
 			throw new BadCommandArgument({ arg: name as string, reason: `Argument "${name as string}" is not recognized` });
 		}
 
-		(this.parsedArguments as any)[name] = value;
+		(this.parsedArgs as any)[name] = value;
 	}
 
 	// === PRIVATE HELPERS ===
@@ -237,16 +188,16 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends ArgsSche
 		const expectedCount = Object.keys(this.args).length;
 
 		for (const key in this.args) {
-			const argDefinition: ArgDefinition = this.args[key];
+			const argDefinition: FlagDefinition = this.args[key];
 
 			// Handle variadic arguments (consumes all remaining values)
 			if ('multiple' in argDefinition && argDefinition.multiple) {
-				parsedArgs[key] = await this.parseArgValue(remainingArgs, argDefinition, { name: key });
+				parsedArgs[key] = await this.parseValue(remainingArgs, argDefinition, 'arg', { name: key });
 				remainingArgs.length = 0; // Clear remaining args since variadic consumes all
 				continue;
 			}
 
-			parsedArgs[key] = await this.parseArgValue(remainingArgs.shift(), argDefinition, { name: key });
+			parsedArgs[key] = await this.parseValue(remainingArgs.shift(), argDefinition, 'arg', { name: key });
 		}
 
 		if (this.shouldRejectExtraArguments && remainingArgs.length > 0) {
@@ -276,13 +227,13 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends ArgsSche
 			}
 		}
 
-		return this.parseFlagValue(rawValue, definition, { name: key });
+		return this.parseValue(rawValue, definition, 'flag', { name: key });
 	}
 
 	/**
-	 * Parses a raw value using the flag's parse function
+	 * Parses a raw value using the definition's parse function
 	 */
-	private async parseFlagValue(value: any, definition: FlagDefinition, meta?: { name: string }): Promise<any> {
+	private async parseValue(value: any, definition: FlagDefinition, kind: ParameterKind, meta?: { name: string }): Promise<any> {
 		if (this.isEmptyValue(value)) {
 			if (typeof definition.default === 'function') {
 				return await definition.default();
@@ -298,68 +249,55 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends ArgsSche
 
 			const parsedArray: any = [];
 			for (const item of value) {
-				parsedArray.push(await this.safeFlagParse(item, definition, meta));
+				parsedArray.push(await this.safeParse(item, definition, kind, meta));
 			}
 			return parsedArray;
 		}
 
-		return this.safeFlagParse(value, definition, meta);
+		return this.safeParse(value, definition, kind, meta);
 	}
 
-	/**
-	 * Parses a raw value using the arg's parse function
-	 */
-	private async parseArgValue(value: any, definition: ArgDefinition, meta?: { name: string }): Promise<any> {
-		if (this.isEmptyValue(value)) {
-			if (typeof definition.default === 'function') {
-				return await definition.default();
-			}
-
-			return definition.default;
-		}
-
-		if ('multiple' in definition && definition.multiple) {
-			if (!Array.isArray(value)) {
-				value = [value];
-			}
-
-			const parsedArray: any = [];
-			for (const item of value) {
-				parsedArray.push(await this.safeArgParse(item, definition, meta));
-			}
-			return parsedArray;
-		}
-
-		return this.safeArgParse(value, definition, meta);
-	}
-
-	private buildFlagOpts(name: string, definition: FlagDefinition): FlagOpts {
+	private buildOpts(name: string, definition: FlagDefinition): ParameterOpts {
 		return { name, ux: this.ux, ctx: this.opts.ctx, definition, cmd: this.opts.cmd ?? Command };
 	}
 
-	private buildArgOpts(name: string, definition: ArgDefinition): ArgOpts {
-		return { name, ux: this.ux, ctx: this.opts.ctx, definition, cmd: this.opts.cmd ?? Command };
-	}
-
-	private async safeFlagParse(value: any, definition: FlagDefinition, meta?: { name: string }): Promise<any> {
+	private async safeParse(value: any, definition: FlagDefinition, kind: ParameterKind, meta?: { name: string }): Promise<any> {
 		try {
-			return definition.parse(value, this.buildFlagOpts(meta?.name ?? '', definition));
+			return definition.parse(value, this.buildOpts(meta?.name ?? '', definition));
 		} catch (e) {
 			if (e instanceof BadCommandFlag || e instanceof BadCommandArgument) throw e;
 			if (!meta) throw e;
 			const reason = e instanceof Error ? e.message : String(e);
-			throw new BadCommandFlag({ flag: meta.name, value, reason });
-		}
-	}
-
-	private async safeArgParse(value: any, definition: ArgDefinition, meta?: { name: string }): Promise<any> {
-		try {
-			return definition.parse(value, this.buildArgOpts(meta?.name ?? '', definition));
-		} catch (e) {
-			if (e instanceof BadCommandFlag || e instanceof BadCommandArgument) throw e;
-			if (!meta) throw e;
-			const reason = e instanceof Error ? e.message : String(e);
+			if (kind === 'flag') {
+				throw new BadCommandFlag({ flag: meta.name, value, reason });
+			}
 			throw new BadCommandArgument({ arg: meta.name, value, reason });
+		}
+	}
+
+	/**
+	 * Validates a schema (flags or args) and prompts for missing required values
+	 */
+	private async validateSchema(schema: FlagsSchema | ArgsSchema, parsed: FlagsObject<any> | ArgsObject<any> | null, kind: ParameterKind): Promise<void> {
+		for (const key in schema) {
+			const definition = schema[key];
+			let value = parsed?.[key];
+			const isEmpty = this.isEmptyValue(value);
+
+			if (definition.required && isEmpty) {
+				if (!this.shouldPromptForMissingFlags) {
+					throw kind === 'flag' ? new MissingRequiredFlagValue(key) : new MissingRequiredArgumentValue(key);
+				}
+
+				const newValue = await this.promptFor(key, definition);
+
+				if (newValue != null && parsed) {
+					value = await this.parseValue(newValue, definition, kind, { name: key });
+					(parsed as any)[key] = value;
+				} else {
+					throw kind === 'flag' ? new MissingRequiredFlagValue(key) : new MissingRequiredArgumentValue(key);
+				}
+			}
 		}
 	}
 
@@ -383,18 +321,10 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends ArgsSche
 	}
 
 	/**
-	 * Prompts the user to provide a missing flag value via its `ask` method
+	 * Prompts the user to provide a missing value via its `ask` method
 	 */
-	protected async promptForFlag(name: string, definition: FlagDefinition): Promise<string | number | string[] | boolean | null> {
+	protected async promptFor(name: string, definition: FlagDefinition): Promise<string | number | string[] | boolean | null> {
 		if (!definition.ask) return null;
-		return definition.ask(this.buildFlagOpts(name, definition));
-	}
-
-	/**
-	 * Prompts the user to provide a missing arg value via its `ask` method
-	 */
-	protected async promptForArg(name: string, definition: ArgDefinition): Promise<string | number | string[] | boolean | null> {
-		if (!definition.ask) return null;
-		return definition.ask(this.buildArgOpts(name, definition));
+		return definition.ask(this.buildOpts(name, definition));
 	}
 }

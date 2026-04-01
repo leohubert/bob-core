@@ -8,10 +8,6 @@ describe('Flags builders', () => {
 		const flag = Flags.option({ options: ['a', 'b'] as const });
 		expect(flag).toMatchObject({ type: 'option', options: ['a', 'b'] });
 	});
-
-	it('should have enum as deprecated alias for option', () => {
-		expect(Flags.enum).toBe(Flags.option);
-	});
 });
 
 describe('Args builders', () => {
@@ -36,9 +32,5 @@ describe('Args builders', () => {
 	it('should work for option args', () => {
 		const arg = Args.option({ options: ['json', 'csv'] as const });
 		expect(arg).toMatchObject({ type: 'option', options: ['json', 'csv'] });
-	});
-
-	it('should have enum as deprecated alias for option', () => {
-		expect(Args.enum).toBe(Args.option);
 	});
 });

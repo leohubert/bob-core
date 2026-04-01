@@ -1,5 +1,5 @@
 import { booleanFlag } from '@/src/flags/boolean.js';
-import { customFlag } from '@/src/flags/custom.js';
+import { custom } from '@/src/flags/custom.js';
 import { directoryFlag } from '@/src/flags/directory.js';
 import { fileFlag } from '@/src/flags/file.js';
 import { numberFlag } from '@/src/flags/number.js';
@@ -15,9 +15,7 @@ export const Flags = {
 	file: fileFlag,
 	directory: directoryFlag,
 	url: urlFlag,
-	custom: customFlag,
-	/** @deprecated Use Flags.option() */
-	enum: optionFlag,
+	custom,
 };
 
 export { Args } from '@/src/args/index.js';

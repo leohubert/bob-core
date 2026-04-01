@@ -1,19 +1,17 @@
-import { customArg } from '@/src/args/custom.js';
-import { directoryArg } from '@/src/args/directory.js';
-import { fileArg } from '@/src/args/file.js';
-import { numberArg } from '@/src/args/number.js';
-import { optionArg } from '@/src/args/option.js';
-import { stringArg } from '@/src/args/string.js';
-import { urlArg } from '@/src/args/url.js';
+import { custom } from '@/src/flags/custom.js';
+import { directoryFlag } from '@/src/flags/directory.js';
+import { fileFlag } from '@/src/flags/file.js';
+import { numberFlag } from '@/src/flags/number.js';
+import { optionFlag } from '@/src/flags/option.js';
+import { stringFlag } from '@/src/flags/string.js';
+import { urlFlag } from '@/src/flags/url.js';
 
 export const Args = {
-	string: stringArg,
-	number: numberArg,
-	option: optionArg,
-	file: fileArg,
-	directory: directoryArg,
-	url: urlArg,
-	custom: customArg,
-	/** @deprecated Use Args.option() */
-	enum: optionArg,
+	string: stringFlag,
+	number: numberFlag,
+	option: optionFlag,
+	file: fileFlag,
+	directory: directoryFlag,
+	url: urlFlag,
+	custom,
 };

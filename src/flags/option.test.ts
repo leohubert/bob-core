@@ -2,10 +2,10 @@ import { describe, expect, expectTypeOf, it } from 'vitest';
 
 import { newFlagOpts } from '@/src/fixtures.test.js';
 import { Flags } from '@/src/flags/index.js';
-import type { FlagOpts, FlagReturnType, FlagType, OptionFlagDef } from '@/src/lib/types.js';
+import type { FlagDefinition, FlagReturnType, FlagType, ParameterOpts } from '@/src/lib/types.js';
 
 describe('Flags.option()', () => {
-	let flagOpts: FlagOpts;
+	let flagOpts: ParameterOpts;
 
 	it('should create an option flag definition', () => {
 		const flag = Flags.option({ options: ['debug', 'info', 'warn'] as const });
@@ -20,7 +20,7 @@ describe('Flags.option()', () => {
 
 	it('should have correct type', () => {
 		const flag = Flags.option({ options: ['a', 'b'] as const });
-		expectTypeOf(flag).toMatchTypeOf<OptionFlagDef>();
+		expectTypeOf(flag).toMatchTypeOf<FlagDefinition & { type: 'option' }>();
 	});
 
 	it('should infer option values type', () => {

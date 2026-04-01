@@ -1,6 +1,6 @@
 import { Args } from '@/src/args/index.js';
 import { Flags } from '@/src/flags/index.js';
-import { ArgDefinition, ArgsSchema, FlagDefinition, FlagsSchema } from '@/src/lib/types.js';
+import { ArgsSchema, FlagDefinition, FlagsSchema } from '@/src/lib/types.js';
 
 /**
  * @deprecated This class is deprecated and will be removed in future versions. Use CommandParser with explicit schema definitions instead.
@@ -15,7 +15,7 @@ export class CommandSignatureParser {
 	 * CommandSignatureParser.parse('migrate {name} {--force}')
 	 * // => { command: 'migrate', flags: { force: Flags.boolean() }, args: { name: Args.string({ required: true }) } }
 	 */
-	static parse(signature: string, helperDefinitions: Record<string, string> = {}): { command: string; flags: FlagsSchema; args: ArgsSchema } {
+	static parse(signature: string, helperDefinitions: Record<string, string> = {}): { command: string; flags: FlagsSchema; args: FlagsSchema } {
 		const [command, ...signatureParams] = signature
 			.split(/\{(.*?)\}/g)
 			.map(param => param.trim())
@@ -30,7 +30,7 @@ export class CommandSignatureParser {
 			if (result.isFlag) {
 				flags[result.name] = result.definition as FlagDefinition;
 			} else {
-				args[result.name] = result.definition as ArgDefinition;
+				args[result.name] = result.definition as FlagDefinition;
 			}
 		}
 
@@ -56,7 +56,7 @@ export class CommandSignatureParser {
 	private static parseParamSignature(
 		paramSignature: string,
 		helperDefinitions: Record<string, string>,
-	): { name: string; isFlag: boolean; definition: FlagDefinition | ArgDefinition } {
+	): { name: string; isFlag: boolean; definition: FlagDefinition } {
 		let name = paramSignature;
 		let isFlag = false;
 		let description: string | undefined;
@@ -133,7 +133,7 @@ export class CommandSignatureParser {
 		description = description ?? helperDefinitions[name] ?? helperDefinitions[`--${name}`];
 
 		// Build the definition using Flags/Args factories
-		let definition: FlagDefinition | ArgDefinition;
+		let definition: FlagDefinition;
 
 		if (isFlag) {
 			if (isBooleanType) {
