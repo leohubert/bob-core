@@ -5,7 +5,7 @@ import { Cli, CliOptions } from '@/src/Cli.js';
 import { Command } from '@/src/Command.js';
 import { TestLogger, newTestLogger } from '@/src/fixtures.test.js';
 import { Flags } from '@/src/flags/index.js';
-import { ArgumentsSchema } from '@/src/lib/types.js';
+import { ArgsSchema } from '@/src/lib/types.js';
 
 function makeCommand(name: string, handler?: (...args: any[]) => any) {
 	return class extends Command {
@@ -131,7 +131,7 @@ describe('Cli', () => {
 
 			class TestCmdWithArgs extends Command {
 				static command = 'test-args';
-				static args = { file: Flags.string() } satisfies ArgumentsSchema;
+				static args = { file: Flags.string() } satisfies ArgsSchema;
 				async handle(ctx: any, parsed: any) {
 					return localHandlerFn(ctx, parsed);
 				}

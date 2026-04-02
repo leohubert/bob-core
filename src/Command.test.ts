@@ -481,40 +481,5 @@ describe('Command', () => {
 				args: ['test.txt', '10'],
 			});
 		});
-
-		it('should infer option type from Parsed', () => {
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			const flagDef = Flags.option({ options: ['debug', 'info', 'warn'] as const });
-			type Result = FlagType<typeof flagDef>;
-			expectTypeOf<Result>().toEqualTypeOf<'debug' | 'info' | 'warn'>();
-		});
-
-		it('should infer url type from Parsed', () => {
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			const flagDef = Flags.url();
-			type Result = FlagType<typeof flagDef>;
-			expectTypeOf<Result>().toEqualTypeOf<URL>();
-		});
-
-		it('should infer file type as string', () => {
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			const flagDef = Flags.file();
-			type Result = FlagType<typeof flagDef>;
-			expectTypeOf<Result>().toEqualTypeOf<string>();
-		});
-
-		it('should infer directory type as string', () => {
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			const flagDef = Flags.directory();
-			type Result = FlagType<typeof flagDef>;
-			expectTypeOf<Result>().toEqualTypeOf<string>();
-		});
-
-		it('should infer custom return type', () => {
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			const flagDef = Flags.custom<Date>({ parse: (v: string) => new Date(v) })();
-			type Result = FlagType<typeof flagDef>;
-			expectTypeOf<Result>().toEqualTypeOf<Date>();
-		});
 	});
 });

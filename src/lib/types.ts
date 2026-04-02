@@ -1,10 +1,6 @@
 import { Command } from '@/src/Command.js';
 import type { UX } from '@/src/ux/index.js';
 
-// === IsGuaranteed structural check ===
-
-type HasExplicitDefault<O> = O extends { default: infer D } ? (undefined extends D ? false : null extends D ? false : true) : false;
-
 export type ContextDefinition = any;
 
 // === Unified parameter definition ===
@@ -36,18 +32,31 @@ export type FlagDefinition = FlagProps & { parse(input: any, opts: ParameterOpts
 
 // === Type inference ===
 
-type MaybeArray<T, O> = O extends { multiple: true } ? ([T] extends [Array<unknown>] ? T : T[]) : T;
+export type FlagType<O> = O extends { type: 'option'; options: infer T extends readonly string[] }
+	? O extends { multiple: true }
+		? [T[number]] extends [Array<unknown>]
+			? T[number]
+			: T[number][]
+		: T[number]
+	: O extends { parse: (...args: any[]) => infer R }
+		? O extends { multiple: true }
+			? [R] extends [Array<unknown>]
+				? R
+				: R[]
+			: R
+		: never;
 
-type InferParseReturn<O> = O extends { parse: (...args: any[]) => infer R } ? R : never;
-
-export type FlagType<O> = O extends {
-	type: 'option';
-	options: infer T extends readonly string[];
-}
-	? MaybeArray<T[number], O>
-	: MaybeArray<InferParseReturn<O>, O>;
-
-export type IsGuaranteed<O> = O extends { required: true } ? true : O extends { multiple: true } ? true : HasExplicitDefault<O> extends true ? true : false;
+type IsGuaranteed<O> = O extends { required: true }
+	? true
+	: O extends { multiple: true }
+		? true
+		: O extends { default: infer D }
+			? undefined extends D
+				? false
+				: null extends D
+					? false
+					: true
+			: false;
 
 export type FlagReturnType<O> = IsGuaranteed<O> extends true ? FlagType<O> : FlagType<O> | null;
 
@@ -62,11 +71,6 @@ export type FlagsObject<Options extends FlagsSchema> = {
 };
 
 export type ArgsSchema = FlagsSchema;
-export type ArgumentsSchema = ArgsSchema;
-
-export type ArgsObject<Arguments extends ArgsSchema> = {
-	[Key in keyof Arguments]: FlagReturnType<Arguments[Key]>;
-};
 
 // === Parsed type ===
 
@@ -74,5 +78,5 @@ export type InferFlags<T> = T extends { flags: infer O extends FlagsSchema } ? O
 export type InferArgs<T> = T extends { args: infer A extends ArgsSchema } ? A : ArgsSchema;
 export type Parsed<T> = {
 	flags: FlagsObject<InferFlags<T>>;
-	args: ArgsObject<InferArgs<T>>;
+	args: FlagsObject<InferArgs<T>>;
 };

@@ -5,7 +5,7 @@ import { InvalidFlag } from '@/src/errors/InvalidFlag.js';
 import { MissingRequiredArgumentValue } from '@/src/errors/MissingRequiredArgumentValue.js';
 import { MissingRequiredFlagValue } from '@/src/errors/MissingRequiredFlagValue.js';
 import { BadCommandArgument, BadCommandFlag, TooManyArguments } from '@/src/errors/index.js';
-import { ArgsObject, ArgsSchema, ContextDefinition, FlagDefinition, FlagReturnType, FlagsObject, FlagsSchema, ParameterOpts } from '@/src/lib/types.js';
+import { ArgsSchema, ContextDefinition, FlagDefinition, FlagReturnType, FlagsObject, FlagsSchema, ParameterOpts } from '@/src/lib/types.js';
 import { UX } from '@/src/ux/index.js';
 
 type ParameterKind = 'flag' | 'arg';
@@ -19,7 +19,7 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends ArgsSche
 	protected parsedFlags: FlagsObject<Flags> | null = null;
 
 	protected args: ArgsSchema;
-	protected parsedArgs: ArgsObject<Arguments> | null = null;
+	protected parsedArgs: FlagsObject<Arguments> | null = null;
 
 	protected ux: UX;
 
@@ -44,7 +44,7 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends ArgsSche
 	 */
 	async init(args: string[]): Promise<{
 		flags: FlagsObject<Flags>;
-		args: ArgsObject<Arguments>;
+		args: FlagsObject<Arguments>;
 	}> {
 		const { _: rawArgs, ...rawFlags } = minimist(args);
 
@@ -181,8 +181,8 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends ArgsSche
 	/**
 	 * Processes positional arguments from minimist output
 	 */
-	private async handleArguments(rawArgs: string[]): Promise<ArgsObject<Arguments>> {
-		const parsedArgs: ArgsObject<any> = {};
+	private async handleArguments(rawArgs: string[]): Promise<FlagsObject<Arguments>> {
+		const parsedArgs: FlagsObject<any> = {};
 		const remainingArgs = [...rawArgs];
 
 		const expectedCount = Object.keys(this.args).length;
@@ -278,7 +278,7 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends ArgsSche
 	/**
 	 * Validates a schema (flags or args) and prompts for missing required values
 	 */
-	private async validateSchema(schema: FlagsSchema | ArgsSchema, parsed: FlagsObject<any> | ArgsObject<any> | null, kind: ParameterKind): Promise<void> {
+	private async validateSchema(schema: FlagsSchema | ArgsSchema, parsed: FlagsObject<any> | FlagsObject<any> | null, kind: ParameterKind): Promise<void> {
 		for (const key in schema) {
 			const definition = schema[key];
 			let value = parsed?.[key];

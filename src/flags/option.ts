@@ -3,11 +3,13 @@ import type { FlagProps, ParameterOpts } from '@/src/lib/types.js';
 import { buildOptionAsk } from '@/src/shared/ask-helpers.js';
 import { parseOption } from '@/src/shared/parsers.js';
 
-export function optionFlag<const T extends readonly string[], const U extends FlagProps>(opts: { options: T } & U) {
-	return custom<T[number], { options: T }>({
+export function optionFlag<const T extends readonly string[], const U extends Partial<FlagProps>>(
+	opts: { options: T } & U,
+): U & FlagProps<T[number]> & { type: 'option'; options: T; parse(input: any, opts: ParameterOpts): T[number] } {
+	return custom<T[number]>({
 		parse: (v: any, o: ParameterOpts): string => parseOption(v, o.definition.options),
 		ask: buildOptionAsk,
 		...opts,
 		type: 'option',
-	})(opts);
+	})();
 }

@@ -16,7 +16,7 @@ export default class ExtendedTypesCommand extends Command {
 	static description = 'Showcase new extended flag types (option, file, url, custom)';
 
 	static flags = {
-		level: Flags.option({ options: ['debug', 'info', 'warn', 'error'] as const, description: 'Log level', required: true }),
+		level: Flags.option({ options: ['debug', 'info', 'warn', 'error'] as const, description: 'Log level' }),
 		port: Flags.number({ min: 1, max: 65535, default: 3000, description: 'Server port' }),
 		config: Flags.file({ description: 'Config file path', required: true, exists: true }),
 		outDir: Flags.directory({ description: 'Output directory', required: true, exists: true }),
