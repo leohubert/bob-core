@@ -1,6 +1,40 @@
 import { ValidationError } from '@/src/errors/ValidationError.js';
 import { formatPromptMessage } from '@/src/flags/helpers.js';
-import type { ParameterOpts } from '@/src/lib/types.js';
+import type { FlagDefinition, ParameterOpts } from '@/src/lib/types.js';
+
+function buildSingleValidator(def: FlagDefinition, builderOpts: ParameterOpts) {
+	return (value: string) => {
+		if ((value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) && def.required) {
+			return 'This value is required';
+		}
+		try {
+			def.parse(value, builderOpts);
+		} catch (e) {
+			if (e instanceof ValidationError) return e.message;
+			return 'Invalid value';
+		}
+		return true;
+	};
+}
+
+function buildMultipleValidator(def: FlagDefinition, builderOpts: ParameterOpts) {
+	return (value: string) => {
+		if ((value === null || value === undefined || value.trim() === '') && def.required) {
+			return 'Please enter at least one value';
+		}
+		for (const raw of value.split(',')) {
+			const trimmed = raw.trim();
+			if (trimmed === '') continue;
+			try {
+				def.parse(trimmed, builderOpts);
+			} catch (e) {
+				if (e instanceof ValidationError) return `"${trimmed}": ${e.message}`;
+				return `"${trimmed}": Invalid value`;
+			}
+		}
+		return true;
+	};
+}
 
 export async function buildStringAsk(builderOpts: ParameterOpts): Promise<any> {
 	const def = builderOpts.definition;
@@ -10,55 +44,18 @@ export async function buildStringAsk(builderOpts: ParameterOpts): Promise<any> {
 	if (isMultiple) {
 		return await builderOpts.ux.askForList(promptText + 'Please provide one or more values, separated by commas:\n', {
 			separator: ',',
-			validate: (value: string) => {
-				if ((value === null || value === undefined || value.trim() === '') && def.required) {
-					return 'Please enter at least one value';
-				}
-				for (const raw of value.split(',')) {
-					const trimmed = raw.trim();
-					if (trimmed === '') continue;
-					try {
-						def.parse(trimmed, builderOpts);
-					} catch (e) {
-						if (e instanceof ValidationError) return `"${trimmed}": ${e.message}`;
-						return `"${trimmed}": Invalid value`;
-					}
-				}
-				return true;
-			},
+			validate: buildMultipleValidator(def, builderOpts),
 		});
 	}
 
 	if ('secret' in def && def.secret) {
 		return builderOpts.ux.askForPassword(promptText, {
-			validate: (value: string) => {
-				if ((value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) && def.required) {
-					return 'This value is required';
-				}
-				try {
-					def.parse(value, builderOpts);
-				} catch (e) {
-					if (e instanceof ValidationError) return e.message;
-					return 'Invalid value';
-				}
-				return true;
-			},
+			validate: buildSingleValidator(def, builderOpts),
 		});
 	}
 
 	return await builderOpts.ux.askForInput(promptText, {
-		validate: (value: string) => {
-			if ((value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) && def.required) {
-				return 'This value is required';
-			}
-			try {
-				def.parse(value, builderOpts);
-			} catch (e) {
-				if (e instanceof ValidationError) return e.message;
-				return 'Invalid value';
-			}
-			return true;
-		},
+		validate: buildSingleValidator(def, builderOpts),
 	});
 }
 
@@ -70,22 +67,7 @@ export async function buildNumberAsk(builderOpts: ParameterOpts): Promise<any> {
 	if (isMultiple) {
 		return await builderOpts.ux.askForList(promptText + 'Please provide one or more values, separated by commas:\n', {
 			separator: ',',
-			validate: (value: string) => {
-				if ((value === null || value === undefined || value.trim() === '') && def.required) {
-					return 'Please enter at least one value';
-				}
-				for (const raw of value.split(',')) {
-					const trimmed = raw.trim();
-					if (trimmed === '') continue;
-					try {
-						def.parse(trimmed, builderOpts);
-					} catch (e) {
-						if (e instanceof ValidationError) return `"${trimmed}": ${e.message}`;
-						return `"${trimmed}": Invalid value`;
-					}
-				}
-				return true;
-			},
+			validate: buildMultipleValidator(def, builderOpts),
 		});
 	}
 
@@ -134,17 +116,6 @@ export async function buildDirectoryAsk(builderOpts: ParameterOpts): Promise<any
 export async function buildUrlAsk(builderOpts: ParameterOpts): Promise<any> {
 	const promptText = formatPromptMessage(builderOpts.name, builderOpts.definition);
 	return await builderOpts.ux.askForInput(promptText, {
-		validate: (value: string) => {
-			if ((value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) && builderOpts.definition.required) {
-				return 'This value is required';
-			}
-			try {
-				builderOpts.definition.parse(value, builderOpts);
-			} catch (e) {
-				if (e instanceof ValidationError) return e.message;
-				return 'Invalid value';
-			}
-			return true;
-		},
+		validate: buildSingleValidator(builderOpts.definition, builderOpts),
 	});
 }

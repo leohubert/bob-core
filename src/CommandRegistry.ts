@@ -180,7 +180,7 @@ export class CommandRegistry {
 	}
 
 	private async *listCommandsFiles(basePath: string): AsyncIterableIterator<string> {
-		const dirEntry = fs.readdirSync(basePath, { withFileTypes: true });
+		const dirEntry = await fs.promises.readdir(basePath, { withFileTypes: true });
 		for (const dirent of dirEntry) {
 			const direntPath = path.resolve(basePath, dirent.name);
 			if (dirent.isDirectory()) {

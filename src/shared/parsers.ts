@@ -2,7 +2,7 @@ import fs from 'node:fs';
 
 import { ValidationError } from '@/src/errors/ValidationError.js';
 
-export function parseString(value: string): string {
+export function parseString(value: string | boolean): string {
 	if (typeof value === 'boolean') {
 		throw new Error(`Expected a string, got boolean "${value}"`);
 	}
@@ -49,8 +49,15 @@ export function parseFile(input: string, constraints?: { exists?: boolean }): st
 
 export function parseDirectory(input: string, constraints?: { exists?: boolean }): string {
 	const path = String(input);
-	if (constraints?.exists && !(fs.existsSync(path) && fs.lstatSync(path).isDirectory())) {
-		throw new ValidationError('directory does not exist');
+	if (constraints?.exists) {
+		try {
+			if (!fs.lstatSync(path).isDirectory()) {
+				throw new ValidationError('directory does not exist');
+			}
+		} catch (e) {
+			if (e instanceof ValidationError) throw e;
+			throw new ValidationError('directory does not exist');
+		}
 	}
 	return path;
 }

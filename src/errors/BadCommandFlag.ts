@@ -27,7 +27,7 @@ export class BadCommandFlag extends BobError {
 	pretty(logger: Logger): void {
 		const details: [string, string][] = [];
 		if (this.param.reason != undefined) details.push(['Reason', this.param.reason]);
-		if (this.param.value != undefined) details.push(['Value', this.param.value]);
+		if (this.param.value != undefined) details.push(['Value', chalk.yellow(this.param.value)]);
 		if (this.flagDefinition?.help != undefined) details.push(['Help', chalk.green(this.flagDefinition.help)]);
 
 		logger.log('');

@@ -9,17 +9,17 @@ export function newLoader(
 
 	const interval = setInterval(function () {
 		if (previousText) {
-			process.stdout.write(new TextEncoder().encode('\r' + ' '.repeat(previousText.length + 5) + '\r'));
+			process.stdout.write('\r' + ' '.repeat(previousText.length + 5) + '\r');
 			previousText = null;
 		}
 
-		process.stdout.write(new TextEncoder().encode('\r' + chars[x++] + ' ' + loaderText));
+		process.stdout.write('\r' + chars[x++] + ' ' + loaderText);
 		x = x % chars.length;
 	}, delay);
 
 	const stop = () => {
 		clearInterval(interval);
-		process.stdout.write(new TextEncoder().encode('\r' + ' '.repeat(loaderText.length + 5) + '\r'));
+		process.stdout.write('\r' + ' '.repeat(loaderText.length + 5) + '\r');
 	};
 
 	return {

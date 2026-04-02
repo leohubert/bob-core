@@ -27,7 +27,7 @@ export class BadCommandArgument extends BobError {
 	pretty(logger: Logger): void {
 		const details: [string, string][] = [];
 		if (this.detail.reason != undefined) details.push(['Reason', this.detail.reason]);
-		if (this.detail.value != undefined) details.push(['Value', this.detail.value]);
+		if (this.detail.value != undefined) details.push(['Value', chalk.yellow(this.detail.value)]);
 		if (this.argDefinition?.help != undefined) details.push(['Help', chalk.green(this.argDefinition.help)]);
 
 		logger.log('');
