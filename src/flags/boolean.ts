@@ -3,7 +3,7 @@ import { formatPromptMessage } from '@/src/flags/helpers.js';
 import type { ParameterOpts } from '@/src/lib/types.js';
 import { parseBoolean } from '@/src/shared/parsers.js';
 
-export const booleanFlag = custom({
+export const booleanFlag = custom<boolean>({
 	default: false,
 	parse: (v: any) => parseBoolean(v),
 	ask: async (opts: ParameterOpts) => {

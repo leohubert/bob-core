@@ -512,7 +512,7 @@ describe('Command', () => {
 
 		it('should infer custom return type', () => {
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			const flagDef = Flags.custom({ parse: (v: string) => new Date(v) })();
+			const flagDef = Flags.custom<Date>({ parse: (v: string) => new Date(v) })();
 			type Result = FlagType<typeof flagDef>;
 			expectTypeOf<Result>().toEqualTypeOf<Date>();
 		});

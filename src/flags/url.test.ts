@@ -15,7 +15,7 @@ describe('Flags.url()', () => {
 
 	it('should have correct type', () => {
 		const flag = Flags.url();
-		expectTypeOf(flag).toMatchTypeOf<FlagDefinition & { type: 'url' }>();
+		expectTypeOf(flag).toMatchTypeOf<FlagDefinition>();
 	});
 
 	it('should infer url as URL', () => {

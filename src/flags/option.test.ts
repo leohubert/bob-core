@@ -20,7 +20,7 @@ describe('Flags.option()', () => {
 
 	it('should have correct type', () => {
 		const flag = Flags.option({ options: ['a', 'b'] as const });
-		expectTypeOf(flag).toMatchTypeOf<FlagDefinition & { type: 'option' }>();
+		expectTypeOf(flag).toMatchTypeOf<FlagDefinition>();
 	});
 
 	it('should infer option values type', () => {

@@ -929,7 +929,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				ux,
 				flags: {
-					since: Flags.custom({ parse: (v: string) => new Date(v) })(),
+					since: Flags.custom<Date>({ parse: (v: string) => new Date(v) })(),
 				},
 				args: {},
 			});
@@ -942,7 +942,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				ux,
 				flags: {
-					value: Flags.custom({
+					value: Flags.custom<string>({
 						parse: (_v: string) => {
 							throw new Error('Bad input');
 						},
@@ -1009,7 +1009,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				ux,
 				flags: {
-					since: Flags.custom({
+					since: Flags.custom<Date>({
 						parse: (v: string) => {
 							const d = new Date(v);
 							if (isNaN(d.getTime())) throw new ValidationError('Invalid date');
@@ -1028,7 +1028,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				ux,
 				flags: {
-					since: Flags.custom({
+					since: Flags.custom<Date>({
 						parse: (v: string) => {
 							const d = new Date(v);
 							if (isNaN(d.getTime())) throw new ValidationError('Invalid date');
@@ -1064,7 +1064,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				ux,
 				flags: {
-					name: Flags.custom({
+					name: Flags.custom<string>({
 						parse: (v: string) => {
 							if (v === 'prompted') throw new ValidationError('not allowed');
 							return v;
@@ -1088,7 +1088,7 @@ describe('CommandParser', () => {
 				ux,
 				flags: {},
 				args: {
-					name: Args.custom({
+					name: Args.custom<string>({
 						parse: (v: string) => {
 							if (v === 'prompted') throw new ValidationError('not allowed');
 							return v;
@@ -1110,7 +1110,7 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				ux,
 				flags: {
-					name: Flags.custom({
+					name: Flags.custom<string>({
 						parse: (v: string) => {
 							if (v === 'invalid') throw new ValidationError('not allowed');
 							return v;

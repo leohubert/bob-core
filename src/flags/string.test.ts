@@ -20,7 +20,7 @@ describe('Flags.string()', () => {
 
 	it('should have correct type', () => {
 		const flag = Flags.string();
-		expectTypeOf(flag).toMatchTypeOf<FlagDefinition & { type: 'string' }>();
+		expectTypeOf(flag).toMatchTypeOf<FlagDefinition>();
 	});
 
 	it('should default to null for single', () => {

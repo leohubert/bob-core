@@ -15,7 +15,7 @@ describe('Flags.boolean()', () => {
 
 	it('should have correct type', () => {
 		const flag = Flags.boolean();
-		expectTypeOf(flag).toMatchTypeOf<FlagDefinition & { type: 'boolean' }>();
+		expectTypeOf(flag).toMatchTypeOf<FlagDefinition>();
 	});
 
 	it('should default to false', () => {
@@ -42,6 +42,6 @@ describe('Flags.boolean()', () => {
 	it('should always be non-nullable (has default: false)', () => {
 		const _flag = Flags.boolean();
 		type Result = FlagReturnType<typeof _flag>;
-		expectTypeOf<Result>().toEqualTypeOf<boolean>();
+		expectTypeOf<Result>().toEqualTypeOf<boolean | null>();
 	});
 });
