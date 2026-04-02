@@ -32,19 +32,13 @@ export type FlagDefinition = FlagProps & { parse(input: any, opts: ParameterOpts
 
 // === Type inference ===
 
-export type FlagType<O> = O extends { type: 'option'; options: infer T extends readonly string[] }
+export type FlagType<O> = O extends { parse: (...args: any[]) => infer R }
 	? O extends { multiple: true }
-		? [T[number]] extends [Array<unknown>]
-			? T[number]
-			: T[number][]
-		: T[number]
-	: O extends { parse: (...args: any[]) => infer R }
-		? O extends { multiple: true }
-			? [R] extends [Array<unknown>]
-				? R
-				: R[]
-			: R
-		: never;
+		? [R] extends [Array<unknown>]
+			? R
+			: R[]
+		: R
+	: never;
 
 type IsGuaranteed<O> = O extends { required: true }
 	? true
