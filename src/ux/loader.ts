@@ -5,11 +5,31 @@ export function newLoader(
 ) {
 	let loaderText = text;
 	let previousText: string | null = null;
+	let maxTextLength = text.length;
 	let x = 0;
 
+	const clearLines = (textLength: number) => {
+		const cols = process.stdout.columns || 80;
+		const totalWidth = textLength + 2; // spinner char + space
+		const lines = Math.max(1, Math.ceil(totalWidth / cols));
+
+		if (process.stdout.isTTY && process.stdout.clearLine && process.stdout.moveCursor) {
+			if (lines > 1) process.stdout.moveCursor(0, -(lines - 1));
+			for (let i = 0; i < lines; i++) {
+				process.stdout.cursorTo(0);
+				process.stdout.clearLine(1);
+				if (i < lines - 1) process.stdout.moveCursor(0, 1);
+			}
+			if (lines > 1) process.stdout.moveCursor(0, -(lines - 1));
+			process.stdout.cursorTo(0);
+		} else {
+			process.stdout.write('\r' + ' '.repeat(textLength + 5) + '\r');
+		}
+	};
+
 	const interval = setInterval(function () {
-		if (previousText) {
-			process.stdout.write('\r' + ' '.repeat(previousText.length + 5) + '\r');
+		if (previousText !== null) {
+			clearLines(Math.max(previousText.length, loaderText.length));
 			previousText = null;
 		}
 
@@ -19,7 +39,7 @@ export function newLoader(
 
 	const stop = () => {
 		clearInterval(interval);
-		process.stdout.write('\r' + ' '.repeat(loaderText.length + 5) + '\r');
+		clearLines(maxTextLength);
 	};
 
 	return {
@@ -28,6 +48,7 @@ export function newLoader(
 		updateText: (newText: string) => {
 			previousText = loaderText;
 			loaderText = newText;
+			maxTextLength = Math.max(maxTextLength, newText.length);
 		},
 		stop,
 	};

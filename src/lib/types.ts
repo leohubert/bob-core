@@ -16,7 +16,7 @@ export type ParameterOpts<C extends ContextDefinition = ContextDefinition> = {
 };
 
 export type FlagProps<T = any> = {
-	type?: string;
+	type?: 'string' | 'number' | 'boolean' | 'option' | 'file' | 'directory' | 'url' | 'custom';
 	parse?: (input: any, opts: ParameterOpts) => T;
 	ask?: (opts: ParameterOpts) => Promise<any>;
 	description?: string;
