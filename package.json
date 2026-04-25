@@ -1,6 +1,6 @@
 {
   "name": "bob-core",
-  "version": "3.0.0-beta.2",
+  "version": "3.0.0-beta.3",
   "description": "BOB Core",
   "type": "module",
   "main": "./dist/cjs/src/index.js",

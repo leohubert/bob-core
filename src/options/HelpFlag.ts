@@ -13,6 +13,7 @@ function getTypeDisplay(details: FlagDefinition): string {
 
 export const HelpCommandFlag = Flags.boolean({
 	alias: ['h'],
+	description: 'Displays help information about the command',
 	handler: (value: boolean, opts: ParameterOpts) => {
 		if (!value) {
 			return { shouldStop: false };
