@@ -5,7 +5,9 @@ import type { FlagDefinition } from '@/src/lib/types.js';
 export function formatPromptMessage(name: string, definition: FlagDefinition): string {
 	const isMultiple = 'multiple' in definition && definition.multiple;
 
-	let promptText = `${chalk.yellow.bold(name)} is required`;
+	let promptText = definition.required
+		? `${chalk.yellow.bold(name)} is required`
+		: `Enter ${chalk.yellow.bold(name)}`;
 	if (definition.description) {
 		promptText += `: ${chalk.gray(`(${definition.description})`)}`;
 	}

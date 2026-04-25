@@ -23,6 +23,19 @@ describe('helpers', () => {
 			const msg = formatPromptMessage('tags', def);
 			expect(msg).toContain('string[]');
 		});
+
+		it('should say "is required" for required flags', () => {
+			const def = Flags.string({ required: true }) as FlagDefinition;
+			const msg = formatPromptMessage('name', def);
+			expect(msg).toContain('is required');
+		});
+
+		it('should say "Enter" for optional flags', () => {
+			const def = Flags.string() as FlagDefinition;
+			const msg = formatPromptMessage('name', def);
+			expect(msg).toContain('Enter');
+			expect(msg).not.toContain('is required');
+		});
 	});
 
 	describe('nested array prevention', () => {
