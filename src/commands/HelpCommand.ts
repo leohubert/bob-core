@@ -4,8 +4,6 @@ import { Command } from '@/src/Command.js';
 import { CommandRegistry } from '@/src/CommandRegistry.js';
 import { generateSpace } from '@/src/lib/string.js';
 
-let cachedCoreVersion: string | undefined;
-
 export type HelpCommandOptions = {
 	commandRegistry: CommandRegistry;
 	cliName?: string;
@@ -26,8 +24,7 @@ export default class HelpCommand extends Command {
 		const cliName = this.opts.cliName ?? 'Bob CLI';
 		const version = this.opts.cliVersion ?? '0.0.0';
 
-		cachedCoreVersion ??= (await import('../../package.json'))?.default?.version ?? '0.0.0';
-		const coreVersion = cachedCoreVersion;
+		const coreVersion = (await import('../../package.json'))?.default?.version ?? '0.0.0';
 
 		this.logger.log(`${cliName} ${chalk.green(version)} (core: ${chalk.yellow(coreVersion)})
 
