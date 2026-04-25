@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, expectTypeOf, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 
 import { newFlagOpts } from '@/src/fixtures.test.js';
 import { Flags } from '@/src/flags/index.js';

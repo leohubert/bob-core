@@ -1,12 +1,12 @@
 import { faker } from '@faker-js/faker';
-import { beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Command, CommandRunOption } from '@/src/Command.js';
 import { Args } from '@/src/args/index.js';
 import { TooManyArguments } from '@/src/errors/TooManyArguments.js';
 import { TestLogger, newTestLogger } from '@/src/fixtures.test.js';
 import { Flags } from '@/src/flags/index.js';
-import { ArgsSchema, FlagType, FlagsSchema, Parsed } from '@/src/lib/types.js';
+import { ArgsSchema, FlagsSchema, Parsed } from '@/src/lib/types.js';
 
 describe('Command', () => {
 	let logger: TestLogger;
