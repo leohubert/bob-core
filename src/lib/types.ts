@@ -40,14 +40,16 @@ export type FlagType<O> = O extends { parse: (...args: any[]) => infer R }
 		: R
 	: never;
 
+type DefaultResolvedType<D> = D extends (...args: any[]) => infer R ? Awaited<R> : D;
+
 type IsGuaranteed<O> = O extends { required: true }
 	? true
 	: O extends { multiple: true }
 		? true
 		: O extends { default: infer D }
-			? undefined extends D
+			? undefined extends DefaultResolvedType<D>
 				? false
-				: null extends D
+				: null extends DefaultResolvedType<D>
 					? false
 					: true
 			: false;

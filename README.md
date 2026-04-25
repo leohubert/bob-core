@@ -100,7 +100,7 @@ static flags = {
   name:      Flags.string({ required: true, description: 'Your name' }),
   count:     Flags.number({ min: 1, max: 10, default: 1 }),
   force:     Flags.boolean({ alias: 'f' }),
-  level:     Flags.enum({ options: ['debug', 'info', 'warn', 'error'] as const }),
+  level:     Flags.option({ options: ['debug', 'info', 'warn', 'error'] as const }),
   config:    Flags.file({ exists: true, description: 'Config file path' }),
   outDir:    Flags.directory({ exists: true }),
   endpoint:  Flags.url({ description: 'API endpoint' }),
@@ -113,13 +113,13 @@ static flags = {
 | `Flags.string()` | `string` | `secret` |
 | `Flags.number()` | `number` | `min`, `max` |
 | `Flags.boolean()` | `boolean` | |
-| `Flags.enum()` | union of `options` | `options` (readonly tuple) |
+| `Flags.option()` | union of `options` | `options` (readonly tuple) |
 | `Flags.file()` | `string` | `exists` |
 | `Flags.directory()` | `string` | `exists` |
 | `Flags.url()` | `URL` | |
 | `Flags.custom<T>()` | `T` | `parse` (required) |
 
-`Args` is an alias for `Flags` -- use it for semantic clarity when defining `static args`.
+`Args` is a separate builder set from `Flags` (it omits `boolean`) -- use it for semantic clarity when defining `static args`.
 
 Use `satisfies FlagsSchema` on both `static flags` and `static args` to enable full type inference with `Parsed<typeof YourCommand>`.
 

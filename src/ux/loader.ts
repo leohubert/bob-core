@@ -13,7 +13,7 @@ export function newLoader(
 		const totalWidth = textLength + 2; // spinner char + space
 		const lines = Math.max(1, Math.ceil(totalWidth / cols));
 
-		if (process.stdout.isTTY && process.stdout.clearLine && process.stdout.moveCursor) {
+		if (process.stdout.isTTY && process.stdout.clearLine && process.stdout.moveCursor && process.stdout.cursorTo) {
 			if (lines > 1) process.stdout.moveCursor(0, -(lines - 1));
 			for (let i = 0; i < lines; i++) {
 				process.stdout.cursorTo(0);
