@@ -21,7 +21,7 @@ class TestInstanceCommand extends Command {
 	static description = 'This is a test command instance';
 
 	protected handle(): Promise<number | void> {
-		throw new Error('Method instnace not implemented.');
+		throw new Error('Method instance not implemented.');
 	}
 }
 
