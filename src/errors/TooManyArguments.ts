@@ -2,6 +2,7 @@ import chalk from 'chalk';
 
 import { Logger } from '@/src/Logger.js';
 import { BobError } from '@/src/errors/BobError.js';
+import { renderError } from '@/src/errors/renderError.js';
 
 export class TooManyArguments extends BobError {
 	constructor(
@@ -12,10 +13,12 @@ export class TooManyArguments extends BobError {
 	}
 
 	pretty(logger: Logger): void {
-		logger.log('');
-		logger.log(
-			`  ${chalk.bold.white.bgRed(' ERROR ')} Too many arguments. Expected ${chalk.bold.yellow(String(this.expected))}, got ${chalk.bold.yellow(String(this.received))}.`,
-		);
-		logger.log('');
+		renderError(logger, {
+			title: 'too many arguments',
+			details: [
+				[chalk.dim('expected'), chalk.green(String(this.expected))],
+				[chalk.dim('received'), chalk.bold.yellow(String(this.received))],
+			],
+		});
 	}
 }

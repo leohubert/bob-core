@@ -26,7 +26,7 @@ export default class NewTestCommand extends Command {
 			required: true,
 			description: 'Age argument',
 			default: () => {
-				return new Promise(resolve => {
+				return new Promise<string>(resolve => {
 					setTimeout(() => {
 						resolve('dd');
 					}, 1000);
@@ -50,6 +50,7 @@ export default class NewTestCommand extends Command {
 			alias: 'f',
 		}),
 		custom: Flags.custom<Toto>({
+			multiple: true,
 			description: 'Custom test option',
 			help: 'Custom test help option',
 		})({ required: true }),
@@ -59,7 +60,7 @@ export default class NewTestCommand extends Command {
 		async: Flags.number({
 			multiple: true,
 			default: () => {
-				return new Promise(resolve => {
+				return new Promise<number[]>(resolve => {
 					setTimeout(() => {
 						resolve([1, 2, 3]);
 					}, 1000);

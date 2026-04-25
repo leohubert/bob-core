@@ -11,5 +11,5 @@ export function optionFlag<const T extends readonly string[], const U extends Pa
 		ask: buildOptionAsk,
 		...opts,
 		type: 'option',
-	})();
+	})() as U & FlagProps<T[number]> & { parse(input: any, opts: ParameterOpts): T[number] };
 }

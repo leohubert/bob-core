@@ -1,7 +1,6 @@
-import chalk from 'chalk';
-
 import { Logger } from '@/src/Logger.js';
 import { BobError } from '@/src/errors/BobError.js';
+import { quote, renderError } from '@/src/errors/renderError.js';
 
 export class CommandNotFoundError extends BobError {
 	constructor(public readonly command: string) {
@@ -9,8 +8,8 @@ export class CommandNotFoundError extends BobError {
 	}
 
 	pretty(logger: Logger): void {
-		logger.log('');
-		logger.log(`  ${chalk.bold.white.bgRed(' ERROR ')} Command ${chalk.bold.yellow(this.command)} not found.`);
-		logger.log('');
+		renderError(logger, {
+			title: `command ${quote(this.command)} not found`,
+		});
 	}
 }

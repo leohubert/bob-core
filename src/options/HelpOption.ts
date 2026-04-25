@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 
+import { normalizeAliases } from '@/src/flags/helpers.js';
 import { Flags } from '@/src/flags/index.js';
 import { generateSpace } from '@/src/lib/string.js';
 import { FlagDefinition, ParameterOpts } from '@/src/lib/types.js';
@@ -25,11 +26,11 @@ export const HelpCommandFlag = Flags.boolean({
 		const availableFlags: [string, FlagDefinition][] = Object.entries(flagDefinitions);
 
 		const flagsWithAlias = availableFlags.map(([name, definition]) => {
-			const aliases = Array.isArray(definition.alias) ? definition.alias : definition.alias ? [definition.alias] : [];
+			const aliases = normalizeAliases(definition.alias);
 			return {
 				name,
 				...definition,
-				flagWithAlias: `--${name}${aliases.map((a: string) => `, -${a}`).join('')}`,
+				flagWithAlias: `--${name}${aliases.map(a => `, -${a}`).join('')}`,
 			};
 		});
 

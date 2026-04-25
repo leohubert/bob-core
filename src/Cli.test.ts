@@ -167,7 +167,7 @@ describe('Cli', () => {
 			const result = await cli.runCommand('unknown-cmd');
 
 			expect(result).toBe(-1);
-			expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('not found.'));
+			expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('not found'));
 		});
 
 		it('should handle errors through exception handler', async () => {

@@ -13,3 +13,8 @@ export function formatPromptMessage(name: string, definition: FlagDefinition): s
 
 	return promptText;
 }
+
+export function normalizeAliases(alias: string | readonly string[] | undefined): readonly string[] {
+	if (alias == undefined) return [];
+	return typeof alias === 'string' ? [alias] : alias;
+}

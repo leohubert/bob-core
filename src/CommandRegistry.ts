@@ -156,27 +156,30 @@ export class CommandRegistry {
 			const runCommand = await this.askRunSimilarCommand(command, commandToAsk);
 			if (runCommand) {
 				return commandToAsk;
-			} else {
-				return null;
 			}
+
+			return null;
 		}
 
 		if (similarCommands.length) {
-			this.logger.error(`${chalk.bgRed(' ERROR ')} Command ${chalk.yellow(command)} not found.\n`);
-
-			const commandToRun = await this.ux.askForSelect(chalk.green('Did you mean to run one of these commands instead?'), similarCommands);
+			const commandToRun = await this.ux.askForSelect(
+				`${chalk.red('unknown command')} ${chalk.bold.yellow(`'${command}'`)} ${chalk.dim('—')} did you mean one of these?`,
+				similarCommands,
+			);
 			if (commandToRun) {
 				return commandToRun;
 			}
+
+			return null;
 		}
 
 		throw new CommandNotFoundError(command);
 	}
 
 	private async askRunSimilarCommand(command: string, commandToAsk: string): Promise<boolean> {
-		this.logger.error(`${chalk.bgRed(' ERROR ')} Command ${chalk.yellow(command)} not found.\n`);
-
-		return this.ux.askForConfirmation(`${chalk.green(`Do you want to run ${chalk.yellow(commandToAsk)} instead?`)} `);
+		return this.ux.askForConfirmation(
+			`${chalk.red('unknown command')} ${chalk.bold.yellow(`'${command}'`)} ${chalk.dim('—')} did you mean ${chalk.bold.green(`'${commandToAsk}'`)}?`,
+		);
 	}
 
 	private async *listCommandsFiles(basePath: string): AsyncIterableIterator<string> {

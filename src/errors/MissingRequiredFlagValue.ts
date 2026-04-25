@@ -1,7 +1,6 @@
-import chalk from 'chalk';
-
 import { Logger } from '@/src/Logger.js';
 import { BobError } from '@/src/errors/BobError.js';
+import { quote, renderError } from '@/src/errors/renderError.js';
 
 export class MissingRequiredFlagValue extends BobError {
 	constructor(public readonly flag: string) {
@@ -9,8 +8,8 @@ export class MissingRequiredFlagValue extends BobError {
 	}
 
 	pretty(logger: Logger): void {
-		logger.log('');
-		logger.log(`  ${chalk.bold.white.bgRed(' ERROR ')} Flag ${chalk.bold.yellow(this.flag)} is required.`);
-		logger.log('');
+		renderError(logger, {
+			title: `flag ${quote(this.flag)} is required`,
+		});
 	}
 }
