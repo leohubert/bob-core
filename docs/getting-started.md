@@ -1,137 +1,96 @@
 # Getting Started
 
-Welcome to BOB Core! This guide will help you create your first CLI application in minutes.
+Welcome to BOB Core! This guide walks you from install to a running CLI in a few minutes.
 
 ## Installation
-
-Install BOB Core using npm:
 
 ```bash
 npm install bob-core
 ```
 
-Or using yarn:
+## Your first CLI
 
-```bash
-yarn add bob-core
-```
-
-## Your First CLI
-
-Let's create a simple CLI application. Create a file named `cli.ts`:
+Create `cli.ts`:
 
 ```typescript
 import { Cli } from 'bob-core';
 
-// Initialize the CLI
 const cli = new Cli({
   name: 'my-cli',
-  version: '1.0.0'
+  version: '1.0.0',
 });
 
-// Load commands from a directory
 await cli.withCommands('./commands');
 
-// Run a command
-const exitCode = await cli.runCommand(
-  process.argv[2],
-  ...process.argv.slice(3)
-);
-
+const exitCode = await cli.runCommand(process.argv[2], ...process.argv.slice(3));
 process.exit(exitCode);
 ```
 
-## Creating Your First Command
+## Your first command
 
-Create a `commands` directory and add a file `greet.ts`:
-
-### Modern Schema-Based Approach (Recommended)
+Create `commands/greet.ts`:
 
 ```typescript
-import { Command } from 'bob-core';
+import { Command, Flags, Args, Parsed } from 'bob-core';
 
-export default new Command('greet', {
-  description: 'Greet a user',
-  arguments: {
-    name: 'string'
-  },
-  options: {
-    greeting: {
-      type: 'string',
-      default: 'Hello',
-      description: 'The greeting to use'
-    }
-  }
-}).handler((ctx, { arguments: args, options }) => {
-  console.log(`${options.greeting}, ${args.name}!`);
-});
-```
+export default class GreetCommand extends Command {
+  static command = 'greet';
+  static description = 'Greet someone';
 
-### Signature-Based Approach
+  static args = {
+    name: Args.string({ required: true, description: 'Name to greet' }),
+  };
 
-```typescript
-import { CommandWithSignature } from 'bob-core';
+  static flags = {
+    shout: Flags.boolean({ description: 'Uppercase the greeting', alias: 's' }),
+  };
 
-export default class GreetCommand extends CommandWithSignature {
-  signature = 'greet {name} {--greeting=Hello}';
-  description = 'Greet a user';
-
-  protected async handle() {
-    const name = this.argument('name');
-    const greeting = this.option('greeting');
-    console.log(`${greeting}, ${name}!`);
+  async handle(_ctx: any, { flags, args }: Parsed<typeof GreetCommand>) {
+    let message = `Hello, ${args.name}!`;
+    if (flags.shout) message = message.toUpperCase();
+    this.logger.info(message);
   }
 }
 ```
 
-## Running Your CLI
+Commands are classes that extend `Command`. Static metadata (`command`, `description`, `args`, `flags`) describes the contract; `handle(ctx, parsed)` does the work. Inside `handle`, `this.logger` and `this.ux` are available.
 
-Compile your TypeScript and run:
-
-```bash
-node cli.js greet John
-# Output: Hello, John!
-
-node cli.js greet Jane --greeting=Hi
-# Output: Hi, Jane!
-```
-
-## Built-in Help
-
-BOB Core automatically generates help documentation:
+## Run it
 
 ```bash
-node cli.js help
-# Shows all available commands
+$ my-cli greet World
+Hello, World!
 
-node cli.js greet --help
-# Shows help for the greet command
+$ my-cli greet World --shout
+HELLO, WORLD!
+
+$ my-cli --help
 ```
 
-## Project Structure
+## Built-in help
 
-A typical BOB Core project structure:
+A `help` command is registered automatically.
+
+```bash
+my-cli help          # list all commands
+my-cli help greet    # show help for one command
+my-cli greet --help  # equivalent
+```
+
+## Project structure
 
 ```
 my-cli/
 ├── commands/
-│   ├── greet.ts
-│   └── ...
+│   └── greet.ts
 ├── cli.ts
 ├── package.json
 └── tsconfig.json
 ```
 
-## Next Steps
+You can also register classes or instances directly instead of pointing at a directory — see [Creating Commands](./creating-commands.md).
 
-- [Creating Commands](./creating-commands.md) - Learn about both command definition styles
-- [Arguments & Options](./arguments-and-options.md) - Deep dive into command parameters
-- [Interactive Prompts](./interactive-prompts.md) - Build interactive CLIs
-- [Advanced Topics](./advanced.md) - Context, custom resolvers, and more
-
-## TypeScript Configuration
-
-For best results, use these TypeScript settings:
+## TypeScript configuration
 
 ```json
 {
@@ -145,23 +104,19 @@ For best results, use these TypeScript settings:
 }
 ```
 
-## Using with Different Build Tools
-
-### With tsx (Development)
+## Running with build tools
 
 ```bash
-npx tsx cli.ts greet John
+# tsx (development)
+npx tsx cli.ts greet World
+
+# production build
+tsc && node dist/cli.js greet World
 ```
 
-### With ts-node
+## Next steps
 
-```bash
-ts-node cli.ts greet John
-```
-
-### Production Build
-
-```bash
-tsc
-node dist/cli.js greet John
-```
+- [Creating Commands](./creating-commands.md) — full command anatomy
+- [Arguments & Options](./arguments-and-options.md) — `Flags` and `Args` builders
+- [Interactive Prompts](./interactive-prompts.md) — input, select, confirm, loaders
+- [Advanced Topics](./advanced.md) — context, custom resolvers, error handling

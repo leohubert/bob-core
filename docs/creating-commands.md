@@ -1,276 +1,184 @@
 # Creating Commands
 
-BOB Core offers two ways to create commands: the modern schema-based approach (recommended) and the signature-based approach.
-
-## Modern Schema-Based Commands
-
-The modern approach uses explicit schema definitions with full TypeScript type safety.
-
-### Basic Command
+A BOB Core command is a class extending `Command`, with static metadata describing its contract and an async `handle()` method doing the work.
 
 ```typescript
-import { Command } from 'bob-core';
+import { Command, Flags, Args, Parsed } from 'bob-core';
 
-export default new Command('hello', {
-  description: 'Say hello to the world'
-}).handler(() => {
-  console.log('Hello, World!');
-});
-```
+export default class HelloCommand extends Command {
+  static command = 'hello';
+  static description = 'Say hello to the world';
 
-### With Arguments and Options
-
-```typescript
-import { Command } from 'bob-core';
-
-export default new Command('deploy', {
-  description: 'Deploy an application',
-  arguments: {
-    environment: 'string'
-  },
-  options: {
-    force: {
-      type: 'boolean',
-      default: false,
-      description: 'Force deployment'
-    },
-    region: {
-      type: 'string',
-      default: 'us-east-1',
-      description: 'AWS region'
-    }
-  }
-}).handler((ctx, { arguments: args, options }) => {
-  console.log(`Deploying to ${args.environment}`);
-  console.log(`Region: ${options.region}`);
-  console.log(`Force: ${options.force}`);
-});
-```
-
-### Using .options() and .arguments() Builders
-
-You can build schemas progressively:
-
-```typescript
-import { Command } from 'bob-core';
-
-const command = new Command('process')
-  .arguments({
-    filename: 'string'
-  })
-  .options({
-    verbose: { type: 'boolean', default: false }
-  })
-  .handler((ctx, { arguments: args, options }) => {
-    console.log(`Processing ${args.filename}`);
-    if (options.verbose) {
-      console.log('Verbose mode enabled');
-    }
-  });
-
-export default command;
-```
-
-### Pre-Handlers
-
-Execute logic before the main handler:
-
-```typescript
-export default new Command('authenticate')
-  .preHandler(async (ctx) => {
-    // Check authentication
-    if (!ctx.isAuthenticated) {
-      console.error('Not authenticated');
-      return 1; // Return non-zero to stop execution
-    }
-    // Return nothing or 0 to continue
-  })
-  .handler((ctx) => {
-    console.log('Authenticated successfully');
-  });
-```
-
-### Command Groups
-
-Organize commands with groups (using `:` separator):
-
-```typescript
-export default new Command('db:migrate', {
-  description: 'Run database migrations',
-  group: 'Database'
-}).handler(() => {
-  // Migration logic
-});
-```
-
-## Signature-Based Commands
-
-The signature-based approach uses a string signature to define arguments and options.
-
-### Basic Command
-
-```typescript
-import { CommandWithSignature } from 'bob-core';
-
-export default class HelloCommand extends CommandWithSignature {
-  signature = 'hello';
-  description = 'Say hello to the world';
-
-  protected async handle() {
-    console.log('Hello, World!');
+  async handle() {
+    this.logger.info('Hello, World!');
   }
 }
 ```
 
-### Signature Syntax
+> Looking for the old signature-string syntax (`CommandWithSignature`)? See [legacy/README.md](./legacy/README.md). It still works, but new code should use the schema-based form below.
 
-The signature format: `command-name {arg1} {arg2} {--option1} {--option2}`
+## Anatomy
 
-**Arguments:**
-- `{arg}` - Required argument
-- `{arg?}` - Optional argument
-- `{arg=default}` - Argument with default value
-- `{arg*}` - Variadic argument (array)
-- `{arg*?}` - Optional variadic argument
+| Field | Type | Purpose |
+|---|---|---|
+| `static command` | `string` | Command name (use `:` for grouping, e.g. `db:migrate`) |
+| `static description` | `string` | One-line description shown in help |
+| `static args` | `ArgsSchema` | Positional arguments (use `Args` builders) |
+| `static flags` | `FlagsSchema` | Named flags / options (use `Flags` builders) |
+| `static examples` | `CommandRunExample[]` | Examples shown in `--help` |
+| `static group` | `string` | Group label for help output |
+| `static aliases` | `string[]` | Alternate names for the command |
+| `static hidden` | `boolean` | Hide from help listings |
 
-**Options:**
-- `{--option}` - Boolean option (default: false)
-- `{--option=}` - String option (default: null)
-- `{--option=value}` - Option with default value
-- `{--option=*}` - Array option
-- `{--option|o}` - Option with alias
-- `{--option|o|opt}` - Option with multiple aliases
+Inside the class:
 
-### Complete Example
+- `this.logger` — leveled logger (`debug`, `info`, `warn`, `error`)
+- `this.ux` — interactive prompts and display helpers (see [interactive-prompts.md](./interactive-prompts.md))
+- `this.ctx` — typed context injected by `Cli`
+- `this.parser` — the underlying `CommandParser`
+
+## With arguments and flags
 
 ```typescript
-import { CommandWithSignature } from 'bob-core';
+import { Command, Flags, Args, Parsed } from 'bob-core';
 
-export default class DeployCommand extends CommandWithSignature {
-  signature = 'deploy {environment} {--force} {--region=us-east-1}';
-  description = 'Deploy an application';
+export default class DeployCommand extends Command {
+  static command = 'deploy';
+  static description = 'Deploy an application';
 
-  // Optional: Define help text for arguments/options
-  helperDefinitions = {
-    environment: 'The environment to deploy to',
-    '--force': 'Force deployment without confirmation',
-    '--region': 'AWS region for deployment'
+  static args = {
+    environment: Args.string({ required: true, description: 'Target environment' }),
   };
 
-  protected async handle() {
-    const environment = this.argument<string>('environment');
-    const force = this.option<boolean>('force');
-    const region = this.option<string>('region');
+  static flags = {
+    force: Flags.boolean({ description: 'Skip confirmation', alias: 'f' }),
+    region: Flags.string({ default: 'us-east-1', description: 'AWS region' }),
+  };
 
-    console.log(`Deploying to ${environment}`);
-    console.log(`Region: ${region}`);
-    console.log(`Force: ${force}`);
+  async handle(_ctx: any, { flags, args }: Parsed<typeof DeployCommand>) {
+    this.logger.info(`Deploying to ${args.environment} in ${flags.region}`);
+    if (!flags.force) {
+      const ok = await this.ux.askForConfirmation('Continue?');
+      if (!ok) return 1;
+    }
+    // ...
   }
 }
 ```
 
-### Accessing Arguments and Options
+`Parsed<typeof YourCommand>` infers the exact shape of `flags` and `args` from your schemas.
+
+## `preHandle` hook
+
+Run validation or setup before `handle()`. Return a non-zero number to abort.
 
 ```typescript
-// Get argument value
-const name = this.argument<string>('name');
+export default class ProtectedCommand extends Command<AppContext> {
+  static command = 'protected';
+  static description = 'Requires authentication';
 
-// Get argument with fallback
-const name = this.argument<string>('name', 'Anonymous');
+  protected async preHandle() {
+    if (!this.ctx.isAuthenticated) {
+      this.logger.error('Not authenticated');
+      return 1;
+    }
+  }
 
-// Get option value
-const verbose = this.option<boolean>('verbose');
-
-// Get option with fallback
-const port = this.option<number>('port', 3000);
-```
-
-### Helper Methods
-
-CommandWithSignature provides additional helper methods:
-
-```typescript
-protected async handle() {
-  // Confirmation prompt
-  const confirmed = await this.askForConfirmation('Continue?');
-
-  // Text input
-  const name = await this.askForInput('Enter your name:');
-
-  // Select from options
-  const env = await this.askForSelect('Environment:', ['dev', 'prod']);
-
-  // Loader/spinner
-  const loader = this.newLoader('Processing...');
-  // ... do work
-  loader.stop();
-}
-```
-
-## Class-based vs Function-based Commands
-
-### Exporting as Class
-
-```typescript
-export default class MyCommand extends CommandWithSignature {
-  // ...
-}
-```
-
-### Exporting as Instance
-
-```typescript
-export default new Command('my-command')
-  .handler(() => {
+  async handle(ctx: AppContext) {
     // ...
-  });
+  }
+}
 ```
 
-### Registering Directly
+## Command groups
+
+Commands sharing a `static group` are listed together in help output. Use `:` in command names for namespacing.
+
+```typescript
+static command = 'db:migrate';
+static group = 'database';
+```
+
+## Aliases
+
+```typescript
+static command = 'remove';
+static aliases = ['rm', 'delete'];
+```
+
+## Examples
+
+Examples appear under each command's `--help`.
+
+```typescript
+static examples = [
+  { description: 'Run all migrations', command: 'db:migrate' },
+  { description: 'Roll back the last migration', command: 'db:migrate --rollback' },
+];
+```
+
+## Shared flags via `baseFlags`
+
+Override `static baseFlags` in a base class to add flags to every command that extends it. The default `baseFlags` includes `--help`; spread it to keep that behavior.
+
+```typescript
+import { Command, Flags, FlagsSchema } from 'bob-core';
+
+export abstract class BaseCommand extends Command<AppContext> {
+  static override baseFlags: FlagsSchema = {
+    ...Command.baseFlags,
+    verbose: Flags.boolean({ description: 'Verbose output', alias: 'v' }),
+  };
+}
+```
+
+## Static configuration
+
+```typescript
+static disableDefaultOptions = false; // skip baseFlags (e.g. --help) entirely
+static disablePrompting = false;      // never prompt for missing required values
+static allowUnknownFlags = false;     // tolerate unknown flags instead of erroring
+static strictMode = false;            // strict ordering / no-extra-args
+static hidden = false;                // hide from help
+```
+
+## Registering commands
 
 ```typescript
 import { Cli } from 'bob-core';
-import MyCommand from './commands/MyCommand';
+import GreetCommand from './commands/greet.js';
 
-const cli = new Cli();
+const cli = new Cli({ name: 'my-cli', version: '1.0.0' });
 
-// Register a class
-await cli.withCommands(MyCommand);
-
-// Register an instance
-await cli.withCommands(new MyCommand());
-
-// Load from directory
+// From a directory
 await cli.withCommands('./commands');
+
+// As a class
+await cli.withCommands(GreetCommand);
+
+// As an instance
+await cli.withCommands(new GreetCommand());
+
+// Mixed
+await cli.withCommands('./commands', GreetCommand);
 ```
 
-## Command Return Values
+## Return values
 
-Commands can return exit codes:
+`handle()` may return a number to use as the process exit code. Returning nothing (or `0`) is treated as success.
 
 ```typescript
-.handler((ctx, { options }) => {
-  if (options.invalid) {
-    return 1; // Non-zero for errors
-  }
-  // 0 or undefined for success
-});
+async handle(_ctx, { args }) {
+  if (!args.file) return 1;
+  if (!fileExists(args.file)) return 2;
+  return 0;
+}
 ```
 
-## Async Commands
+`async/await` is fully supported throughout `handle()` and `preHandle()`.
 
-All handlers support async/await:
+## Next steps
 
-```typescript
-.handler(async (ctx, { arguments: args }) => {
-  const result = await fetch(`https://api.example.com/${args.id}`);
-  const data = await result.json();
-  console.log(data);
-});
-```
-
-## Next Steps
-
-- [Arguments & Options](./arguments-and-options.md) - Deep dive into parameter handling
-- [Interactive Prompts](./interactive-prompts.md) - Build interactive commands
-- [Advanced Topics](./advanced.md) - Context, error handling, and more
+- [Arguments & Options](./arguments-and-options.md)
+- [Interactive Prompts](./interactive-prompts.md)
+- [Advanced Topics](./advanced.md)
