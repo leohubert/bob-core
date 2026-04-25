@@ -33,7 +33,7 @@ Cli → CommandRegistry → Command.run() → CommandParser → preHandle() → 
 
 Builder functions for type-safe flag/argument definitions. `Args` is an alias for `Flags` (same builders, used for semantic clarity in argument schemas).
 
-Available builders: `Flags.string()`, `Flags.number()`, `Flags.boolean()`, `Flags.options()`, `Flags.file()`, `Flags.directory()`, `Flags.url()`, `Flags.custom()`
+Available builders: `Flags.string()`, `Flags.number()`, `Flags.boolean()`, `Flags.option()`, `Flags.file()`, `Flags.directory()`, `Flags.url()`, `Flags.custom()`
 
 Each accepts: `description`, `alias`, `required`, `default`, `multiple`, `help`, `parse`, `handler`, `ask`
 
