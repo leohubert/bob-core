@@ -50,10 +50,9 @@ export default class NewTestCommand extends Command {
 			alias: 'f',
 		}),
 		custom: Flags.custom<Toto>({
-			multiple: true,
 			description: 'Custom test option',
 			help: 'Custom test help option',
-		})({ required: true }),
+		})(),
 		multiple: Flags.number({
 			multiple: true,
 		}),
