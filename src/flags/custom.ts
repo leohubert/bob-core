@@ -4,7 +4,7 @@ export function custom<T, P extends CustomOptions = CustomOptions>(defaults?: Fl
 	function build(): FlagProps<T> & P & { parse(input: any, opts: ParameterOpts): T };
 	function build<const U extends FlagProps<T> & Partial<P>>(
 		overrides: U & Record<Exclude<keyof U, keyof FlagProps<T> | keyof P>, never>,
-	): FlagProps<T> & P & U & { parse(input: any, opts: ParameterOpts): T };
+	): Omit<FlagProps<T>, 'default'> & P & U & { parse(input: any, opts: ParameterOpts): T };
 	function build(overrides?: any): any {
 		return {
 			type: 'custom',

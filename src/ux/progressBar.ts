@@ -17,6 +17,8 @@ export function newProgressBar(total: number, opts?: ProgressBarOptions) {
 		const percent = Math.round(ratio * 100);
 		const line = `${bar}  ${percent}%  ${current}/${total}`;
 		process.stdout.write('\r' + line);
+
+		if (total <= 0 || current >= total) stop();
 	};
 
 	const stop = () => {

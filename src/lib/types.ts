@@ -47,9 +47,9 @@ type IsGuaranteed<O> = O extends { required: true }
 	: O extends { multiple: true }
 		? true
 		: O extends { default: infer D }
-			? undefined extends DefaultResolvedType<D>
+			? [Exclude<DefaultResolvedType<D>, undefined>] extends [never]
 				? false
-				: null extends DefaultResolvedType<D>
+				: null extends Exclude<DefaultResolvedType<D>, undefined>
 					? false
 					: true
 			: false;

@@ -70,8 +70,24 @@ describe('newProgressBar', () => {
 
 		const output = stdoutSpy.mock.calls[0][0];
 		expect(output).toContain('100%');
+		expect(stdoutSpy).toHaveBeenCalledWith('\n');
 
 		bar.stop();
+	});
+
+	it('should auto-finalize with newline when reaching total', () => {
+		const bar = newProgressBar(3);
+		stdoutSpy.mockClear();
+
+		bar.update(3);
+
+		expect(stdoutSpy).toHaveBeenCalledWith('\n');
+
+		stdoutSpy.mockClear();
+		bar.increment();
+		bar.update(1);
+		bar.stop();
+		expect(stdoutSpy).not.toHaveBeenCalled();
 	});
 
 	it('should be a no-op after stop', () => {
