@@ -4,15 +4,23 @@ import { Command } from '@/src/Command.js';
 import { InvalidFlag } from '@/src/errors/InvalidFlag.js';
 import { MissingRequiredArgumentValue } from '@/src/errors/MissingRequiredArgumentValue.js';
 import { MissingRequiredFlagValue } from '@/src/errors/MissingRequiredFlagValue.js';
+import { ValidationError } from '@/src/errors/ValidationError.js';
 import { BadCommandArgument, BadCommandFlag, TooManyArguments } from '@/src/errors/index.js';
-import { ArgsSchema, ContextDefinition, FlagDefinition, FlagReturnType, FlagsObject, FlagsSchema, ParameterOpts } from '@/src/lib/types.js';
+import { ArgsSchema, ContextDefinition, FlagDefinition, FlagOpts, FlagReturnType, FlagsObject, FlagsSchema } from '@/src/lib/types.js';
 import { UX } from '@/src/ux/index.js';
 
 type ParameterKind = 'flag' | 'arg';
 
 /**
- * Parses command-line arguments into typed flags and arguments
- * Handles validation, type conversion, and default values
+ * Parses command-line arguments into typed flags and arguments.
+ *
+ * Lifecycle:
+ *   1. `init(argv)` — runs minimist, validates unknown flags, type-converts each
+ *      value via its definition's `parse` function, and resolves defaults.
+ *   2. `validate()` — checks for missing required values; if prompting is
+ *      enabled and the definition declares an `ask` function, the user is
+ *      prompted and the response is fed back through `parse`.
+ *   3. `flag(name)` / `argument(name)` — typed accessors for the parsed values.
  */
 export class CommandParser<Flags extends FlagsSchema, Arguments extends ArgsSchema> {
 	protected flags: FlagsSchema;
@@ -33,14 +41,15 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends ArgsSche
 		this.args = opts.args;
 	}
 
-	// === PUBLIC METHODS ===
-
 	/**
-	 * Parses raw command-line arguments into structured flags and arguments
-	 * @param args - Raw command line arguments (typically from process.argv.slice(2))
-	 * @returns Object containing parsed flags and arguments
-	 * @throws {InvalidFlag} If an unknown flag is provided
-	 * @throws {BadCommandFlag} If a value cannot be converted to the expected type
+	 * Parses raw command-line arguments into structured flags and arguments.
+	 *
+	 * @param args - Raw command line arguments (typically from `process.argv.slice(2)`).
+	 * @returns Object containing parsed flags and arguments.
+	 * @throws {InvalidFlag} If an unknown flag is provided and `allowUnknownFlags` is off.
+	 * @throws {BadCommandFlag} If a flag's value cannot be converted by its `parse` function.
+	 * @throws {BadCommandArgument} If an argument's value cannot be converted by its `parse` function.
+	 * @throws {TooManyArguments} If more positional arguments were supplied than declared and strict mode is on.
 	 */
 	async init(args: string[]): Promise<{
 		flags: FlagsObject<Flags>;
@@ -61,8 +70,13 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends ArgsSche
 	}
 
 	/**
-	 * Validates the parsed flags and arguments
-	 * @throws {Error} If validation fails
+	 * Validates that all required flags and arguments have a value. Prompts for
+	 * missing values when prompting is enabled and the definition declares an
+	 * `ask` function; otherwise throws.
+	 *
+	 * @throws {MissingRequiredFlagValue} If a required flag is missing.
+	 * @throws {MissingRequiredArgumentValue} If a required argument is missing.
+	 * @throws {BadCommandFlag} / {BadCommandArgument} If a prompted value fails to parse.
 	 */
 	async validate(): Promise<void> {
 		await this.validateSchema(this.flags, this.parsedFlags, 'flag');
@@ -70,11 +84,11 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends ArgsSche
 	}
 
 	/**
-	 * Retrieves a parsed flag value by name
-	 * @param name - The flag name
-	 * @param defaultValue - Optional default value if flag is not set
-	 * @returns The typed flag value
-	 * @throws {Error} If init() has not been called yet
+	 * Retrieves a parsed flag value by name. The runtime `defaultValue` is only
+	 * used when the parsed value is empty (null/undefined/empty string/empty
+	 * array) — it does not override a real value the user supplied.
+	 *
+	 * @throws {Error} If `init()` has not been called yet.
 	 */
 	flag<FlagName extends keyof Flags>(name: FlagName, defaultValue?: FlagReturnType<Flags[FlagName]>): FlagReturnType<Flags[FlagName]> {
 		if (!this.parsedFlags) {
@@ -100,11 +114,10 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends ArgsSche
 	}
 
 	/**
-	 * Retrieves a parsed argument value by name
-	 * @param name - The argument name
-	 * @param defaultValue - Optional default value if argument is not set
-	 * @returns The typed argument value
-	 * @throws {Error} If init() has not been called yet
+	 * Retrieves a parsed argument value by name. Same `defaultValue` semantics
+	 * as {@link flag}.
+	 *
+	 * @throws {Error} If `init()` has not been called yet.
 	 */
 	argument<ArgName extends keyof Arguments>(name: ArgName, defaultValue?: FlagReturnType<Arguments[ArgName]>): FlagReturnType<Arguments[ArgName]> {
 		if (!this.parsedArgs) {
@@ -129,25 +142,32 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends ArgsSche
 		(this.parsedArgs as any)[name] = value;
 	}
 
-	// === PRIVATE HELPERS ===
-
 	/**
-	 * Checks if a value should be considered "empty" for default value purposes
-	 * @param value - The value to check
-	 * @returns true if the value is null, undefined, or an empty array
+	 * "Empty" for runtime accessor / required-prompt purposes: null, undefined,
+	 * an all-whitespace string, or an empty array. Whitespace strings are
+	 * intentionally included so a user typing `--name=" "` is still treated as
+	 * not having satisfied a required flag (and so accessor defaults still kick
+	 * in for blank values).
+	 *
+	 * Use {@link isMissing} when you only care whether the user *omitted* a
+	 * value — that's the right check for "should I substitute the schema's
+	 * default?"
 	 */
 	private isEmptyValue(value: any): boolean {
-		return value === null || value === undefined || (typeof value == 'string' && value.trim() === '') || (Array.isArray(value) && value.length === 0);
+		return value === null || value === undefined || (typeof value === 'string' && value.trim() === '') || (Array.isArray(value) && value.length === 0);
 	}
 
 	/**
-	 * Validates that all provided flags are recognized
-	 * @throws {InvalidFlag} If an unknown flag is found
+	 * "Missing" for default-substitution purposes: the user did not supply
+	 * anything. An empty/whitespace string is *not* missing — the user typed it
+	 * and the schema's `parse` should be allowed to accept or reject it.
 	 */
+	private isMissing(value: any): boolean {
+		return value === null || value === undefined || (Array.isArray(value) && value.length === 0);
+	}
+
 	private validateUnknownFlags(rawFlags: Record<string, any>): void {
 		const validOptionNames = new Set<string>();
-
-		// Collect all valid flag names and their aliases
 		for (const key in this.flags) {
 			validOptionNames.add(key);
 			const flagDetails = this.flags[key];
@@ -157,7 +177,6 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends ArgsSche
 			}
 		}
 
-		// Check for unknown flags
 		for (const flagName in rawFlags) {
 			if (!validOptionNames.has(flagName)) {
 				throw new InvalidFlag(flagName, this.flags);
@@ -165,9 +184,6 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends ArgsSche
 		}
 	}
 
-	/**
-	 * Processes named flags from minimist output
-	 */
 	private async handleOptions(rawFlags: Record<string, unknown>): Promise<FlagsObject<Flags>> {
 		const parsedOptions: FlagsObject<any> = {};
 
@@ -178,9 +194,6 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends ArgsSche
 		return parsedOptions;
 	}
 
-	/**
-	 * Processes positional arguments from minimist output
-	 */
 	private async handleArguments(rawArgs: string[]): Promise<FlagsObject<Arguments>> {
 		const parsedArgs: FlagsObject<any> = {};
 		const remainingArgs = [...rawArgs];
@@ -190,10 +203,11 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends ArgsSche
 		for (const key in this.args) {
 			const argDefinition: FlagDefinition = this.args[key];
 
-			// Handle variadic arguments (consumes all remaining values)
-			if ('multiple' in argDefinition && argDefinition.multiple) {
+			if (argDefinition.multiple) {
 				parsedArgs[key] = await this.parseValue(remainingArgs, argDefinition, 'arg', { name: key });
-				remainingArgs.length = 0; // Clear remaining args since variadic consumes all
+				// A `multiple` (variadic) argument consumes everything left, so the
+				// strict-mode "extra args" check below sees an empty list.
+				remainingArgs.length = 0;
 				continue;
 			}
 
@@ -207,14 +221,9 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends ArgsSche
 		return parsedArgs;
 	}
 
-	/**
-	 * Resolves a flag value from the parsed flag values object
-	 * Handles alias resolution, defaults, and type conversion
-	 */
 	private async resolveFlagValue(key: string, definition: FlagDefinition, rawFlags: Record<string, any>): Promise<any> {
 		let rawValue: any = undefined;
 
-		// Search through flag name and its aliases
 		const allNames = [key];
 		if (definition.alias) {
 			allNames.push(...(Array.isArray(definition.alias) ? definition.alias : [definition.alias]));
@@ -230,19 +239,16 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends ArgsSche
 		return this.parseValue(rawValue, definition, 'flag', { name: key });
 	}
 
-	/**
-	 * Parses a raw value using the definition's parse function
-	 */
 	private async parseValue(value: any, definition: FlagDefinition, kind: ParameterKind, meta?: { name: string }): Promise<any> {
-		if (this.isEmptyValue(value)) {
+		if (this.isMissing(value)) {
 			if (typeof definition.default === 'function') {
-				return await definition.default();
+				return await (definition.default as () => unknown)();
 			}
 
 			return definition.default;
 		}
 
-		if ('multiple' in definition && definition.multiple) {
+		if (definition.multiple) {
 			if (!Array.isArray(value)) {
 				value = [value];
 			}
@@ -257,17 +263,25 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends ArgsSche
 		return this.safeParse(value, definition, kind, meta);
 	}
 
-	private buildOpts(name: string, definition: FlagDefinition): ParameterOpts {
+	private buildOpts(name: string, definition: FlagDefinition): FlagOpts {
 		return { name, ux: this.ux, ctx: this.opts.ctx, definition, cmd: this.opts.cmd ?? Command };
 	}
 
+	/**
+	 * Wraps a definition's `parse` and converts user-input failures into
+	 * {@link BadCommandFlag}/{@link BadCommandArgument}. Programmer bugs (any
+	 * error that isn't a {@link ValidationError}) propagate unchanged so they
+	 * surface as real stack traces instead of being misreported as "flag value
+	 * is invalid".
+	 */
 	private async safeParse(value: any, definition: FlagDefinition, kind: ParameterKind, meta?: { name: string }): Promise<any> {
 		try {
 			return definition.parse(value, this.buildOpts(meta?.name ?? '', definition));
 		} catch (e) {
 			if (e instanceof BadCommandFlag || e instanceof BadCommandArgument) throw e;
+			if (!(e instanceof ValidationError)) throw e;
 			if (!meta) throw e;
-			const reason = e instanceof Error ? e.message : String(e);
+			const reason = e.message;
 			if (kind === 'flag') {
 				throw new BadCommandFlag({ flag: meta.name, value, reason });
 			}
@@ -275,10 +289,7 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends ArgsSche
 		}
 	}
 
-	/**
-	 * Validates a schema (flags or args) and prompts for missing required values
-	 */
-	private async validateSchema(schema: FlagsSchema | ArgsSchema, parsed: FlagsObject<any> | FlagsObject<any> | null, kind: ParameterKind): Promise<void> {
+	private async validateSchema(schema: FlagsSchema | ArgsSchema, parsed: FlagsObject<any> | null, kind: ParameterKind): Promise<void> {
 		for (const key in schema) {
 			const definition = schema[key];
 			let value = parsed?.[key];
@@ -301,10 +312,7 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends ArgsSche
 		}
 	}
 
-	/**
-	 * Disables prompting for missing argument values
-	 * Useful for non-interactive environments
-	 */
+	/** Disables prompting for missing flag and argument values — useful for non-interactive environments. */
 	disablePrompting() {
 		this.shouldPromptForMissingFlags = false;
 		return this;
@@ -321,7 +329,9 @@ export class CommandParser<Flags extends FlagsSchema, Arguments extends ArgsSche
 	}
 
 	/**
-	 * Prompts the user to provide a missing value via its `ask` method
+	 * Prompts the user for a missing value via the definition's `ask` function.
+	 * Returns `null` if no `ask` is registered or the user cancels — callers
+	 * are responsible for translating that into a `MissingRequired*` error.
 	 */
 	protected async promptFor(name: string, definition: FlagDefinition): Promise<string | number | string[] | boolean | null> {
 		if (!definition.ask) return null;

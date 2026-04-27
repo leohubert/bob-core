@@ -8,7 +8,11 @@ export type AskForToggleOptions = {
 	inactive?: string;
 };
 
-export async function askForToggle(message: string, opts?: AskForToggleOptions): Promise<boolean> {
+/**
+ * Two-state toggle prompt with custom labels. Returns the chosen state, or
+ * `null` if cancelled (Ctrl+C / SIGINT).
+ */
+export async function askForToggle(message: string, opts?: AskForToggleOptions): Promise<boolean | null> {
 	const active = opts?.active ?? 'Yes';
 	const inactive = opts?.inactive ?? 'No';
 
@@ -19,6 +23,6 @@ export async function askForToggle(message: string, opts?: AskForToggleOptions):
 				default: opts?.default ?? false,
 				transformer: (value: boolean) => (value ? active : inactive),
 			}),
-		false,
+		null,
 	);
 }

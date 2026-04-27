@@ -204,12 +204,13 @@ describe('Cli', () => {
 	});
 
 	describe('Command resolver', () => {
-		it('should allow setting custom command resolver', () => {
+		it('should pass through to the registry when a custom resolver is registered', () => {
 			const resolver = vi.fn();
+			const registrySpy = vi.spyOn(cli.commandRegistry, 'withCommandResolver');
 
 			cli.withCommandResolver(resolver);
 
-			expect(resolver).not.toHaveBeenCalled();
+			expect(registrySpy).toHaveBeenCalledWith(resolver);
 		});
 	});
 

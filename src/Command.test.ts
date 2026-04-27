@@ -170,6 +170,113 @@ describe('Command', () => {
 			expect(result).toBe(handlerResult);
 		});
 
+		it('should run a custom flag handler and continue when shouldStop is false', async () => {
+			const handlerSpy = vi.fn();
+			const customFlag = Flags.boolean({
+				handler: (value, _opts) => {
+					handlerSpy(value);
+					return { shouldStop: false };
+				},
+			});
+
+			class TestCmd extends Command {
+				static command = 'test';
+				static flags = { trace: customFlag } satisfies FlagsSchema;
+				async handle() {
+					return 7;
+				}
+			}
+
+			const result = await new TestCmd().run({ ...commandRunOption, args: ['--trace'] });
+			expect(handlerSpy).toHaveBeenCalledWith(true);
+			// shouldStop: false → command proceeds, returning the handler's value.
+			expect(result).toBe(7);
+		});
+
+		it('should short-circuit (return 0) when a flag handler returns shouldStop: true', async () => {
+			const stopFlag = Flags.boolean({
+				handler: () => ({ shouldStop: true }),
+			});
+			const handleFn = vi.fn().mockResolvedValue(42);
+
+			class TestCmd extends Command {
+				static command = 'test';
+				static flags = { abort: stopFlag } satisfies FlagsSchema;
+				async handle() {
+					return handleFn();
+				}
+			}
+
+			const result = await new TestCmd().run({ ...commandRunOption, args: ['--abort'] });
+			expect(handleFn).not.toHaveBeenCalled();
+			expect(result).toBe(0);
+		});
+
+		it('should propagate exceptions thrown from a flag handler', async () => {
+			const explodingFlag = Flags.boolean({
+				handler: () => {
+					throw new Error('handler exploded');
+				},
+			});
+
+			class TestCmd extends Command {
+				static command = 'test';
+				static flags = { kaboom: explodingFlag } satisfies FlagsSchema;
+				async handle() {
+					return 0;
+				}
+			}
+
+			await expect(new TestCmd().run({ ...commandRunOption, args: ['--kaboom'] })).rejects.toThrow('handler exploded');
+		});
+
+		it('should bypass parsing/validation when given pre-parsed flags and args', async () => {
+			let invokedWith: any = null;
+			class TestCmd extends Command {
+				static command = 'test';
+				static flags = { name: Flags.string({ required: true }) } satisfies FlagsSchema;
+				async handle(_ctx: any, parsed: any) {
+					invokedWith = parsed;
+					return 0;
+				}
+			}
+
+			// Note: 'name' is required but we don't set it in pre-parsed input — and
+			// validation is skipped, so this still succeeds.
+			const result = await new TestCmd().run({
+				ctx: commandRunOption.ctx,
+				logger: commandRunOption.logger,
+				flags: {},
+				args: {},
+			});
+
+			expect(result).toBe(0);
+			expect(invokedWith).toEqual({ flags: {}, args: {} });
+		});
+
+		it('should call preHandle even when given pre-parsed input', async () => {
+			const calls: string[] = [];
+			class TestCmd extends Command {
+				static command = 'test';
+				async preHandle() {
+					calls.push('pre');
+				}
+				async handle() {
+					calls.push('handle');
+					return 0;
+				}
+			}
+
+			await new TestCmd().run({
+				ctx: commandRunOption.ctx,
+				logger: commandRunOption.logger,
+				flags: {},
+				args: {},
+			});
+
+			expect(calls).toEqual(['pre', 'handle']);
+		});
+
 		it('should include help option by default', async () => {
 			class TestCmd extends Command {
 				static command = 'test';
@@ -186,7 +293,7 @@ describe('Command', () => {
 			});
 
 			expect(handlerFn).not.toHaveBeenCalled();
-			expect(result).toBe(-1);
+			expect(result).toBe(0);
 		});
 	});
 

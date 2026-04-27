@@ -1,11 +1,11 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
-import { newFlagOpts } from '@/src/fixtures.test.js';
+import { flagOptsMock } from '@/src/fixtures.test.js';
 import { Flags } from '@/src/flags/index.js';
-import type { FlagDefinition, FlagReturnType, ParameterOpts } from '@/src/lib/types.js';
+import type { FlagDefinition, FlagOpts, FlagReturnType } from '@/src/lib/types.js';
 
 describe('Flags.boolean()', () => {
-	let flagOpts: ParameterOpts;
+	let flagOpts: FlagOpts;
 
 	it('should create a boolean flag definition', () => {
 		const flag = Flags.boolean();
@@ -25,14 +25,14 @@ describe('Flags.boolean()', () => {
 
 	it('should parse boolean values', () => {
 		const flag = Flags.boolean();
-		flagOpts = newFlagOpts(flag);
+		flagOpts = flagOptsMock(flag);
 		expect(flag.parse(true, flagOpts)).toBe(true);
 		expect(flag.parse(false, flagOpts)).toBe(false);
 	});
 
 	it('should parse string values', () => {
 		const flag = Flags.boolean();
-		flagOpts = newFlagOpts(flag);
+		flagOpts = flagOptsMock(flag);
 		expect(flag.parse('true', flagOpts)).toBe(true);
 		expect(flag.parse('false', flagOpts)).toBe(false);
 		expect(flag.parse('1', flagOpts)).toBe(true);

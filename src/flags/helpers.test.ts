@@ -40,7 +40,9 @@ describe('helpers', () => {
 
 	describe('nested array prevention', () => {
 		it('should not double-wrap arrays with custom multiple flag', () => {
-			const _flag = Flags.custom<string[]>()({ multiple: true });
+			const _flag = Flags.custom<string[]>({
+				parse: input => input,
+			})({ multiple: true });
 			type Result = FlagType<typeof _flag>;
 			expectTypeOf<Result>().toEqualTypeOf<string[]>();
 		});

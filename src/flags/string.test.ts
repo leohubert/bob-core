@@ -1,11 +1,11 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
-import { newFlagOpts } from '@/src/fixtures.test.js';
+import { flagOptsMock } from '@/src/fixtures.test.js';
 import { Flags } from '@/src/flags/index.js';
-import type { FlagDefinition, FlagReturnType, FlagType, ParameterOpts } from '@/src/lib/types.js';
+import type { FlagDefinition, FlagOpts, FlagReturnType, FlagType } from '@/src/lib/types.js';
 
 describe('Flags.string()', () => {
-	let flagOpts: ParameterOpts;
+	let flagOpts: FlagOpts;
 
 	it('should create a string flag definition', () => {
 		const flag = Flags.string();
@@ -35,13 +35,13 @@ describe('Flags.string()', () => {
 
 	it('should parse string values', () => {
 		const flag = Flags.string();
-		flagOpts = newFlagOpts(flag);
+		flagOpts = flagOptsMock(flag);
 		expect(flag.parse('hello', flagOpts)).toBe('hello');
 	});
 
 	it('should throw on boolean input', () => {
 		const flag = Flags.string();
-		flagOpts = newFlagOpts(flag);
+		flagOpts = flagOptsMock(flag);
 		expect(() => flag.parse(true as any, flagOpts)).toThrow('Expected a string, got boolean');
 	});
 

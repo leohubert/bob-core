@@ -1,11 +1,11 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
-import { newFlagOpts } from '@/src/fixtures.test.js';
+import { flagOptsMock } from '@/src/fixtures.test.js';
 import { Flags } from '@/src/flags/index.js';
-import type { FlagDefinition, FlagReturnType, FlagType, ParameterOpts } from '@/src/lib/types.js';
+import type { FlagDefinition, FlagOpts, FlagReturnType, FlagType } from '@/src/lib/types.js';
 
 describe('Flags.url()', () => {
-	let flagOpts: ParameterOpts;
+	let flagOpts: FlagOpts;
 
 	it('should create a url flag definition', () => {
 		const flag = Flags.url();
@@ -26,7 +26,7 @@ describe('Flags.url()', () => {
 
 	it('should parse valid URLs', () => {
 		const flag = Flags.url();
-		flagOpts = newFlagOpts(flag);
+		flagOpts = flagOptsMock(flag);
 		const result = flag.parse('https://example.com', flagOpts);
 		expect(result).toBeInstanceOf(URL);
 		expect(result.href).toBe('https://example.com/');
@@ -34,7 +34,7 @@ describe('Flags.url()', () => {
 
 	it('should throw on invalid URLs', () => {
 		const flag = Flags.url();
-		flagOpts = newFlagOpts(flag);
+		flagOpts = flagOptsMock(flag);
 		expect(() => flag.parse('not-a-url', flagOpts)).toThrow();
 	});
 

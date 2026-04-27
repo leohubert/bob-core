@@ -236,14 +236,103 @@ describe('CommandRegistry', () => {
 		it('should throw error when command not found and no suggestions', async () => {
 			await expect(registry.runCommand({}, 'nonexistent')).rejects.toThrow();
 		});
+
+		it('should auto-suggest a single close match and run it on confirmation', async () => {
+			const handler = vi.fn().mockResolvedValue(0);
+			registry.registerCommand(makeCommand('deploy', handler));
+
+			(registry as any).ux = { askForConfirmation: vi.fn().mockResolvedValue(true) };
+
+			const result = await registry.runCommand({}, 'deplog');
+			expect(handler).toHaveBeenCalled();
+			expect(result).toBe(0);
+		});
+
+		it('should throw CommandNotFoundError when user declines a single-match suggestion', async () => {
+			registry.registerCommand(makeCommand('deploy'));
+			(registry as any).ux = { askForConfirmation: vi.fn().mockResolvedValue(false) };
+
+			await expect(registry.runCommand({}, 'deplog')).rejects.toThrow('not found');
+		});
+
+		it('should throw CommandNotFoundError when user cancels a single-match suggestion', async () => {
+			registry.registerCommand(makeCommand('deploy'));
+			(registry as any).ux = { askForConfirmation: vi.fn().mockResolvedValue(null) };
+
+			await expect(registry.runCommand({}, 'deplog')).rejects.toThrow('not found');
+			expect(mockLogger.debug).toHaveBeenCalledWith(expect.stringContaining('cancelled'));
+		});
+
+		it('should offer a select prompt when there are multiple equally-strong matches', async () => {
+			const handler = vi.fn().mockResolvedValue(0);
+			registry.registerCommand(makeCommand('list-users', handler));
+			registry.registerCommand(makeCommand('list-posts'));
+
+			const askForSelect = vi.fn().mockResolvedValue('list-users');
+			(registry as any).ux = { askForSelect, askForConfirmation: vi.fn().mockResolvedValue(false) };
+
+			const result = await registry.runCommand({}, 'list');
+			expect(askForSelect).toHaveBeenCalled();
+			expect(handler).toHaveBeenCalled();
+			expect(result).toBe(0);
+		});
+
+		it('should throw and log when select prompt is cancelled with multiple matches', async () => {
+			registry.registerCommand(makeCommand('list-users'));
+			registry.registerCommand(makeCommand('list-posts'));
+
+			(registry as any).ux = {
+				askForSelect: vi.fn().mockResolvedValue(null),
+				askForConfirmation: vi.fn().mockResolvedValue(null),
+			};
+
+			await expect(registry.runCommand({}, 'list')).rejects.toThrow('not found');
+			expect(mockLogger.debug).toHaveBeenCalledWith(expect.stringContaining('cancelled'));
+		});
+
+		it('should throw without prompting when no command is similar enough', async () => {
+			registry.registerCommand(makeCommand('deploy'));
+			const askForSelect = vi.fn();
+			const askForConfirmation = vi.fn();
+			(registry as any).ux = { askForSelect, askForConfirmation };
+
+			await expect(registry.runCommand({}, 'totally-unrelated-name')).rejects.toThrow('not found');
+			expect(askForSelect).not.toHaveBeenCalled();
+			expect(askForConfirmation).not.toHaveBeenCalled();
+		});
+
+		it('should not suggest a command for unrelated short typos (regression: test vs update)', async () => {
+			registry.registerCommand(makeCommand('update'));
+			const askForSelect = vi.fn();
+			const askForConfirmation = vi.fn();
+			(registry as any).ux = { askForSelect, askForConfirmation };
+
+			await expect(registry.runCommand({}, 'test')).rejects.toThrow('not found');
+			expect(askForSelect).not.toHaveBeenCalled();
+			expect(askForConfirmation).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('Custom command resolver', () => {
-		it('should use custom resolver for loading commands', () => {
+		it('should invoke a registered custom resolver when loading commands from a path', async () => {
+			const tmpFile = '/tmp/bob-fake-command.ts';
 			const customResolver = vi.fn().mockResolvedValue(makeCommand('custom'));
 			registry.withCommandResolver(customResolver);
+			// Override the file lister to yield exactly one synthetic file path.
+			(registry as any).listCommandsFiles = async function* () {
+				yield tmpFile;
+			};
 
-			expect(customResolver).not.toHaveBeenCalled();
+			await registry.loadCommandsPath('/anything');
+
+			expect(customResolver).toHaveBeenCalledExactlyOnceWith(tmpFile);
+			expect(registry.getAvailableCommands()).toContain('custom');
+		});
+
+		it('should wrap readdir errors with the offending path', async () => {
+			await expect(registry.loadCommandsPath('/this/path/does/not/exist')).rejects.toThrow(
+				/Failed to read commands directory "\/this\/path\/does\/not\/exist"/,
+			);
 		});
 	});
 });

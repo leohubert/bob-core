@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 
-import { Logger } from '@/src/Logger.js';
+import type { LoggerContract } from '@/src/contracts/index.js';
 
 export type ErrorDetail = [label: string, value: string];
 
@@ -21,7 +21,7 @@ function visibleWidth(s: string): number {
 	return s.replace(ANSI_RE, '').length;
 }
 
-export function renderError(logger: Logger, opts: RenderErrorOptions): void {
+export function renderError(logger: LoggerContract, opts: RenderErrorOptions): void {
 	const { title, details, hint } = opts;
 	const hasGutter = (details && details.length > 0) || hint != undefined;
 

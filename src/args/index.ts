@@ -6,6 +6,12 @@ import { optionFlag } from '@/src/flags/option.js';
 import { stringFlag } from '@/src/flags/string.js';
 import { urlFlag } from '@/src/flags/url.js';
 
+/**
+ * Builders for positional arguments (`static args = { ... }`).
+ *
+ * Same surface as {@link Flags} minus `boolean` — booleans don't make sense as
+ * positional inputs and the `ArgsSchema` type rejects them at compile time.
+ */
 export const Args = {
 	string: stringFlag,
 	number: numberFlag,

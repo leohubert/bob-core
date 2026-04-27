@@ -1,8 +1,20 @@
 import chalk from 'chalk';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 import { Command } from '@/src/Command.js';
 import { CommandRegistry } from '@/src/CommandRegistry.js';
 import { generateSpace } from '@/src/lib/string.js';
+
+function readCoreVersion(): string {
+	try {
+		const url = new URL('../../package.json', import.meta.url);
+		const json = readFileSync(fileURLToPath(url), 'utf8');
+		return JSON.parse(json).version ?? '0.0.0';
+	} catch {
+		return '0.0.0';
+	}
+}
 
 export type HelpCommandOptions = {
 	commandRegistry: CommandRegistry;
@@ -24,7 +36,7 @@ export default class HelpCommand extends Command {
 		const cliName = this.opts.cliName ?? 'Bob CLI';
 		const version = this.opts.cliVersion ?? '0.0.0';
 
-		const coreVersion = (await import('../../package.json'))?.default?.version ?? '0.0.0';
+		const coreVersion = readCoreVersion();
 
 		this.logger.log(`${cliName} ${chalk.green(version)} (core: ${chalk.yellow(coreVersion)})
 

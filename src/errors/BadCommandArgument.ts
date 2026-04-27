@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 
-import { Logger } from '@/src/Logger.js';
+import type { LoggerContract } from '@/src/contracts/index.js';
 import { BobError } from '@/src/errors/BobError.js';
 import { ErrorDetail, quote, renderError } from '@/src/errors/renderError.js';
 import { FlagDefinition } from '@/src/lib/types.js';
@@ -11,7 +11,10 @@ export type ArgumentProps = {
 	reason?: string;
 };
 
+/** Thrown when a positional argument's value cannot be converted by its `parse` function. */
 export class BadCommandArgument extends BobError {
+	readonly $type = 'BadCommandArgument' as const;
+
 	constructor(
 		public readonly detail: ArgumentProps,
 		public readonly argDefinition?: FlagDefinition,
@@ -25,7 +28,7 @@ export class BadCommandArgument extends BobError {
 		super(message);
 	}
 
-	pretty(logger: Logger): void {
+	pretty(logger: LoggerContract): void {
 		const details: ErrorDetail[] = [];
 		if (this.detail.value != undefined) details.push([chalk.dim('value'), chalk.yellow(`"${this.detail.value}"`)]);
 		if (this.detail.reason != undefined) details.push([chalk.dim('reason'), this.detail.reason]);

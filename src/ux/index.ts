@@ -17,85 +17,112 @@ import { newProgressBar } from '@/src/ux/progressBar.js';
 import { table } from '@/src/ux/table.js';
 import type { KeyValueOptions, ProgressBarOptions, SelectOption, TableColumn } from '@/src/ux/types.js';
 
+/**
+ * Interactive prompts and structured-output helpers exposed to commands as
+ * `this.ux`.
+ *
+ * **Cancellation contract:** every `askFor*` method returns `Promise<T | null>`,
+ * where `null` means the user cancelled the prompt (Ctrl+C / SIGINT). Callers
+ * should treat `null` as "user wants out" and react accordingly — there is no
+ * separate "cancelled" exception to catch.
+ */
 export class UX {
-	askForConfirmation(message?: string, opts?: AskForConfirmationOptions): Promise<boolean> {
+	/** Yes/no confirmation. Returns `null` on cancel. */
+	askForConfirmation(message?: string, opts?: AskForConfirmationOptions): Promise<boolean | null> {
 		return askForConfirmation(message, opts);
 	}
 
+	/** Free-text input. Returns `null` on cancel. */
 	askForInput(message: string, opts?: AskForInputOptions): Promise<string | null> {
 		return askForInput(message, opts);
 	}
 
+	/** Masked password input. Returns `null` on cancel. */
 	askForPassword(message: string, opts?: AskForPasswordOptions): Promise<string | null> {
 		return askForPassword(message, opts);
 	}
 
+	/** Numeric input with optional validator. Returns `null` on cancel. */
 	askForNumber(message: string, opts?: AskForNumberOptions): Promise<number | null> {
 		return askForNumber(message, opts);
 	}
 
+	/** Single-choice list. Returns `null` on cancel. */
 	askForSelect<V = string>(message: string, choices: Array<string | SelectOption<V>>, opts?: AskForSelectOptions<V>): Promise<V | null> {
 		return askForSelect(message, choices, opts);
 	}
 
+	/** Multi-choice checkbox list. Returns `null` on cancel. */
 	askForCheckbox<V = string>(message: string, choices: Array<string | SelectOption<V>>, opts?: AskForCheckboxOptions<V>): Promise<V[] | null> {
 		return askForCheckbox(message, choices, opts);
 	}
 
+	/** Type-ahead search backed by a custom source. Returns `null` on cancel. */
 	askForSearch<V = string>(message: string, source: SearchSource<V>, opts?: AskForSearchOptions<V>): Promise<V | null> {
 		return askForSearch(message, source, opts);
 	}
 
+	/** Comma-separated list input. Returns `null` on cancel. */
 	askForList(message: string, opts?: AskForListOptions): Promise<string[] | null> {
 		return askForList(message, opts);
 	}
 
-	askForToggle(message: string, opts?: AskForToggleOptions): Promise<boolean> {
+	/** Two-state toggle with custom labels. Returns `null` on cancel. */
+	askForToggle(message: string, opts?: AskForToggleOptions): Promise<boolean | null> {
 		return askForToggle(message, opts);
 	}
 
+	/** Opens the user's editor (`$EDITOR`). Returns `null` on cancel. */
 	askForEditor(message: string, opts?: AskForEditorOptions): Promise<string | null> {
 		return askForEditor(message, opts);
 	}
 
+	/** Numbered list with manual entry. Returns `null` on cancel. */
 	askForRawList<V = string>(message: string, choices: Array<{ key?: string; name?: string; value: V }>, opts?: AskForRawListOptions): Promise<V | null> {
 		return askForRawList(message, choices, opts);
 	}
 
+	/** Single-key expand prompt (Yes/No/Help-style). Returns `null` on cancel. */
 	askForExpand<V = string>(message: string, choices: Array<{ key: ExpandKey; name: string; value: V }>, opts?: AskForExpandOptions): Promise<V | null> {
 		return askForExpand(message, choices, opts);
 	}
 
+	/** Filesystem file picker. Returns `null` on cancel. */
 	askForFile(message: string, opts?: Omit<AskForFileSelectorOptions, 'type'>): Promise<string | null> {
 		return askForFileSelector(message, { ...opts, type: 'file' });
 	}
 
+	/** Filesystem directory picker. Returns `null` on cancel. */
 	askForDirectory(message: string, opts?: Omit<AskForFileSelectorOptions, 'type'>): Promise<string | null> {
 		return askForFileSelector(message, { ...opts, type: 'directory' });
 	}
 
+	/** Generic file/directory picker. Returns `null` on cancel. */
 	askForFileSelector(message: string, opts?: AskForFileSelectorOptions): Promise<string | null> {
 		return askForFileSelector(message, opts);
 	}
 
+	/** Renders a key/value list to the terminal. */
 	keyValue(pairs: Record<string, unknown> | Array<[string, unknown]>, opts?: KeyValueOptions): void {
 		return keyValue(pairs, opts);
 	}
 
+	/** Renders rows as an aligned table with optional column metadata. */
 	table<T extends Record<string, unknown>>(data: T[], columns?: TableColumn<T>[]): void {
 		return table(data, columns);
 	}
 
+	/** Builds a progress bar bound to a known total. */
 	newProgressBar(total: number, opts?: ProgressBarOptions) {
 		return newProgressBar(total, opts);
 	}
 
+	/** Builds a spinner-style loader. */
 	newLoader(text?: string, chars?: string[], delay?: number) {
 		return newLoader(text, chars, delay);
 	}
 }
 
-// Re-export standalone functions and types
 export { askForCheckbox } from '@/src/ux/askForCheckbox.js';
 export { askForConfirmation } from '@/src/ux/askForConfirmation.js';
 export { askForEditor } from '@/src/ux/askForEditor.js';

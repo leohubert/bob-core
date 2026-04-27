@@ -4,7 +4,7 @@ import { ValidationError } from '@/src/errors/ValidationError.js';
 
 export function parseString(value: string | boolean): string {
 	if (typeof value === 'boolean') {
-		throw new Error(`Expected a string, got boolean "${value}"`);
+		throw new ValidationError(`Expected a string, got boolean "${value}"`);
 	}
 	return String(value);
 }
@@ -41,8 +41,15 @@ export function parseOption<T extends readonly string[]>(value: string, options:
 
 export function parseFile(input: string, constraints?: { exists?: boolean }): string {
 	const path = String(input);
-	if (constraints?.exists && !fs.existsSync(path)) {
-		throw new ValidationError('file does not exist');
+	if (constraints?.exists) {
+		try {
+			fs.accessSync(path, fs.constants.F_OK);
+		} catch (e) {
+			const code = (e as NodeJS.ErrnoException).code;
+			if (code === 'ENOENT') throw new ValidationError('file does not exist');
+			if (code === 'EACCES') throw new ValidationError('file is not accessible (permission denied)');
+			throw new ValidationError(`file is not accessible (${code ?? (e as Error).message})`);
+		}
 	}
 	return path;
 }
@@ -50,13 +57,18 @@ export function parseFile(input: string, constraints?: { exists?: boolean }): st
 export function parseDirectory(input: string, constraints?: { exists?: boolean }): string {
 	const path = String(input);
 	if (constraints?.exists) {
+		let stat: fs.Stats;
 		try {
-			if (!fs.lstatSync(path).isDirectory()) {
-				throw new ValidationError('directory does not exist');
-			}
+			stat = fs.lstatSync(path);
 		} catch (e) {
-			if (e instanceof ValidationError) throw e;
-			throw new ValidationError('directory does not exist');
+			const code = (e as NodeJS.ErrnoException).code;
+			if (code === 'ENOENT') throw new ValidationError('directory does not exist');
+			if (code === 'EACCES') throw new ValidationError('directory is not accessible (permission denied)');
+			if (code === 'ELOOP') throw new ValidationError('symlink loop detected');
+			throw new ValidationError(`directory is not accessible (${code ?? (e as Error).message})`);
+		}
+		if (!stat.isDirectory()) {
+			throw new ValidationError('path is not a directory');
 		}
 	}
 	return path;
@@ -65,7 +77,8 @@ export function parseDirectory(input: string, constraints?: { exists?: boolean }
 export function parseUrl(input: string): URL {
 	try {
 		return new URL(String(input));
-	} catch {
-		throw new ValidationError(`Invalid URL: "${input}"`);
+	} catch (e) {
+		const reason = e instanceof Error ? e.message : String(e);
+		throw new ValidationError(`Invalid URL "${input}": ${reason}`);
 	}
 }

@@ -1,11 +1,11 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
-import { newFlagOpts } from '@/src/fixtures.test.js';
+import { flagOptsMock } from '@/src/fixtures.test.js';
 import { Flags } from '@/src/flags/index.js';
-import type { FlagDefinition, FlagReturnType, FlagType, ParameterOpts } from '@/src/lib/types.js';
+import type { FlagDefinition, FlagOpts, FlagReturnType, FlagType } from '@/src/lib/types.js';
 
 describe('Flags.directory()', () => {
-	let flagOpts: ParameterOpts;
+	let flagOpts: FlagOpts;
 
 	it('should create a directory flag definition', () => {
 		const flag = Flags.directory();
@@ -31,7 +31,7 @@ describe('Flags.directory()', () => {
 
 	it('should reject non-existent directory in parse', () => {
 		const flag = Flags.directory({ exists: true });
-		flagOpts = newFlagOpts(flag);
+		flagOpts = flagOptsMock(flag);
 		expect(() => flag.parse('/nonexistent/dir', flagOpts)).toThrow('directory does not exist');
 	});
 

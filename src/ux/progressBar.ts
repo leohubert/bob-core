@@ -27,7 +27,6 @@ export function newProgressBar(total: number, opts?: ProgressBarOptions) {
 		process.stdout.write('\n');
 	};
 
-	// Render initial state
 	render();
 
 	return {

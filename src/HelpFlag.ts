@@ -1,20 +1,21 @@
 import chalk from 'chalk';
 
-import { normalizeAliases } from '@/src/flags/helpers.js';
+import { formatAlias, normalizeAliases } from '@/src/flags/helpers.js';
 import { Flags } from '@/src/flags/index.js';
 import { generateSpace } from '@/src/lib/string.js';
-import { FlagDefinition, ParameterOpts } from '@/src/lib/types.js';
+import { FlagDefinition, FlagOpts } from '@/src/lib/types.js';
+import { isOptionFlag } from '@/src/shared/flagsUtils.js';
 
 function getTypeDisplay(details: FlagDefinition): string {
 	const type = details.type;
-	if (type === 'option' && 'options' in details && (details as any).options) return `enum: ${(details as any).options.join('|')}`;
+	if (isOptionFlag(details)) return `enum: ${details.options.join('|')}`;
 	return type ?? 'custom';
 }
 
 export const HelpCommandFlag = Flags.boolean({
 	alias: ['h'],
 	description: 'Displays help information about the command',
-	handler: (value: boolean, opts: ParameterOpts) => {
+	handler: (value: boolean, opts: FlagOpts) => {
 		if (!value) {
 			return { shouldStop: false };
 		}
@@ -31,7 +32,7 @@ export const HelpCommandFlag = Flags.boolean({
 			return {
 				name,
 				...definition,
-				flagWithAlias: `--${name}${aliases.map(a => `, -${a}`).join('')}`,
+				flagWithAlias: `--${name}${aliases.map(a => `, ${formatAlias(a)}`).join('')}`,
 			};
 		});
 
@@ -67,8 +68,8 @@ export const HelpCommandFlag = Flags.boolean({
 					message += ` ${chalk.yellow(`[default: ${defaultValue}]`)}`;
 				}
 
-				if ('multiple' in definition && definition.multiple) {
-					message += ` ${chalk.white('(variadic)')}`;
+				if (definition.multiple) {
+					message += ` ${chalk.white('(multiple)')}`;
 				}
 
 				console.log(message);

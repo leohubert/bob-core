@@ -297,6 +297,31 @@ describe('CommandParser', () => {
 			expect(result.args.args).toEqual(['arg1', 'arg2', 'arg3']);
 		});
 
+		it('should use a custom default for variadic when no values provided', async () => {
+			const parser = new CommandParser({
+				ux,
+				flags: {},
+				args: {
+					files: Args.string({ multiple: true, default: ['fallback.txt'] as any }),
+				},
+			});
+
+			const result = await parser.init([]);
+			expect(result.args.files).toEqual(['fallback.txt']);
+		});
+
+		it('should surface per-item parse errors as BadCommandArgument for variadic', async () => {
+			const parser = new CommandParser({
+				ux,
+				flags: {},
+				args: {
+					ports: Args.number({ multiple: true, min: 1024 }),
+				},
+			});
+
+			await expect(parser.init(['8080', '20'])).rejects.toThrow();
+		});
+
 		it('should default variadic to empty array when no values', async () => {
 			const parser = new CommandParser({
 				ux,
@@ -317,19 +342,13 @@ describe('CommandParser', () => {
 			const parser = new CommandParser({
 				ux,
 				flags: {
-					name: Flags.string({ required: false }),
+					name: Flags.string({ required: true }),
 				},
 				args: {},
 			}).disablePrompting();
 
-			// Set up parser state manually to test validate() method
 			await parser.init([]);
 
-			// Manually override to make it required for validate test
-
-			(parser as any).flags.name.required = true;
-
-			// validate() should check for required values
 			await expect(parser.validate()).rejects.toThrow(MissingRequiredFlagValue);
 		});
 
@@ -538,7 +557,7 @@ describe('CommandParser', () => {
 	});
 
 	describe('Edge cases', () => {
-		it('should handle empty string values', async () => {
+		it('should pass empty string values through parse instead of substituting the default', async () => {
 			const parser = new CommandParser({
 				ux,
 				flags: { message: Flags.string() },
@@ -547,7 +566,9 @@ describe('CommandParser', () => {
 
 			const result = await parser.init(['--message', '']);
 
-			expect(result.flags.message).toBeNull();
+			// User explicitly passed `--message ''` — honor it instead of silently
+			// falling back to the default.
+			expect(result.flags.message).toBe('');
 		});
 
 		it('should handle negative numbers with double dash', async () => {
@@ -938,7 +959,7 @@ describe('CommandParser', () => {
 			expect(result.flags.since).toBeInstanceOf(Date);
 		});
 
-		it('should handle custom parse errors', async () => {
+		it('should propagate non-ValidationError parse errors unchanged (treated as programmer bugs)', async () => {
 			const parser = new CommandParser({
 				ux,
 				flags: {
@@ -951,7 +972,10 @@ describe('CommandParser', () => {
 				args: {},
 			});
 
-			await expect(parser.init(['--value', 'test'])).rejects.toThrow(BadCommandFlag);
+			// A plain `Error` is treated as a bug in the user-supplied parser, not
+			// as a user-input failure — it should surface as itself, not as BadCommandFlag.
+			await expect(parser.init(['--value', 'test'])).rejects.toThrow('Bad input');
+			await expect(parser.init(['--value', 'test'])).rejects.not.toBeInstanceOf(BadCommandFlag);
 		});
 
 		it('should parse option arguments', async () => {

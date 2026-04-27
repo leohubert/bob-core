@@ -6,6 +6,8 @@ import { BobError } from '@/src/errors/BobError.js';
 import { newTestLogger } from '@/src/fixtures.test.js';
 
 class TestBobError extends BobError {
+	readonly $type = 'TestBobError' as const;
+
 	constructor(message: string) {
 		super(message);
 	}

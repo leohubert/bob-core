@@ -1,17 +1,23 @@
-import type { CustomOptions, FlagProps, ParameterOpts } from '@/src/lib/types.js';
+import { CustomOptions, FlagDefinition, InitFlagDefinition } from '@/src/lib/types.js';
 
-export function custom<T, P extends CustomOptions = CustomOptions>(defaults?: FlagProps<T> & Partial<P>) {
-	function build(): FlagProps<T> & P & { parse(input: any, opts: ParameterOpts): T };
-	function build<const U extends FlagProps<T> & Partial<P>>(
-		overrides: U & Record<Exclude<keyof U, keyof FlagProps<T> | keyof P>, never>,
-	): Omit<FlagProps<T>, 'default'> & P & U & { parse(input: any, opts: ParameterOpts): T };
-	function build(overrides?: any): any {
+/**
+ * Escape hatch for declaring arbitrary parameter types. Returns a builder
+ * function — call it with overrides to produce a `FlagDefinition`.
+ *
+ * `parse` is required when there's no built-in for the target type. `multiple`
+ * defaults the value to `[]`; non-multiple flags default to `null`.
+ *
+ * The `type` literal supplied in `defaults` is preserved in the returned shape
+ * so downstream consumers can rely on it (e.g. for help rendering).
+ */
+export function custom<T, C extends CustomOptions = CustomOptions, const D extends InitFlagDefinition<T, C> = InitFlagDefinition<T, C>>(defaults: D = {} as D) {
+	return function <const O extends Partial<FlagDefinition<T, C>>>(overrides?: O): FlagDefinition<T, C> & D & O {
 		return {
 			type: 'custom',
-			default: defaults?.multiple || overrides?.multiple ? [] : null,
+			default: defaults.multiple || overrides?.multiple ? [] : null,
+			parse: input => input,
 			...defaults,
 			...overrides,
-		};
-	}
-	return build;
+		} as FlagDefinition<T, C> & D & O;
+	};
 }

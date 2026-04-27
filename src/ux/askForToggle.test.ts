@@ -32,11 +32,11 @@ describe('askForToggle', () => {
 		expect(call.transformer!(false)).toBe('Off');
 	});
 
-	it('should return false on cancel', async () => {
+	it('should return null on cancel (matches the cancel contract used by the rest of UX)', async () => {
 		vi.mocked(confirm).mockRejectedValue(new ExitPromptError('cancelled'));
 
 		const result = await askForToggle('Enable?');
 
-		expect(result).toBe(false);
+		expect(result).toBeNull();
 	});
 });

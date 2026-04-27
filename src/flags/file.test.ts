@@ -1,11 +1,11 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
-import { newFlagOpts } from '@/src/fixtures.test.js';
+import { flagOptsMock } from '@/src/fixtures.test.js';
 import { Flags } from '@/src/flags/index.js';
-import type { FlagDefinition, FlagReturnType, FlagType, ParameterOpts } from '@/src/lib/types.js';
+import type { FlagDefinition, FlagOpts, FlagReturnType, FlagType } from '@/src/lib/types.js';
 
 describe('Flags.file()', () => {
-	let flagOpts: ParameterOpts;
+	let flagOpts: FlagOpts;
 
 	it('should create a file flag definition', () => {
 		const flag = Flags.file();
@@ -37,7 +37,7 @@ describe('Flags.file()', () => {
 
 	it('should reject non-existent file in parse', () => {
 		const flag = Flags.file({ exists: true });
-		flagOpts = newFlagOpts(flag);
+		flagOpts = flagOptsMock(flag);
 		expect(() => flag.parse('/nonexistent/path.txt', flagOpts)).toThrow('file does not exist');
 	});
 

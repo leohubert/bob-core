@@ -7,7 +7,12 @@ export type AskForConfirmationOptions = {
 	transformer?: (value: boolean) => string;
 };
 
-export async function askForConfirmation(message = 'Do you want to continue?', opts?: AskForConfirmationOptions): Promise<boolean> {
+/**
+ * Yes/no confirmation prompt. Returns the user's choice, or `null` if they
+ * cancelled (Ctrl+C / SIGINT) — matching the cancellation contract used by
+ * every other prompt in the {@link UX} module.
+ */
+export async function askForConfirmation(message = 'Do you want to continue?', opts?: AskForConfirmationOptions): Promise<boolean | null> {
 	return withCancelHandling(
 		() =>
 			confirm({
@@ -15,6 +20,6 @@ export async function askForConfirmation(message = 'Do you want to continue?', o
 				default: opts?.default ?? false,
 				transformer: opts?.transformer,
 			}),
-		false,
+		null,
 	);
 }

@@ -35,11 +35,11 @@ describe('askForConfirmation', () => {
 		expect(result).toBe(false);
 	});
 
-	it('should return false on cancel', async () => {
+	it('should return null on cancel (matches the cancel contract used by the rest of UX)', async () => {
 		vi.mocked(confirm).mockRejectedValue(new ExitPromptError('cancelled'));
 
 		const result = await askForConfirmation('Confirm?');
 
-		expect(result).toBe(false);
+		expect(result).toBeNull();
 	});
 });

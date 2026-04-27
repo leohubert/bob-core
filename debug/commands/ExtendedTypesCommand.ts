@@ -31,7 +31,7 @@ export default class ExtendedTypesCommand extends Command {
 	} satisfies FlagsSchema;
 
 	static args = {
-		format: Args.option({ options: ['json', 'csv', 'yaml'] as const, description: 'Output format' }),
+		format: Args.option({ options: ['json', 'csv', 'yaml'] as const, description: 'Output format', default: 'json' }),
 	} satisfies ArgsSchema;
 
 	async handle(_ctx: any, { flags, args }: Parsed<typeof ExtendedTypesCommand>) {

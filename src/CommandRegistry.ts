@@ -13,6 +13,10 @@ import { UX } from '@/src/ux/index.js';
 export type CommandResolver = (path: string) => Promise<typeof Command | null>;
 export type FileImporter = (filePath: string) => Promise<unknown>;
 
+const AUTO_SUGGEST_THRESHOLD = 0.75;
+const LIST_SUGGEST_THRESHOLD = 0.55;
+const NEAR_TIE_GAP = 0.05;
+
 export type CommandRegistryOptions = {
 	logger?: Logger;
 	ux?: UX;
@@ -146,44 +150,71 @@ export class CommandRegistry {
 		);
 	}
 
+	/**
+	 * Looks for a similarly-named command and offers it to the user via prompts.
+	 * Returns the resolved command name, or `null` for both "no match" and
+	 * "user cancelled / declined the suggestion" — the caller throws
+	 * {@link CommandNotFoundError} on `null`. Cancellation is logged at debug
+	 * level so it's still distinguishable from "no match" in verbose output.
+	 */
 	private async suggestCommand(command: string): Promise<string | null> {
 		const availableCommands = this.getAvailableCommands();
+		if (availableCommands.length === 0) return null;
+
 		const { bestMatch, bestMatchIndex, ratings } = this.stringSimilarity.findBestMatch(command, availableCommands);
-		const similarCommands = ratings.filter(r => r.rating > 0.3).map(r => r.target);
+		const sorted = [...ratings].sort((a, b) => b.rating - a.rating);
+		const runnerUp = sorted[1]?.rating ?? 0;
+		const similarCommands = sorted.filter(r => r.rating >= LIST_SUGGEST_THRESHOLD).map(r => r.target);
 
-		if (bestMatch && ((bestMatch.rating > 0 && similarCommands.length <= 1) || (bestMatch.rating > 0.7 && similarCommands.length > 1))) {
+		const isClearWinner = bestMatch && bestMatch.rating >= AUTO_SUGGEST_THRESHOLD && bestMatch.rating - runnerUp > NEAR_TIE_GAP;
+
+		if (isClearWinner) {
 			const commandToAsk = availableCommands[bestMatchIndex];
-			const runCommand = await this.askRunSimilarCommand(command, commandToAsk);
-			if (runCommand) {
-				return commandToAsk;
-			}
-
+			const accepted = await this.askRunSimilarCommand(command, commandToAsk);
+			if (accepted === true) return commandToAsk;
+			if (accepted === null) this.logger.debug(`suggestion prompt cancelled for "${command}"`);
 			return null;
 		}
 
-		if (similarCommands.length) {
+		if (similarCommands.length === 1) {
+			const commandToAsk = similarCommands[0];
+			const accepted = await this.askRunSimilarCommand(command, commandToAsk);
+			if (accepted === true) return commandToAsk;
+			if (accepted === null) this.logger.debug(`suggestion prompt cancelled for "${command}"`);
+			return null;
+		}
+
+		if (similarCommands.length > 1) {
 			const commandToRun = await this.ux.askForSelect(
 				`${chalk.red('unknown command')} ${chalk.bold.yellow(`'${command}'`)} ${chalk.dim('—')} did you mean one of these?`,
 				similarCommands,
 			);
-			if (commandToRun) {
-				return commandToRun;
-			}
-
+			if (commandToRun) return commandToRun;
+			if (commandToRun === null) this.logger.debug(`suggestion selection cancelled for "${command}"`);
 			return null;
 		}
 
-		throw new CommandNotFoundError(command);
+		return null;
 	}
 
-	private async askRunSimilarCommand(command: string, commandToAsk: string): Promise<boolean> {
+	private async askRunSimilarCommand(command: string, commandToAsk: string): Promise<boolean | null> {
 		return this.ux.askForConfirmation(
 			`${chalk.red('unknown command')} ${chalk.bold.yellow(`'${command}'`)} ${chalk.dim('—')} did you mean ${chalk.bold.green(`'${commandToAsk}'`)}?`,
 		);
 	}
 
+	/**
+	 * Recursively yields every importable command file under `basePath`. Errors
+	 * from `readdir` are wrapped with the offending path so partial loads
+	 * surface a clear cause instead of a bare "ENOENT" / "EACCES".
+	 */
 	private async *listCommandsFiles(basePath: string): AsyncIterableIterator<string> {
-		const dirEntry = await fs.promises.readdir(basePath, { withFileTypes: true });
+		let dirEntry: fs.Dirent[];
+		try {
+			dirEntry = await fs.promises.readdir(basePath, { withFileTypes: true });
+		} catch (e) {
+			throw new Error(`Failed to read commands directory "${basePath}": ${(e as Error).message}`, { cause: e });
+		}
 		for (const dirent of dirEntry) {
 			const direntPath = path.resolve(basePath, dirent.name);
 			if (dirent.isDirectory()) {

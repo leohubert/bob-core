@@ -3,7 +3,7 @@ import { Mocked, vi } from 'vitest';
 import { Command } from '@/src/Command.js';
 import { Logger } from '@/src/Logger.js';
 import { LoggerContract } from '@/src/contracts/index.js';
-import type { FlagDefinition, ParameterOpts } from '@/src/lib/types.js';
+import type { FlagDefinition, FlagOpts } from '@/src/lib/types.js';
 import { UX } from '@/src/ux/index.js';
 
 export type TestLogger = Mocked<Logger>;
@@ -29,7 +29,7 @@ export function newFixtures() {
 	};
 }
 
-export function newFlagOpts(definition: FlagDefinition, overrides?: Partial<ParameterOpts>): ParameterOpts {
+export function flagOptsMock(definition: FlagDefinition<any, any>, overrides?: Partial<FlagOpts>): FlagOpts<any, any> {
 	return {
 		name: 'test',
 		ux: new UX(),
@@ -40,7 +40,7 @@ export function newFlagOpts(definition: FlagDefinition, overrides?: Partial<Para
 	};
 }
 
-export function newArgOpts(definition: FlagDefinition, overrides?: Partial<ParameterOpts>): ParameterOpts {
+export function argOptsMock(definition: FlagDefinition<any, any>, overrides?: Partial<FlagOpts>): FlagOpts<any, any> {
 	return {
 		name: 'test',
 		ux: new UX(),

@@ -1,12 +1,10 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
-import { newFlagOpts } from '@/src/fixtures.test.js';
+import { flagOptsMock } from '@/src/fixtures.test.js';
 import { Flags } from '@/src/flags/index.js';
-import type { FlagDefinition, FlagReturnType, FlagType, ParameterOpts } from '@/src/lib/types.js';
+import type { FlagDefinition, FlagReturnType, FlagType } from '@/src/lib/types.js';
 
 describe('Flags.option()', () => {
-	let flagOpts: ParameterOpts;
-
 	it('should create an option flag definition', () => {
 		const flag = Flags.option({ options: ['debug', 'info', 'warn'] as const });
 		expect(flag).toMatchObject({ type: 'option', options: ['debug', 'info', 'warn'] });
@@ -20,7 +18,7 @@ describe('Flags.option()', () => {
 
 	it('should have correct type', () => {
 		const flag = Flags.option({ options: ['a', 'b'] as const });
-		expectTypeOf(flag).toMatchTypeOf<FlagDefinition>();
+		expectTypeOf(flag).toMatchTypeOf<FlagDefinition<'a' | 'b', { options: readonly ['a', 'b'] }>>();
 	});
 
 	it('should infer option values type', () => {
@@ -31,7 +29,7 @@ describe('Flags.option()', () => {
 
 	it('should validate membership in parse', () => {
 		const flag = Flags.option({ options: ['a', 'b'] as const });
-		flagOpts = newFlagOpts(flag);
+		const flagOpts = flagOptsMock(flag);
 		expect(flag.parse('a', flagOpts)).toBe('a');
 		expect(() => flag.parse('c', flagOpts)).toThrow('must be one of');
 	});

@@ -38,15 +38,12 @@ export function table<T extends Record<string, unknown>>(data: T[], columns?: Ta
 		}
 	};
 
-	// Header row
 	const headerRow = cols.map((col, i) => formatCell(headers[i], colWidths[i], col.alignment)).join(sep);
 	console.log(chalk.bold(headerRow));
 
-	// Separator row
 	const separatorRow = colWidths.map(w => '-'.repeat(w)).join(sep);
 	console.log(chalk.dim(separatorRow));
 
-	// Data rows
 	for (const row of data) {
 		const line = cols
 			.map((col, i) => {

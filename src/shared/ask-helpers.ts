@@ -1,8 +1,9 @@
 import { ValidationError } from '@/src/errors/ValidationError.js';
 import { formatPromptMessage } from '@/src/flags/helpers.js';
-import type { FlagDefinition, ParameterOpts } from '@/src/lib/types.js';
+import type { FlagDefinition, FlagOpts } from '@/src/lib/types.js';
+import { isOptionFlag } from '@/src/shared/flagsUtils.js';
 
-function buildSingleValidator(def: FlagDefinition, builderOpts: ParameterOpts) {
+function buildSingleValidator(def: FlagDefinition, builderOpts: FlagOpts) {
 	return (value: string) => {
 		if ((value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) && def.required) {
 			return 'This value is required';
@@ -11,13 +12,13 @@ function buildSingleValidator(def: FlagDefinition, builderOpts: ParameterOpts) {
 			def.parse(value, builderOpts);
 		} catch (e) {
 			if (e instanceof ValidationError) return e.message;
-			return 'Invalid value';
+			throw e;
 		}
 		return true;
 	};
 }
 
-function buildMultipleValidator(def: FlagDefinition, builderOpts: ParameterOpts) {
+function buildMultipleValidator(def: FlagDefinition, builderOpts: FlagOpts) {
 	return (value: string) => {
 		if ((value === null || value === undefined || value.trim() === '') && def.required) {
 			return 'Please enter at least one value';
@@ -29,16 +30,16 @@ function buildMultipleValidator(def: FlagDefinition, builderOpts: ParameterOpts)
 				def.parse(trimmed, builderOpts);
 			} catch (e) {
 				if (e instanceof ValidationError) return `"${trimmed}": ${e.message}`;
-				return `"${trimmed}": Invalid value`;
+				throw e;
 			}
 		}
 		return true;
 	};
 }
 
-export async function buildStringAsk(builderOpts: ParameterOpts): Promise<any> {
+export async function buildStringAsk(builderOpts: FlagOpts): Promise<any> {
 	const def = builderOpts.definition;
-	const isMultiple = 'multiple' in def && def.multiple;
+	const isMultiple = def.multiple === true;
 	const promptText = formatPromptMessage(builderOpts.name, def);
 
 	if (isMultiple) {
@@ -48,7 +49,7 @@ export async function buildStringAsk(builderOpts: ParameterOpts): Promise<any> {
 		});
 	}
 
-	if ('secret' in def && def.secret) {
+	if (def.secret) {
 		return builderOpts.ux.askForPassword(promptText, {
 			validate: buildSingleValidator(def, builderOpts),
 		});
@@ -59,9 +60,9 @@ export async function buildStringAsk(builderOpts: ParameterOpts): Promise<any> {
 	});
 }
 
-export async function buildNumberAsk(builderOpts: ParameterOpts): Promise<any> {
+export async function buildNumberAsk(builderOpts: FlagOpts): Promise<any> {
 	const def = builderOpts.definition;
-	const isMultiple = 'multiple' in def && def.multiple;
+	const isMultiple = def.multiple === true;
 	const promptText = formatPromptMessage(builderOpts.name, def);
 
 	if (isMultiple) {
@@ -80,7 +81,8 @@ export async function buildNumberAsk(builderOpts: ParameterOpts): Promise<any> {
 				try {
 					def.parse(String(value), builderOpts);
 				} catch (e) {
-					return e instanceof ValidationError ? e.message : 'Invalid value';
+					if (e instanceof ValidationError) return e.message;
+					throw e;
 				}
 			}
 			return true;
@@ -88,12 +90,12 @@ export async function buildNumberAsk(builderOpts: ParameterOpts): Promise<any> {
 	});
 }
 
-export async function buildOptionAsk(builderOpts: ParameterOpts): Promise<any> {
+export async function buildOptionAsk(builderOpts: FlagOpts): Promise<any> {
 	const def = builderOpts.definition;
-	const isMultiple = 'multiple' in def && def.multiple;
+	const isMultiple = def.multiple === true;
 	const promptText = formatPromptMessage(builderOpts.name, def);
 
-	if (def.type !== 'option') return null;
+	if (!isOptionFlag(def)) return null;
 	const choices = def.options.map((o: string) => ({ name: o, value: o }));
 
 	if (isMultiple) {
@@ -103,17 +105,17 @@ export async function buildOptionAsk(builderOpts: ParameterOpts): Promise<any> {
 	return await builderOpts.ux.askForSelect(promptText, choices);
 }
 
-export async function buildFileAsk(builderOpts: ParameterOpts): Promise<any> {
+export async function buildFileAsk(builderOpts: FlagOpts): Promise<any> {
 	const promptText = formatPromptMessage(builderOpts.name, builderOpts.definition);
 	return builderOpts.ux.askForFile(promptText, { basePath: process.cwd() });
 }
 
-export async function buildDirectoryAsk(builderOpts: ParameterOpts): Promise<any> {
+export async function buildDirectoryAsk(builderOpts: FlagOpts): Promise<any> {
 	const promptText = formatPromptMessage(builderOpts.name, builderOpts.definition);
 	return builderOpts.ux.askForDirectory(promptText, { basePath: process.cwd() });
 }
 
-export async function buildUrlAsk(builderOpts: ParameterOpts): Promise<any> {
+export async function buildUrlAsk(builderOpts: FlagOpts): Promise<any> {
 	const promptText = formatPromptMessage(builderOpts.name, builderOpts.definition);
 	return await builderOpts.ux.askForInput(promptText, {
 		validate: buildSingleValidator(builderOpts.definition, builderOpts),
