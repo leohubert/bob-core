@@ -15,30 +15,32 @@ export type FlagKind = 'string' | 'number' | 'boolean' | 'option' | 'file' | 'di
  * {@link FlagDefinition}, so handlers can read them without `any` casts while still
  * being honest that they are optional at the type level.
  */
-export type FlagOpts<C extends ContextDefinition = ContextDefinition, P extends CustomOptions = CustomOptions> = {
+export type FlagOpts<T = any, C extends CustomOptions = CustomOptions, Ctx extends ContextDefinition = ContextDefinition> = {
 	name: string;
 	ux: UX;
-	ctx: C;
-	definition: FlagDefinition<C, P>;
-	cmd: typeof Command;
+	ctx: Ctx;
+	definition: FlagDefinition<T, C, Ctx>;
+	cmd: typeof Command<Ctx>;
 };
 
-export type FlagDefinition<T = any, C extends CustomOptions = CustomOptions> = {
+export type FlagDefinition<T = any, C extends CustomOptions = CustomOptions, Ctx extends ContextDefinition = ContextDefinition> = {
 	[key in keyof C]: C[keyof C];
 } & {
-	parse: (input: any, opts: FlagOpts<any, C>) => T;
+	parse: (input: any, opts: FlagOpts<T, C, Ctx>) => T;
 	type?: FlagKind;
-	ask?: (opts: FlagOpts<any, C>) => Promise<any>;
+	ask?: (opts: FlagOpts<T, C, Ctx>) => Promise<any>;
 	description?: string;
 	required?: boolean;
 	default?: T | T[] | null | (() => T | T[] | null) | (() => Promise<T | T[] | null>);
 	multiple?: boolean;
 	help?: string;
 	alias?: string | readonly string[];
-	handler?: (value: T, opts: FlagOpts<any, C>) => { shouldStop: boolean } | void;
+	handler?: (value: T, opts: FlagOpts<T, C, Ctx>) => { shouldStop: boolean } | void;
 };
 
-export type InitFlagDefinition<T = any, C extends CustomOptions = CustomOptions> = Partial<FlagDefinition<T, C>>;
+export type InitFlagDefinition<T = any, C extends CustomOptions = CustomOptions, Ctx extends ContextDefinition = ContextDefinition> = Partial<
+	FlagDefinition<T, C, Ctx>
+>;
 
 /** Infers the runtime return type of a flag definition, accounting for `multiple`. */
 export type InferFlagReturn<O> = O extends { parse: (...args: any[]) => infer R }

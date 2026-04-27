@@ -1,4 +1,4 @@
-import { CustomOptions, FlagDefinition, InitFlagDefinition } from '@/src/lib/types.js';
+import { ContextDefinition, CustomOptions, FlagDefinition, InitFlagDefinition } from '@/src/lib/types.js';
 
 /**
  * Escape hatch for declaring arbitrary parameter types. Returns a builder
@@ -10,14 +10,19 @@ import { CustomOptions, FlagDefinition, InitFlagDefinition } from '@/src/lib/typ
  * The `type` literal supplied in `defaults` is preserved in the returned shape
  * so downstream consumers can rely on it (e.g. for help rendering).
  */
-export function custom<T, C extends CustomOptions = CustomOptions, const D extends InitFlagDefinition<T, C> = InitFlagDefinition<T, C>>(defaults: D = {} as D) {
-	return function <const O extends Partial<FlagDefinition<T, C>>>(overrides?: O): FlagDefinition<T, C> & D & O {
+export function custom<
+	T,
+	C extends CustomOptions = CustomOptions,
+	Ctx extends ContextDefinition = ContextDefinition,
+	const D extends InitFlagDefinition<T, C, Ctx> = InitFlagDefinition<T, C, Ctx>,
+>(defaults: D = {} as D) {
+	return function <const O extends InitFlagDefinition<T, C, Ctx>>(overrides?: O): FlagDefinition<T, C, Ctx> & D & O {
 		return {
 			type: 'custom',
 			default: defaults.multiple || overrides?.multiple ? [] : null,
 			parse: input => input,
 			...defaults,
 			...overrides,
-		} as FlagDefinition<T, C> & D & O;
+		} as FlagDefinition<T, C, Ctx> & D & O;
 	};
 }
