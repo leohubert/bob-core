@@ -35,12 +35,12 @@ export default defineConfig({
 				{
 					format: 'es',
 					dir: 'dist/esm',
-					entryFileNames: 'src/index.js',
+					entryFileNames: 'index.js',
 				},
 				{
 					format: 'cjs',
 					dir: 'dist/cjs',
-					entryFileNames: 'src/index.js',
+					entryFileNames: 'index.js',
 				},
 			],
 		},
