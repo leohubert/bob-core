@@ -28,19 +28,17 @@ export type FlagDefinition<T = any, C extends CustomOptions = CustomOptions> = {
 } & {
 	parse: (input: any, opts: FlagOpts<any, C>) => T;
 	type?: FlagKind;
-	ask?: (opts: FlagOpts) => Promise<any>;
+	ask?: (opts: FlagOpts<any, C>) => Promise<any>;
 	description?: string;
 	required?: boolean;
 	default?: T | T[] | null | (() => T | T[] | null) | (() => Promise<T | T[] | null>);
 	multiple?: boolean;
 	help?: string;
 	alias?: string | readonly string[];
-	handler?: (value: T, opts: FlagOpts) => { shouldStop: boolean } | void;
+	handler?: (value: T, opts: FlagOpts<any, C>) => { shouldStop: boolean } | void;
 };
 
-export type InitFlagDefinition<T = any, C extends CustomOptions = CustomOptions> = Omit<FlagDefinition<T, C>, 'parse'> & {
-	parse?: (input: any, opts: FlagOpts<any, C>) => T;
-};
+export type InitFlagDefinition<T = any, C extends CustomOptions = CustomOptions> = Partial<FlagDefinition<T, C>>;
 
 /** Infers the runtime return type of a flag definition, accounting for `multiple`. */
 export type InferFlagReturn<O> = O extends { parse: (...args: any[]) => infer R }
