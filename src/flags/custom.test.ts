@@ -66,4 +66,12 @@ describe('Flags.custom()', () => {
 		type Result = FlagReturnType<typeof flag>;
 		expectTypeOf<Result>().toEqualTypeOf<Date>();
 	});
+
+	it('should narrow required even when reused across commands with different contexts', () => {
+		const dateFlag = Flags.custom<Date>({ parse: (v: string) => new Date(v) });
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const flag = dateFlag({ description: 'Start date', required: true });
+		type Result = FlagReturnType<typeof flag>;
+		expectTypeOf<Result>().toEqualTypeOf<Date>();
+	});
 });

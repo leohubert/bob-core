@@ -90,7 +90,7 @@ export async function buildNumberAsk(builderOpts: FlagOpts): Promise<any> {
 	});
 }
 
-export async function buildOptionAsk(builderOpts: FlagOpts): Promise<any> {
+export async function buildOptionAsk(builderOpts: FlagOpts<any, any>): Promise<any> {
 	const def = builderOpts.definition;
 	const isMultiple = def.multiple === true;
 	const promptText = formatPromptMessage(builderOpts.name, def);
