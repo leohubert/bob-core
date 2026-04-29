@@ -1,55 +1,78 @@
 import { Command } from '@/src/Command.js';
+import { Args } from '@/src/args/index.js';
+import { Flags } from '@/src/flags/index.js';
+import { ArgsSchema, FlagsSchema, Parsed } from '@/src/lib/types.js';
 
-export default new Command('test-new', {
-	description: 'A new test command that is not implemented yet',
-	group: 'testing',
-	arguments: {
-		name: {
-			type: 'string',
+type Toto = {
+	body: string;
+};
+
+export default class NewTestCommand extends Command {
+	static command = 'new-test-command';
+	static description = 'A new test command that is not implemented yet';
+	static group = 'test';
+
+	static args = {
+		name: Args.string({
 			required: true,
 			description: 'Name argument',
-		},
-		age: {
-			type: 'number',
+		}),
+		age: Args.number({
 			required: true,
 			description: 'Age argument',
-		},
-		tests: {
-			type: 'string',
-			secret: true,
+			max: 55,
+		}),
+		tests: Args.string({
 			required: true,
 			description: 'Age argument',
-		},
-		tags: {
-			type: ['number'],
+			default: () => {
+				return new Promise<string>(resolve => {
+					setTimeout(() => {
+						resolve('dd');
+					}, 1000);
+				});
+			},
+		}),
+		tags: Args.number({
 			required: true,
-			variadic: true,
+			multiple: true,
 			description: 'Tags',
-		},
-	},
-	options: {
-		force: 'boolean',
-		test: {
-			type: 'string',
+		}),
+	} satisfies ArgsSchema;
+
+	static flags = {
+		force: Flags.boolean(),
+		test: Flags.string({
 			description: 'A test option',
 			required: true,
-		},
-	},
-})
-	.options({
-		anotherTest: {
-			type: 'boolean',
+		}),
+		anotherTest: Flags.boolean({
 			alias: 'f',
-		},
-	})
-	.handler((ctx, opts) => {
-		const _test = opts.options.anotherTest || opts.options.force;
-		// Note: Functional handlers don't have access to this.io
-		// For logging in handlers, you can either:
-		// 1. Pass io/logger through the context
-		// 2. Use console.log directly (not recommended for library code)
-		console.log('test command', {
-			options: opts.options,
-			arguments: opts.arguments,
-		});
-	});
+		}),
+		custom: Flags.custom<Toto>({
+			description: 'Custom test option',
+			help: 'Custom test help option',
+		})(),
+		multiple: Flags.number({
+			multiple: true,
+		}),
+		async: Flags.number({
+			multiple: true,
+			default: () => {
+				return new Promise<number[]>(resolve => {
+					setTimeout(() => {
+						resolve([1, 2, 3]);
+					}, 1000);
+				});
+			},
+		}),
+	} satisfies FlagsSchema;
+
+	async handle(ctx: any, { flags, args }: Parsed<typeof NewTestCommand>) {
+		const _test = flags.anotherTest || flags.force;
+		const _required = args.tags;
+		const _anotherRequired = flags.anotherTest;
+		const _custom = flags.custom;
+		console.log('test command', { flags, args });
+	}
+}

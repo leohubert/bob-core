@@ -1,180 +1,92 @@
 # Advanced Topics
 
-Learn about advanced features and patterns in BOB Core.
+## Context injection
 
-## Context Injection
-
-Context allows you to inject dependencies, configuration, or shared state into your commands.
-
-### Defining Context Type
+Inject typed dependencies into every command via `Cli<C>` and `Command<C>`.
 
 ```typescript
 // context.ts
 export interface AppContext {
-  config: {
-    apiUrl: string;
-    timeout: number;
-  };
-  database: DatabaseClient;
-  logger: Logger;
-  user?: User;
+  config: { apiUrl: string };
+  db: DatabaseClient;
 }
 ```
 
-### Creating CLI with Context
-
 ```typescript
+// cli.ts
 import { Cli } from 'bob-core';
-import { AppContext } from './context';
-
-const context: AppContext = {
-  config: {
-    apiUrl: 'https://api.example.com',
-    timeout: 30000
-  },
-  database: new DatabaseClient(),
-  logger: new Logger()
-};
+import type { AppContext } from './context.js';
 
 const cli = new Cli<AppContext>({
-  ctx: context,
+  ctx: { config: { apiUrl: 'https://api.example.com' }, db: new DatabaseClient() },
   name: 'my-app',
-  version: '1.0.0'
+  version: '1.0.0',
 });
 ```
 
-### Using Context in Commands
+Inside a command, `ctx` is typed:
 
-**Modern Commands:**
 ```typescript
-import { Command } from 'bob-core';
-import { AppContext } from './context';
+import { Command, Parsed } from 'bob-core';
+import type { AppContext } from '../context.js';
 
-export default new Command<AppContext>('fetch-users', {
-  description: 'Fetch users from API'
-}).handler(async (ctx, { options }) => {
-  // Access context
-  const response = await fetch(ctx.config.apiUrl + '/users', {
-    timeout: ctx.config.timeout
-  });
+export default class FetchUsersCommand extends Command<AppContext> {
+  static command = 'users:fetch';
+  static description = 'Fetch users from the API';
 
-  const users = await response.json();
-  await ctx.database.saveUsers(users);
-
-  ctx.logger.info(`Saved ${users.length} users`);
-});
-```
-
-**Signature-Based Commands:**
-```typescript
-export default class FetchUsersCommand extends CommandWithSignature<AppContext> {
-  signature = 'fetch-users';
-  description = 'Fetch users from API';
-
-  protected async handle() {
-    // Access via this.ctx
-    const response = await fetch(this.ctx.config.apiUrl + '/users');
-    const users = await response.json();
-
-    await this.ctx.database.saveUsers(users);
-    this.ctx.logger.info(`Saved ${users.length} users`);
+  async handle(ctx: AppContext) {
+    const res = await fetch(`${ctx.config.apiUrl}/users`);
+    const users = await res.json();
+    await ctx.db.saveUsers(users);
+    this.logger.info(`Saved ${users.length} users`);
   }
 }
 ```
 
-## Custom Command Resolvers
+## Custom command resolvers
 
-Override how commands are loaded from files.
+Override how files in a `withCommands(path)` directory are turned into commands.
 
 ```typescript
-import { Cli, CommandResolver } from 'bob-core';
+import { Cli, type CommandResolver } from 'bob-core';
 
-const customResolver: CommandResolver = async (filePath: string) => {
-  const module = await import(filePath);
-
-  // Custom logic to extract command
-  if (module.command) {
-    return module.command;
-  }
-
-  if (module.default) {
-    return typeof module.default === 'function'
-      ? new module.default()
-      : module.default;
-  }
-
-  return null;
+const resolver: CommandResolver = async (filePath) => {
+  const mod = await import(filePath);
+  return mod.default ?? null;
 };
 
-const cli = new Cli();
-cli.withCommandResolver(customResolver);
+const cli = new Cli().withCommandResolver(resolver);
 ```
 
-## Custom File Importers
+## Custom file importers
 
-Control how files are imported.
+Override the dynamic-import step itself (e.g. for transpilation, telemetry, or alternate module formats).
 
 ```typescript
-import { Cli, FileImporter } from 'bob-core';
+import { Cli, type FileImporter } from 'bob-core';
 
-const customImporter: FileImporter = async (filePath: string) => {
-  // Add custom import logic
-  console.log(`Loading command from ${filePath}`);
-
-  // Use dynamic import
+const importer: FileImporter = async (filePath) => {
   return await import(filePath);
 };
 
-const cli = new Cli();
-cli.withFileImporter(customImporter);
+const cli = new Cli().withFileImporter(importer);
 ```
 
-## Command Groups
+## Command groups
 
-Organize commands with groups using `:` separator.
+Commands sharing a `static group` are listed together in help output. Use `:` in `static command` for namespacing.
 
 ```typescript
-// commands/db/migrate.ts
-export default new Command('db:migrate', {
-  description: 'Run database migrations',
-  group: 'Database'
-}).handler(async () => {
-  // Migration logic
-});
-
-// commands/db/seed.ts
-export default new Command('db:seed', {
-  description: 'Seed database',
-  group: 'Database'
-}).handler(async () => {
-  // Seeding logic
-});
-
-// commands/cache/clear.ts
-export default new Command('cache:clear', {
-  description: 'Clear cache',
-  group: 'Cache'
-}).handler(async () => {
-  // Cache clearing logic
-});
+static command = 'db:migrate';
+static group = 'database';
 ```
 
-Help output will group commands:
-```
-Database:
-  db:migrate    Run database migrations
-  db:seed       Seed database
+## Error handling
 
-Cache:
-  cache:clear   Clear cache
-```
-
-## Error Handling
-
-### Custom Error Handling
+Subclass `ExceptionHandler` and override `Cli.newExceptionHandler` to customize how thrown errors are mapped to exit codes and messages.
 
 ```typescript
-import { Cli, ExceptionHandler } from 'bob-core';
+import { Cli, ExceptionHandler, Logger } from 'bob-core';
 
 class CustomExceptionHandler extends ExceptionHandler {
   async handle(error: Error): Promise<number> {
@@ -182,18 +94,10 @@ class CustomExceptionHandler extends ExceptionHandler {
       this.logger.error('Validation failed:', error.message);
       return 1;
     }
-
-    if (error.name === 'NetworkError') {
-      this.logger.error('Network error:', error.message);
-      return 2;
-    }
-
-    // Default handling
     return super.handle(error);
   }
 }
 
-// Use custom exception handler
 class MyCli extends Cli {
   protected newExceptionHandler(opts: { logger: Logger }) {
     return new CustomExceptionHandler(opts.logger);
@@ -201,226 +105,135 @@ class MyCli extends Cli {
 }
 ```
 
-### Error Codes
+Built-in error classes (in `src/errors/`):
 
-Return specific exit codes from commands:
+- `BobError` — base
+- `CommandNotFoundError`
+- `InvalidFlag`, `MissingRequiredFlagValue`
+- `BadCommandFlag`, `BadCommandArgument`
+- `MissingRequiredArgumentValue`, `TooManyArguments`
+- `ValidationError`
+
+## Returning exit codes
 
 ```typescript
-.handler((ctx, { arguments: args }) => {
-  if (!args.file) {
-    return 1; // Missing argument
-  }
-
-  if (!fileExists(args.file)) {
-    return 2; // File not found
-  }
-
-  if (!canProcess(args.file)) {
-    return 3; // Cannot process
-  }
-
-  // Success
+async handle(_ctx, { args }) {
+  if (!args.file) return 1;
+  if (!exists(args.file)) return 2;
   return 0;
-});
-```
-
-## Disabling Interactive Prompts
-
-For CI/CD or non-interactive environments:
-
-```typescript
-// Disable for specific command
-const command = new Command('deploy')
-  .disablePrompting()
-  .arguments({ env: 'string' })
-  .handler(async (ctx, { arguments: args }) => {
-    // Will throw error instead of prompting if env is missing
-  });
-
-// Disable via CommandParser
-// This happens automatically when no TTY is detected
-```
-
-## Custom Logger
-
-Provide a custom logger implementation:
-
-```typescript
-import { Logger, LoggerContract } from 'bob-core';
-
-class CustomLogger implements LoggerContract {
-  log(...args: any[]): void {
-    // Custom logging
-    myLogger.info(args);
-  }
-
-  info(...args: any[]): void {
-    myLogger.info(args);
-  }
-
-  warn(...args: any[]): void {
-    myLogger.warn(args);
-  }
-
-  error(...args: any[]): void {
-    myLogger.error(args);
-  }
-
-  debug(...args: any[]): void {
-    myLogger.debug(args);
-  }
 }
-
-const cli = new Cli({
-  logger: new CustomLogger()
-});
 ```
 
-## Custom Help Command
+## Disabling interactive prompts
 
-Override the default help command:
+For CI/CD or non-interactive environments, set `static disablePrompting = true` on the command. Missing required values then throw instead of prompting.
 
 ```typescript
-import { Cli, HelpCommand } from 'bob-core';
+export default class DeployCommand extends Command {
+  static command = 'deploy';
+  static disablePrompting = true;
+  // ...
+}
+```
 
-class MyHelpCommand extends HelpCommand {
-  // Customize help display
+## Custom logger
+
+Provide any object implementing `LoggerContract`:
+
+```typescript
+import { Cli, type LoggerContract } from 'bob-core';
+
+const logger: LoggerContract = {
+  log:   (...a) => console.log(...a),
+  info:  (...a) => console.info(...a),
+  warn:  (...a) => console.warn(...a),
+  error: (...a) => console.error(...a),
+  debug: (...a) => console.debug(...a),
+};
+
+const cli = new Cli({ logger: logger as any });
+```
+
+## Custom help command
+
+Override `Cli.newHelpCommand`:
+
+```typescript
+import { Cli, HelpCommand, type HelpCommandOptions } from 'bob-core';
+
+class MyHelp extends HelpCommand {
+  // override methods to customize output
 }
 
 class MyCli extends Cli {
-  protected newHelpCommand(opts) {
-    return new MyHelpCommand(opts);
+  protected newHelpCommand(opts: HelpCommandOptions) {
+    return new MyHelp(opts);
   }
 }
 ```
 
-## Command Registry Access
-
-Access registered commands programmatically:
+## Command registry access
 
 ```typescript
 const cli = new Cli();
 await cli.withCommands('./commands');
 
-// Get all command names
-const commandNames = cli.commandRegistry.getAvailableCommands();
-
-// Get all command instances
 const commands = cli.commandRegistry.getCommands();
-
-// Register command manually
-cli.commandRegistry.registerCommand(myCommand);
+const names    = cli.commandRegistry.getAvailableCommands();
+cli.commandRegistry.registerCommand(MyCommand);
 ```
 
-## Running Commands Programmatically
+## Running commands programmatically
+
+`Command#run` accepts either raw arg strings (which the parser will process) or already-parsed `flags`/`args`.
 
 ```typescript
-import { Command } from 'bob-core';
+import { Logger } from 'bob-core';
+import GreetCommand from './commands/greet.js';
 
-const command = new Command('greet', {
-  arguments: { name: 'string' }
-}).handler((ctx, { arguments: args }) => {
-  console.log(`Hello, ${args.name}!`);
-});
+const cmd = new GreetCommand();
 
-// Run with parsed options
-await command.run({
+// Raw args — parser handles validation and prompting
+await cmd.run({ ctx: {}, logger: new Logger(), args: ['World', '--shout'] });
+
+// Pre-parsed
+await cmd.run({
   ctx: {},
   logger: new Logger(),
-  arguments: { name: 'John' },
-  options: {}
-});
-
-// Run with raw args (will be parsed)
-await command.run({
-  ctx: {},
-  logger: new Logger(),
-  args: ['John', '--verbose']
+  args: { name: 'World' },
+  flags: { shout: true },
 });
 ```
 
-## Pre-Handlers
+## Fuzzy command matching
 
-Execute logic before the main handler:
-
-```typescript
-export default new Command('deploy')
-  .preHandler(async (ctx) => {
-    // Check authentication
-    if (!ctx.isAuthenticated) {
-      console.error('Not authenticated');
-      return 1; // Stop execution
-    }
-
-    // Check prerequisites
-    if (!await checkPrerequisites()) {
-      console.error('Prerequisites not met');
-      return 1;
-    }
-
-    // Continue to main handler
-  })
-  .handler(async (ctx, { arguments: args }) => {
-    // Main deployment logic
-  });
-```
-
-## Fuzzy Command Matching
-
-BOB Core automatically suggests similar commands:
+If the user mistypes a command name, BOB Core suggests the closest match using `StringSimilarity` (Dice's coefficient).
 
 ```bash
-$ node cli.js deloy  # Typo
-Command "deloy" not found.
-Do you want to run "deploy" instead? (Y/n)
+$ my-cli deloy
+Command "deloy" not found. Did you mean "deploy"?
 ```
 
-Customize similarity threshold or behavior:
+You can use `StringSimilarity` directly:
 
 ```typescript
-// Built-in - uses string-similarity library
-// Threshold: 0.3 for multiple matches, 0.7 for single match
+import { StringSimilarity } from 'bob-core';
+
+const sim = new StringSimilarity();
+const match = sim.findBestMatch('deloy', ['deploy', 'delete']);
+// match.bestMatch.target === 'deploy'
 ```
 
-## Type-Safe Command Options
+## Best practices
 
-Use TypeScript generics for full type safety:
+1. Type your context — `Command<AppContext>` makes `ctx` autocompletable.
+2. Use `preHandle` for auth and prerequisite checks; return non-zero to abort.
+3. Group related commands with `:` and `static group`.
+4. Set `static disablePrompting = true` for CI-only commands.
+5. Use `Parsed<typeof YourCommand>` and `satisfies FlagsSchema` for full inference.
 
-```typescript
-interface MyOptions {
-  verbose: { type: 'boolean'; default: false };
-  output: { type: 'string'; required: true };
-}
+## Next steps
 
-interface MyArgs {
-  file: 'string';
-}
-
-export default new Command<AppContext, MyOptions, MyArgs>('process', {
-  arguments: { file: 'string' },
-  options: {
-    verbose: { type: 'boolean', default: false },
-    output: { type: 'string', required: true }
-  }
-}).handler((ctx, { arguments: args, options }) => {
-  // args.file is typed as string
-  // options.verbose is typed as boolean
-  // options.output is typed as string
-});
-```
-
-## Best Practices
-
-1. **Use Context for Dependency Injection** - Pass database clients, configs, etc. through context
-2. **Return Meaningful Exit Codes** - Use different codes for different error types
-3. **Handle Errors Gracefully** - Provide helpful error messages
-4. **Disable Prompts in CI** - Use `.disablePrompting()` for automated environments
-5. **Group Related Commands** - Use `:` separator for logical grouping
-6. **Type Your Context** - Define a TypeScript interface for your context
-7. **Validate Early** - Use pre-handlers for authentication and prerequisite checks
-
-## Next Steps
-
-- [API Reference](./api-reference.md) - Complete API documentation
-- [Examples](./examples.md) - Real-world examples
-- [Help System](./help-system.md) - Customize help output
+- [API Reference](./api-reference.md)
+- [Examples](./examples.md)
+- [Help System](./help-system.md)

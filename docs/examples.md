@@ -2,463 +2,269 @@
 
 Real-world examples of CLI applications built with BOB Core.
 
-## Table of Contents
+## Table of contents
 
-- [Simple File Manager](#simple-file-manager)
-- [Database CLI](#database-cli)
-- [Git-like CLI with Subcommands](#git-like-cli-with-subcommands)
-- [Interactive Project Wizard](#interactive-project-wizard)
-- [REST API Client](#rest-api-client)
+- [Simple file manager](#simple-file-manager)
+- [Database CLI with context](#database-cli-with-context)
+- [Subcommand groups](#subcommand-groups)
+- [Interactive project wizard](#interactive-project-wizard)
+- [REST API client](#rest-api-client)
 
 ---
 
-## Simple File Manager
+## Simple file manager
 
-A basic file management CLI.
+`cli.ts`:
 
-**cli.ts:**
 ```typescript
 import { Cli } from 'bob-core';
 
-const cli = new Cli({
-  name: 'filemanager',
-  version: '1.0.0'
-});
-
+const cli = new Cli({ name: 'filemanager', version: '1.0.0' });
 await cli.withCommands('./commands');
 
-const exitCode = await cli.runCommand(
-  process.argv[2],
-  ...process.argv.slice(3)
-);
-
+const exitCode = await cli.runCommand(process.argv[2], ...process.argv.slice(3));
 process.exit(exitCode);
 ```
 
-**commands/copy.ts:**
+`commands/copy.ts`:
+
 ```typescript
-import { Command, CommandHandlerOptions, OptionsSchema } from 'bob-core';
-import { copyFileSync, existsSync } from 'fs';
+import { Command, Flags, Args, Parsed, FlagsSchema } from 'bob-core';
+import { copyFileSync, existsSync } from 'node:fs';
 
-const CopyOptions = {
-  overwrite: {
-    type: 'boolean',
-    default: false,
-    description: 'Overwrite if destination exists'
-  }
-} satisfies OptionsSchema;
+export default class CopyCommand extends Command {
+  static command = 'copy';
+  static description = 'Copy a file';
 
-const CopyArguments = {
-  source: 'string',
-  destination: 'string'
-} satisfies OptionsSchema;
+  static args = {
+    source: Args.string({ required: true }),
+    destination: Args.string({ required: true }),
+  } satisfies FlagsSchema;
 
-export default class CopyCommand extends Command<any, typeof CopyOptions, typeof CopyArguments> {
-  constructor() {
-    super('copy', {
-      description: 'Copy a file',
-      arguments: CopyArguments,
-      options: CopyOptions
-    });
-  }
+  static flags = {
+    overwrite: Flags.boolean({ description: 'Overwrite if destination exists' }),
+  } satisfies FlagsSchema;
 
-  async handle(ctx: any, { arguments: args, options }: CommandHandlerOptions<typeof CopyOptions, typeof CopyArguments>) {
-    try {
-      if (!options.overwrite && existsSync(args.destination)) {
-        const confirmed = await this.io.askForConfirmation(
-          `${args.destination} exists. Overwrite?`
-        );
-        if (!confirmed) return 1;
-      }
-
-      copyFileSync(args.source, args.destination);
-      this.io.info(`Copied ${args.source} to ${args.destination}`);
-      return 0;
-    } catch (error: any) {
-      this.io.error(`Error: ${error.message}`);
-      return 1;
+  async handle(_ctx, { flags, args }: Parsed<typeof CopyCommand>) {
+    if (!flags.overwrite && existsSync(args.destination)) {
+      const ok = await this.ux.askForConfirmation(`${args.destination} exists. Overwrite?`);
+      if (!ok) return 1;
     }
+
+    copyFileSync(args.source, args.destination);
+    this.logger.info(`Copied ${args.source} → ${args.destination}`);
   }
 }
 ```
 
-**commands/list.ts:**
-```typescript
-import { Command } from 'bob-core';
-import { readdirSync } from 'fs';
+`commands/list.ts`:
 
-export default new Command('list', {
-  description: 'List files in directory',
-  arguments: {
-    path: {
-      type: 'string',
-      default: '.',
-      required: false
+```typescript
+import { Command, Args, Parsed, FlagsSchema } from 'bob-core';
+import { readdirSync } from 'node:fs';
+
+export default class ListCommand extends Command {
+  static command = 'list';
+  static description = 'List files in directory';
+
+  static args = {
+    path: Args.string({ default: '.' }),
+  } satisfies FlagsSchema;
+
+  async handle(_ctx, { args }: Parsed<typeof ListCommand>) {
+    for (const file of readdirSync(args.path ?? '.')) {
+      this.logger.info(file);
     }
   }
-}).handler((ctx, { arguments: args }) => {
-  const files = readdirSync(args.path);
-  files.forEach(file => console.log(file));
-});
+}
 ```
 
 ---
 
-## Database CLI
+## Database CLI with context
 
-CLI for database operations with context injection.
+`context.ts`:
 
-**context.ts:**
 ```typescript
 import { Client } from 'pg';
 
-export interface DatabaseContext {
+export interface DbContext {
   db: Client;
-  config: {
-    host: string;
-    port: number;
-    database: string;
-  };
 }
 ```
 
-**cli.ts:**
+`cli.ts`:
+
 ```typescript
 import { Cli } from 'bob-core';
 import { Client } from 'pg';
-import { DatabaseContext } from './context';
+import type { DbContext } from './context.js';
 
-const db = new Client({
-  host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD
-});
-
+const db = new Client({ /* ... */ });
 await db.connect();
 
-const context: DatabaseContext = {
-  db,
-  config: {
-    host: process.env.DB_HOST!,
-    port: parseInt(process.env.DB_PORT || '5432'),
-    database: process.env.DB_NAME!
-  }
-};
-
-const cli = new Cli<DatabaseContext>({
-  ctx: context,
+const cli = new Cli<DbContext>({
+  ctx: { db },
   name: 'dbcli',
-  version: '1.0.0'
+  version: '1.0.0',
 });
 
 await cli.withCommands('./commands');
-
-const exitCode = await cli.runCommand(
-  process.argv[2],
-  ...process.argv.slice(3)
-);
-
+const exitCode = await cli.runCommand(process.argv[2], ...process.argv.slice(3));
 await db.end();
 process.exit(exitCode);
 ```
 
-**commands/query.ts:**
+`commands/query.ts`:
+
 ```typescript
-import { Command, CommandHandlerOptions, OptionsSchema } from 'bob-core';
-import { DatabaseContext } from '../context';
+import { Command, Flags, Args, Parsed, FlagsSchema } from 'bob-core';
+import type { DbContext } from '../context.js';
 
-const QueryOptions = {
-  format: {
-    type: 'string',
-    default: 'table',
-    description: 'Output format (table, json, csv)'
-  }
-} satisfies OptionsSchema;
+export default class QueryCommand extends Command<DbContext> {
+  static command = 'query';
+  static description = 'Execute a SQL query';
 
-const QueryArguments = {
-  sql: 'string'
-} satisfies OptionsSchema;
+  static args = {
+    sql: Args.string({ required: true }),
+  } satisfies FlagsSchema;
 
-export default class QueryCommand extends Command<DatabaseContext, typeof QueryOptions, typeof QueryArguments> {
-  constructor() {
-    super('query', {
-      description: 'Execute SQL query',
-      arguments: QueryArguments,
-      options: QueryOptions
-    });
-  }
+  static flags = {
+    format: Flags.option({ options: ['table', 'json', 'csv'] as const, default: 'table' }),
+  } satisfies FlagsSchema;
 
-  async handle(ctx: DatabaseContext, { arguments: args, options }: CommandHandlerOptions<typeof QueryOptions, typeof QueryArguments>) {
-    try {
-      const result = await ctx.db.query(args.sql);
+  async handle(ctx: DbContext, { flags, args }: Parsed<typeof QueryCommand>) {
+    const result = await ctx.db.query(args.sql);
 
-      if (options.format === 'json') {
-        this.io.log(JSON.stringify(result.rows, null, 2));
-      } else if (options.format === 'csv') {
-        // CSV output
-        const headers = Object.keys(result.rows[0] || {}).join(',');
-        this.io.log(headers);
-        result.rows.forEach(row => {
-          this.io.log(Object.values(row).join(','));
-        });
-      } else {
-        // Table format
-        console.table(result.rows);
-      }
-
-      this.io.info(`${result.rowCount} rows`);
-    } catch (error: any) {
-      this.io.error(`Query failed: ${error.message}`);
-      return 1;
-    }
-  }
-}
-```
-
-**commands/migrate.ts:**
-```typescript
-import { CommandWithSignature } from 'bob-core';
-import { DatabaseContext } from '../context';
-import { readFileSync } from 'fs';
-
-export default class MigrateCommand extends CommandWithSignature<DatabaseContext> {
-  signature = 'migrate {file} {--rollback}';
-  description = 'Run database migration';
-
-  protected async handle() {
-    const file = this.argument<string>('file');
-    const rollback = this.option<boolean>('rollback');
-
-    const sql = readFileSync(file, 'utf-8');
-
-    using loader = this.newLoader(
-      rollback ? 'Rolling back...' : 'Migrating...'
-    );
-
-    try {
-      await this.ctx.db.query('BEGIN');
-      await this.ctx.db.query(sql);
-      await this.ctx.db.query('COMMIT');
-
-      this.io.info(`Migration ${rollback ? 'rolled back' : 'completed'}`);
-    } catch (error) {
-      await this.ctx.db.query('ROLLBACK');
-      this.io.error(`Migration failed: ${error.message}`);
-      return 1;
-    }
-  }
-}
-```
-
----
-
-## Git-like CLI with Subcommands
-
-Organize commands with namespaces.
-
-**commands/remote/add.ts:**
-```typescript
-import { Command } from 'bob-core';
-
-export default new Command('remote:add', {
-  description: 'Add a remote repository',
-  group: 'Remote',
-  arguments: {
-    name: 'string',
-    url: 'string'
-  }
-}).handler((ctx, { arguments: args }) => {
-  // Add remote logic
-  console.log(`Added remote ${args.name}: ${args.url}`);
-});
-```
-
-**commands/remote/list.ts:**
-```typescript
-import { Command } from 'bob-core';
-
-export default new Command('remote:list', {
-  description: 'List remote repositories',
-  group: 'Remote',
-  options: {
-    verbose: {
-      type: 'boolean',
-      alias: ['v'],
-      default: false,
-      description: 'Show URLs'
-    }
-  }
-}).handler((ctx, { options }) => {
-  const remotes = getRemotes();
-
-  remotes.forEach(remote => {
-    if (options.verbose) {
-      console.log(`${remote.name}\t${remote.url}`);
+    if (flags.format === 'json') {
+      this.logger.info(JSON.stringify(result.rows, null, 2));
+    } else if (flags.format === 'csv') {
+      const headers = Object.keys(result.rows[0] ?? {}).join(',');
+      this.logger.info(headers);
+      for (const row of result.rows) this.logger.info(Object.values(row).join(','));
     } else {
-      console.log(remote.name);
+      this.ux.table(result.rows);
     }
-  });
-});
-```
 
-**commands/branch/create.ts:**
-```typescript
-import { Command } from 'bob-core';
-
-export default new Command('branch:create', {
-  description: 'Create a new branch',
-  group: 'Branch',
-  arguments: {
-    name: 'string'
-  },
-  options: {
-    checkout: {
-      type: 'boolean',
-      alias: ['c'],
-      default: false,
-      description: 'Check out the new branch'
-    }
+    this.logger.info(`${result.rowCount} rows`);
   }
-}).handler((ctx, { arguments: args, options }) => {
-  // Branch creation logic
-  console.log(`Created branch ${args.name}`);
-
-  if (options.checkout) {
-    console.log(`Switched to branch ${args.name}`);
-  }
-});
+}
 ```
 
 ---
 
-## Interactive Project Wizard
+## Subcommand groups
 
-Build an interactive setup wizard.
+Use `:` in command names for namespacing and `static group` for help clustering.
+
+`commands/remote/add.ts`:
 
 ```typescript
-import { Command, CommandHandlerOptions, OptionsSchema } from 'bob-core';
-import { writeFileSync, mkdirSync } from 'fs';
+import { Command, Args, Parsed, FlagsSchema } from 'bob-core';
 
-export default class InitCommand extends Command<any, OptionsSchema, OptionsSchema> {
-  constructor() {
-    super('init', {
-      description: 'Initialize a new project'
-    });
+export default class RemoteAddCommand extends Command {
+  static command = 'remote:add';
+  static group = 'Remote';
+  static description = 'Add a remote repository';
+
+  static args = {
+    name: Args.string({ required: true }),
+    url: Args.string({ required: true }),
+  } satisfies FlagsSchema;
+
+  async handle(_ctx, { args }: Parsed<typeof RemoteAddCommand>) {
+    this.logger.info(`Added remote ${args.name}: ${args.url}`);
   }
+}
+```
 
-  async handle(ctx: any, opts: CommandHandlerOptions<OptionsSchema, OptionsSchema>) {
-    this.io.info('🎨 Project Setup Wizard\n');
+`commands/remote/list.ts`:
 
-    // Project name
-    const name = await this.io.askForInput(
-      'Project name:',
-      undefined,
-      {
-        validate: (value: string) => {
-          if (!/^[a-z0-9-]+$/.test(value)) {
-            return 'Name must contain only lowercase letters, numbers, and hyphens';
-          }
-          return true;
-        }
-      }
-    );
+```typescript
+import { Command, Flags, Parsed, FlagsSchema } from 'bob-core';
 
+export default class RemoteListCommand extends Command {
+  static command = 'remote:list';
+  static group = 'Remote';
+  static description = 'List remote repositories';
+
+  static flags = {
+    verbose: Flags.boolean({ alias: 'v', description: 'Show URLs' }),
+  } satisfies FlagsSchema;
+
+  async handle(_ctx, { flags }: Parsed<typeof RemoteListCommand>) {
+    for (const r of getRemotes()) {
+      this.logger.info(flags.verbose ? `${r.name}\t${r.url}` : r.name);
+    }
+  }
+}
+```
+
+---
+
+## Interactive project wizard
+
+```typescript
+import { Command } from 'bob-core';
+import { writeFileSync, mkdirSync } from 'node:fs';
+
+export default class InitCommand extends Command {
+  static command = 'init';
+  static description = 'Initialize a new project';
+
+  async handle() {
+    this.logger.info('🎨 Project Setup Wizard\n');
+
+    const name = await this.ux.askForInput('Project name:');
     if (!name) return 1;
 
-    // Description
-    const description = await this.io.askForInput('Description:', '');
+    const description = await this.ux.askForInput('Description:') ?? '';
 
-    // Framework selection
-    const framework = await this.io.askForSelect(
-      'Choose a framework:',
-      [
-        { title: 'React', value: 'react', description: 'A library for building UIs' },
-        { title: 'Vue', value: 'vue', description: 'The Progressive Framework' },
-        { title: 'Svelte', value: 'svelte', description: 'Cybernetically enhanced apps' },
-        { title: 'None', value: 'none', description: 'Vanilla JavaScript' }
-      ]
-    );
+    const framework = await this.ux.askForSelect('Framework:', [
+      { name: 'React',  value: 'react' },
+      { name: 'Vue',    value: 'vue' },
+      { name: 'Svelte', value: 'svelte' },
+      { name: 'None',   value: 'none' },
+    ]);
 
-    // TypeScript
-    const useTypeScript = await this.io.askForConfirmation(
-      'Use TypeScript?',
-      true
-    );
+    const useTs = await this.ux.askForConfirmation('Use TypeScript?', { default: true });
 
-    // Features
-    const features = await this.io.askForSelect(
-      'Select additional features:',
-      ['ESLint', 'Prettier', 'Testing (Vitest)', 'CI/CD (GitHub Actions)'],
-      { type: 'multiselect' }
-    );
+    const features = await this.ux.askForCheckbox('Additional features:', [
+      'ESLint', 'Prettier', 'Vitest', 'GitHub Actions',
+    ]);
 
-    // Package manager
-    const packageManager = await this.io.askForSelect(
-      'Package manager:',
-      ['npm', 'yarn', 'pnpm', 'bun']
-    );
+    const pm = await this.ux.askForSelect('Package manager:', ['npm', 'yarn', 'pnpm', 'bun']);
 
-    // Confirmation
-    this.io.log('\n📋 Project Configuration:');
-    this.io.log(`  Name: ${name}`);
-    this.io.log(`  Framework: ${framework}`);
-    this.io.log(`  TypeScript: ${useTypeScript ? 'Yes' : 'No'}`);
-    this.io.log(`  Features: ${features?.join(', ') || 'None'}`);
-    this.io.log(`  Package Manager: ${packageManager}\n`);
+    this.ux.keyValue({
+      Name: name,
+      Framework: framework ?? '(none)',
+      TypeScript: useTs ? 'Yes' : 'No',
+      Features: (features ?? []).join(', ') || '(none)',
+      'Package manager': pm ?? '',
+    });
 
-    const confirmed = await this.io.askForConfirmation('Create project?', true);
-    if (!confirmed) {
-      this.io.warn('Cancelled');
+    if (!(await this.ux.askForConfirmation('Create project?', { default: true }))) {
+      this.logger.warn('Cancelled');
       return 1;
     }
 
-    // Create project
-    using loader = this.io.newLoader('Creating project...');
-
-    mkdirSync(name, { recursive: true });
+    using loader = this.ux.newLoader('Creating project...');
     mkdirSync(`${name}/src`, { recursive: true });
-
-    // Generate package.json
-    const packageJson = {
-      name,
-      version: '0.1.0',
-      description,
-      scripts: {
-        dev: 'vite',
-        build: 'vite build'
-      },
-      devDependencies: {}
-    };
-
-    writeFileSync(
-      `${name}/package.json`,
-      JSON.stringify(packageJson, null, 2)
-    );
-
+    writeFileSync(`${name}/package.json`, JSON.stringify({ name, description, version: '0.1.0' }, null, 2));
     loader.updateText('Installing dependencies...');
+    await new Promise(r => setTimeout(r, 1500));
 
-    // Simulate installation
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    loader.stop();
-
-    this.io.info(`\n✅ Project ${name} created successfully!`);
-    this.io.log(`\nNext steps:`);
-    this.io.log(`  cd ${name}`);
-    this.io.log(`  ${packageManager} run dev`);
+    this.logger.info(`\n✅ Project ${name} created`);
   }
 }
 ```
 
 ---
 
-## REST API Client
+## REST API client
 
-CLI for interacting with a REST API.
+`context.ts`:
 
-**context.ts:**
 ```typescript
 export interface ApiContext {
   apiKey: string;
@@ -466,165 +272,73 @@ export interface ApiContext {
 }
 ```
 
-**cli.ts:**
+`cli.ts`:
+
 ```typescript
 import { Cli } from 'bob-core';
-import { ApiContext } from './context';
-
-const context: ApiContext = {
-  apiKey: process.env.API_KEY || '',
-  baseUrl: process.env.API_URL || 'https://api.example.com'
-};
+import type { ApiContext } from './context.js';
 
 const cli = new Cli<ApiContext>({
-  ctx: context,
+  ctx: {
+    apiKey: process.env.API_KEY ?? '',
+    baseUrl: process.env.API_URL ?? 'https://api.example.com',
+  },
   name: 'apicli',
-  version: '1.0.0'
+  version: '1.0.0',
 });
 
 await cli.withCommands('./commands');
-
-const exitCode = await cli.runCommand(
-  process.argv[2],
-  ...process.argv.slice(3)
-);
-
+const exitCode = await cli.runCommand(process.argv[2], ...process.argv.slice(3));
 process.exit(exitCode);
 ```
 
-**commands/get.ts:**
+`commands/get.ts`:
+
 ```typescript
-import { Command, CommandHandlerOptions, OptionsSchema } from 'bob-core';
-import { ApiContext } from '../context';
+import { Command, Flags, Args, Parsed, FlagsSchema } from 'bob-core';
+import type { ApiContext } from '../context.js';
 
-const GetOptions = {
-  pretty: {
-    type: 'boolean',
-    alias: ['p'],
-    default: false,
-    description: 'Pretty print JSON'
-  }
-} satisfies OptionsSchema;
+export default class GetCommand extends Command<ApiContext> {
+  static command = 'get';
+  static description = 'GET request';
 
-const GetArguments = {
-  endpoint: 'string'
-} satisfies OptionsSchema;
+  static args = {
+    endpoint: Args.string({ required: true }),
+  } satisfies FlagsSchema;
 
-export default class GetCommand extends Command<ApiContext, typeof GetOptions, typeof GetArguments> {
-  constructor() {
-    super('get', {
-      description: 'GET request',
-      arguments: GetArguments,
-      options: GetOptions
-    });
-  }
+  static flags = {
+    pretty: Flags.boolean({ alias: 'p', description: 'Pretty-print JSON' }),
+  } satisfies FlagsSchema;
 
-  async preHandle() {
+  protected async preHandle() {
     if (!this.ctx.apiKey) {
-      this.io.error('API key not set. Set API_KEY environment variable.');
+      this.logger.error('API key not set. Set API_KEY environment variable.');
       return 1;
     }
   }
 
-  async handle(ctx: ApiContext, { arguments: args, options }: CommandHandlerOptions<typeof GetOptions, typeof GetArguments>) {
-    using loader = this.io.newLoader('Fetching...');
+  async handle(ctx: ApiContext, { flags, args }: Parsed<typeof GetCommand>) {
+    using loader = this.ux.newLoader('Fetching...');
 
-    try {
-      const response = await fetch(`${ctx.baseUrl}/${args.endpoint}`, {
-        headers: {
-          'Authorization': `Bearer ${ctx.apiKey}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      loader.stop();
-
-      if (!response.ok) {
-        this.io.error(`Error: ${response.status} ${response.statusText}`);
-        return 1;
-      }
-
-      const data = await response.json();
-
-      if (options.pretty) {
-        this.io.log(JSON.stringify(data, null, 2));
-      } else {
-        this.io.log(JSON.stringify(data));
-      }
-    } catch (error: any) {
-      loader.stop();
-      this.io.error(`Request failed: ${error.message}`);
-      return 1;
-    }
-  }
-}
-```
-
-**commands/post.ts:**
-```typescript
-import { Command, CommandHandlerOptions, OptionsSchema } from 'bob-core';
-import { ApiContext } from '../context';
-
-const PostArguments = {
-  endpoint: 'string',
-  data: 'string'
-} satisfies OptionsSchema;
-
-export default class PostCommand extends Command<ApiContext, OptionsSchema, typeof PostArguments> {
-  constructor() {
-    super('post', {
-      description: 'POST request',
-      arguments: PostArguments
+    const res = await fetch(`${ctx.baseUrl}/${args.endpoint}`, {
+      headers: { Authorization: `Bearer ${ctx.apiKey}` },
     });
-  }
 
-  async preHandle() {
-    if (!this.ctx.apiKey) {
-      this.io.error('API key not set');
-      return 1;
-    }
-  }
-
-  async handle(ctx: ApiContext, { arguments: args }: CommandHandlerOptions<OptionsSchema, typeof PostArguments>) {
-    let jsonData;
-    try {
-      jsonData = JSON.parse(args.data);
-    } catch {
-      this.io.error('Invalid JSON data');
+    if (!res.ok) {
+      this.logger.error(`Error ${res.status}: ${res.statusText}`);
       return 1;
     }
 
-    using loader = this.io.newLoader('Sending...');
-
-    try {
-      const response = await fetch(`${ctx.baseUrl}/${args.endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${ctx.apiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(jsonData)
-      });
-
-      loader.stop();
-
-      const result = await response.json();
-      this.io.log(JSON.stringify(result, null, 2));
-
-      return response.ok ? 0 : 1;
-    } catch (error: any) {
-      loader.stop();
-      this.io.error(`Request failed: ${error.message}`);
-      return 1;
-    }
+    const data = await res.json();
+    this.logger.info(flags.pretty ? JSON.stringify(data, null, 2) : JSON.stringify(data));
   }
 }
 ```
 
 ---
 
-## Next Steps
+## Next steps
 
-- [Creating Commands](./creating-commands.md) - Learn command creation patterns
-- [Interactive Prompts](./interactive-prompts.md) - Build interactive experiences
-- [Advanced Topics](./advanced.md) - Deep dive into advanced features
+- [Creating Commands](./creating-commands.md)
+- [Interactive Prompts](./interactive-prompts.md)
+- [Advanced Topics](./advanced.md)

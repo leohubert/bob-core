@@ -15,10 +15,15 @@ describe('StringSimilarity', () => {
 			expect(similarity.calculateSimilarity('test', 'test')).toBe(1);
 		});
 
-		it('should return 0 for strings shorter than 2 characters', () => {
+		it('should return 0 for strings with no shared characters', () => {
 			expect(similarity.calculateSimilarity('a', 'b')).toBe(0);
-			expect(similarity.calculateSimilarity('x', 'xyz')).toBe(0);
-			expect(similarity.calculateSimilarity('abc', 'x')).toBe(0);
+			expect(similarity.calculateSimilarity('abc', 'xyz')).toBe(0);
+		});
+
+		it('should penalize matches between strings of very different lengths', () => {
+			const shortVsLong = similarity.calculateSimilarity('app', 'application');
+			const shortVsClose = similarity.calculateSimilarity('app', 'apple');
+			expect(shortVsLong).toBeLessThan(shortVsClose);
 		});
 
 		it('should be case-insensitive', () => {
@@ -28,16 +33,22 @@ describe('StringSimilarity', () => {
 			expect(result2).toBe(1);
 		});
 
-		it("should calculate similarity using Dice's Coefficient", () => {
-			// "night" and "nacht" share "na" and "ht" bigrams
-			// night: ni, ig, gh, ht (4 bigrams)
-			// nacht: na, ac, ch, ht (4 bigrams)
-			// matches: ht (1 match, but na != ni)
-			// Actually: n-i, i-g, g-h, h-t vs n-a, a-c, c-h, h-t
-			// matches: h-t (1), but wait - need to check properly
+		it('should produce a partial similarity for partially-matching strings', () => {
 			const result = similarity.calculateSimilarity('night', 'nacht');
 			expect(result).toBeGreaterThan(0);
 			expect(result).toBeLessThan(1);
+		});
+
+		it('should reward shared prefixes (Jaro-Winkler bonus)', () => {
+			const withPrefix = similarity.calculateSimilarity('migrat', 'migrate');
+			const withoutPrefix = similarity.calculateSimilarity('grat', 'migrate');
+			expect(withPrefix).toBeGreaterThan(withoutPrefix);
+		});
+
+		it('should score unrelated short commands below the suggestion threshold', () => {
+			// Regression: Dice's coefficient gave 'test' vs 'update' a score of 0.25
+			// (single shared 'te' bigram), which incorrectly triggered a suggestion.
+			expect(similarity.calculateSimilarity('test', 'update')).toBeLessThan(0.55);
 		});
 
 		it('should return higher similarity for more similar strings', () => {
@@ -46,10 +57,7 @@ describe('StringSimilarity', () => {
 			expect(similar).toBeGreaterThan(different);
 		});
 
-		it('should calculate non-zero similarity for anagrams', () => {
-			// 'test' and 'tset' have same letters but different order
-			// Bigrams: 'test' = te, es, st vs 'tset' = ts, se, et
-			// No matching bigrams, so similarity = 0
+		it('should calculate non-zero similarity for one-character substitutions', () => {
 			const result = similarity.calculateSimilarity('test', 'best');
 			expect(result).toBeGreaterThan(0);
 			expect(result).toBeLessThan(1);
@@ -161,11 +169,16 @@ describe('StringSimilarity', () => {
 		});
 
 		it('should filter out low similarity matches', () => {
-			const commands = ['apple', 'banana', 'cherry'];
-			const result = similarity.findBestMatch('xyz', commands);
+			const commands = ['apple', 'banana', 'kiwi'];
+			const result = similarity.findBestMatch('zzz', commands);
 
-			const suggestions = result.ratings.filter(r => r.rating > 0.3);
+			const suggestions = result.ratings.filter(r => r.rating > 0.55);
 			expect(suggestions.length).toBe(0);
+		});
+
+		it('should not suggest unrelated commands for short typos (regression)', () => {
+			const result = similarity.findBestMatch('test', ['update']);
+			expect(result.bestMatch.rating).toBeLessThan(0.55);
 		});
 	});
 });

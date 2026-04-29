@@ -4,23 +4,24 @@ import { Cli } from '@/src/index.js';
 
 import { Command, CommandContext } from './command.js';
 
-class TestTestCommand extends Command {
-	signature = 'scout:sync-index-settings';
-	description = 'test test';
+class TestCommand extends Command {
+	static command = 'test';
+	static aliases = ['t', 'bb'];
+	static description = 'This is a test command';
 
 	protected async handle(): Promise<number | void> {
 		const res = await this.ctx.bambooClient.getProjects();
-		this.io.info(res);
+		this.logger.info(res);
 		throw new Error('Method not implemented.');
 	}
 }
 
-class TestOtherTestCommand extends Command {
-	signature = 'scout:test-index-settings';
-	description = 'other test';
+class TestInstanceCommand extends Command {
+	static command = 'test:instance';
+	static description = 'This is a test command instance';
 
 	protected handle(): Promise<number | void> {
-		throw new Error('Method not implemented.');
+		throw new Error('Method instance not implemented.');
 	}
 }
 
@@ -49,7 +50,7 @@ async function main() {
 		version: '0.0.1',
 	});
 
-	await cli.withCommands(path.resolve(import.meta.dirname, './commands'), TestTestCommand, new TestOtherTestCommand());
+	await cli.withCommands(path.resolve(import.meta.dirname, './commands'), TestCommand, new TestInstanceCommand());
 
 	const command = process.argv.at(2);
 

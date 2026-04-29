@@ -1,20 +1,15 @@
-import { CommandIO, CommandIOOptions } from '@/src/CommandIO.js';
 import { CommandParser } from '@/src/CommandParser.js';
+import { HelpCommandFlag } from '@/src/HelpFlag.js';
 import { Logger } from '@/src/Logger.js';
-import { CommandOption } from '@/src/contracts/index.js';
-import { ArgumentsObject, ArgumentsSchema, ContextDefinition, OptionsObject, OptionsSchema } from '@/src/lib/types.js';
-import { HelpOption } from '@/src/options/index.js';
+import { ArgsSchema, ContextDefinition, FlagOpts, FlagsSchema, Parsed } from '@/src/lib/types.js';
+import { UX } from '@/src/ux/index.js';
 
-export type CommandHandlerOptions<Options extends OptionsSchema, Arguments extends ArgumentsSchema> = {
-	options: OptionsObject<Options>;
-	arguments: ArgumentsObject<Arguments>;
+export type CommandRunExample = {
+	description: string;
+	command: string;
 };
-export type CommandHandler<C extends ContextDefinition, Options extends OptionsSchema, Arguments extends ArgumentsSchema> = (
-	ctx: C,
-	opts: CommandHandlerOptions<Options, Arguments>,
-) => Promise<number | void> | number | void;
 
-export type CommandRunOption<C, Options extends OptionsSchema, Arguments extends ArgumentsSchema> = {
+export type CommandRunOption<C = ContextDefinition> = {
 	logger: Logger;
 	ctx: C;
 } & (
@@ -22,233 +17,169 @@ export type CommandRunOption<C, Options extends OptionsSchema, Arguments extends
 			args: string[];
 	  }
 	| {
-			options: OptionsObject<Options>;
-			arguments: ArgumentsObject<Arguments>;
+			args: Record<string, any>;
+			flags: Record<string, any>;
 	  }
 );
 
-export type CommandExample = {
-	description: string;
-	command: string;
-};
+/**
+ * Base class for declarative commands.
+ *
+ * Subclasses set static metadata (`command`, `description`, `args`, `flags`,
+ * `examples`, `aliases`, `group`, `hidden`) and implement `handle(ctx, parsed)`.
+ * The framework parses argv, validates against `args`/`flags`, optionally
+ * prompts for missing required values, then invokes `preHandle` (if defined)
+ * and finally `handle`.
+ *
+ * The `C` generic threads a typed application context through to `handle`.
+ */
+export abstract class Command<C extends ContextDefinition = ContextDefinition> {
+	/** Discriminator used by `isBobCommandClass` for `instanceof`-free checks. */
+	static $type = 'BobCommand' as const;
 
-export class Command<
-	C extends ContextDefinition = ContextDefinition,
-	Options extends OptionsSchema = OptionsSchema,
-	Arguments extends ArgumentsSchema = ArgumentsSchema,
-> {
-	$type = 'BobCommand' as const;
-	public readonly _command: string;
-	public readonly description: string;
-	public readonly group?: string;
-	protected commandsExamples: CommandExample[] = [];
+	/** Canonical command name typed at the CLI (e.g. `"deploy"`, `"db:migrate"`). */
+	static command: string = '';
+	/** One-line description rendered in `help`. */
+	static description: string = '';
+	/** Optional grouping label for the help screen — defaults to the prefix before `:` if any. */
+	static group?: string;
+	/** Positional argument schema (use `Args.*` builders). */
+	static args: ArgsSchema = {};
+	/** Named flag schema (use `Flags.*` builders). */
+	static flags: FlagsSchema = {};
+	/** Example invocations rendered in `--help`. */
+	static examples: CommandRunExample[] = [];
+	/** When true, the command is omitted from the help index but still runnable. */
+	static hidden: boolean = false;
+	/** Alternative names that resolve to this command. */
+	static aliases: string[] = [];
 
-	get command(): string {
-		return this._command;
-	}
+	/** When true, `baseFlags` (including `--help`) are not auto-merged. */
+	static disableDefaultOptions: boolean = false;
+	/** When true, missing required values will not trigger interactive prompts. */
+	static disablePrompting: boolean = false;
+	/** When true, unknown flags are accepted instead of throwing `InvalidFlag`. */
+	static allowUnknownFlags: boolean = false;
+	/** When true, extra positional arguments throw `TooManyArguments`. */
+	static strictMode: boolean = false;
 
 	protected ctx!: C;
-	protected io!: CommandIO;
-	protected parser!: CommandParser<Options, Arguments>;
+	protected logger!: Logger;
+	protected ux!: UX;
+	protected parser!: CommandParser<FlagsSchema, ArgsSchema>;
 
-	protected disablePromptingFlag = false;
-	protected allowUnknownOptionsFlag = false;
-	protected hiddenFlag = false;
-	protected disableDefaultOptionsFlag = false;
-	protected strictModeFlag = false;
-
+	/**
+	 * Optional pre-handler hook. Returning a non-zero number short-circuits
+	 * execution and is propagated as the command's exit code.
+	 */
 	protected preHandle?(): Promise<void | number>;
-	protected _preHandler?: CommandHandler<C, Options, Arguments>;
 
-	protected handle?(ctx: C, opts: CommandHandlerOptions<Options, Arguments>): Promise<number | void> | number | void;
-	protected _handler?: CommandHandler<C, Options, Arguments>;
+	/**
+	 * Main entry point. Receives the typed context and the parsed flags/args.
+	 * Returning a number sets the exit code; void/undefined is treated as 0.
+	 */
+	protected abstract handle(ctx: C, parsed: Parsed<any>): Promise<number | void> | number | void;
 
-	private tmp?: {
-		options: Options;
-		arguments: Arguments;
+	/** Flags merged into every command's flag schema (`--help` by default). */
+	static baseFlags: FlagsSchema = {
+		help: HelpCommandFlag,
 	};
 
-	protected defaultOptions(): CommandOption<Command>[] {
-		if (this.disableDefaultOptionsFlag) {
-			return [];
-		}
-		return [new HelpOption()];
-	}
-
-	protected newCommandParser(opts: { io: CommandIO; options: Options; arguments: Arguments }): CommandParser<Options, Arguments> {
+	protected newCommandParser(opts: {
+		flags: FlagsSchema;
+		args: ArgsSchema;
+		ctx: ContextDefinition;
+		ux: UX;
+		cmd: typeof Command;
+	}): CommandParser<FlagsSchema, ArgsSchema> {
 		return new CommandParser({
-			io: opts.io,
-			options: opts.options,
-			arguments: opts.arguments,
+			ux: opts.ux,
+			ctx: opts.ctx,
+			flags: opts.flags,
+			args: opts.args,
+			cmd: opts.cmd,
 		});
 	}
 
-	protected newCommandIO(opts: CommandIOOptions): CommandIO {
-		return new CommandIO(opts);
+	protected newUX(): UX {
+		return new UX();
 	}
 
-	constructor(
-		command: string,
-		opts?: {
-			description?: string;
-			group?: string;
-			options?: Options;
-			arguments?: Arguments;
-		},
-	) {
-		this._command = command;
-		this.description = opts?.description ?? '';
-		this.group = opts?.group;
-		this.tmp = {
-			options: opts?.options ?? ({} as Options),
-			arguments: opts?.arguments ?? ({} as Arguments),
-		};
+	/**
+	 * Runs the command lifecycle. Resolves to the exit code:
+	 *   - `0` — success (or `void` from `handle`)
+	 *   - returned number from `preHandle` / `handle` for early exits
+	 *   - `0` for flag-handler short-circuits like `--help`
+	 *
+	 * Either parses raw `args: string[]` or accepts pre-parsed `flags`/`args`
+	 * objects (used internally to invoke commands programmatically without
+	 * re-running the parser).
+	 */
+	async run(runOpts: CommandRunOption<C>): Promise<number | void> {
+		const ctor = this.constructor as typeof Command;
 
-		const defaultOptions = this.defaultOptions();
+		this.ctx = runOpts.ctx;
+		this.logger = runOpts.logger;
+		this.ux = this.newUX();
 
-		if (defaultOptions.length > 0) {
-			for (const option of defaultOptions) {
-				this.tmp.options[option.option as keyof Options] = option as any;
-			}
-		}
-	}
+		let handlerInput: { flags: Record<string, any>; args: Record<string, any> };
 
-	disablePrompting() {
-		this.disablePromptingFlag = true;
-		return this;
-	}
-
-	allowUnknownOptions() {
-		this.allowUnknownOptionsFlag = true;
-		return this;
-	}
-
-	hidden() {
-		this.hiddenFlag = true;
-		return this;
-	}
-
-	get isHidden(): boolean {
-		return this.hiddenFlag;
-	}
-
-	disableDefaultOptions() {
-		this.disableDefaultOptionsFlag = true;
-		return this;
-	}
-
-	strictMode() {
-		this.strictModeFlag = true;
-		return this;
-	}
-
-	preHandler(handler: CommandHandler<C, Options, Arguments>) {
-		this._preHandler = handler;
-		return this;
-	}
-
-	handler(handler: CommandHandler<C, Options, Arguments>) {
-		this._handler = handler;
-		return this;
-	}
-
-	options<Opts extends OptionsSchema>(opts: Opts): Command<C, Options & Opts, Arguments> {
-		this.tmp = {
-			options: {
-				...(this.tmp?.options ?? ({} as Options)),
-				...opts,
-			},
-			arguments: this.tmp?.arguments ?? ({} as Arguments),
-		};
-
-		return this as any;
-	}
-
-	arguments<Args extends ArgumentsSchema>(args: Args): Command<C, Options, Arguments & Args> {
-		this.tmp = {
-			options: this.tmp?.options ?? ({} as Options),
-			arguments: {
-				...(this.tmp?.arguments ?? ({} as Arguments)),
-				...args,
-			},
-		};
-
-		return this as any;
-	}
-
-	async run(opts: CommandRunOption<C, Options, Arguments>): Promise<number | void> {
-		if (!this._handler && !this.handle) {
-			throw new Error(`No handler defined for command ${this.command || '(unknown)'}`);
-		}
-
-		let handlerOptions: CommandHandlerOptions<Options, Arguments>;
-
-		this.ctx = opts.ctx;
-		this.io = this.newCommandIO({
-			logger: opts.logger,
-		});
-
-		if (opts && 'args' in opts) {
-			const options = this.tmp?.options ?? ({} as Options);
-			for (const option of this.defaultOptions()) {
-				if (!(option.option in options)) {
-					(options as any)[option.option] = option as any;
-				}
-			}
-
+		if (!('flags' in runOpts)) {
 			this.parser = this.newCommandParser({
-				io: this.io,
-				options: options,
-				arguments: this.tmp?.arguments ?? ({} as Arguments),
+				ctx: this.ctx,
+				ux: this.ux,
+				flags: ctor.disableDefaultOptions ? ctor.flags : { ...ctor.baseFlags, ...ctor.flags },
+				args: ctor.args,
+				cmd: ctor,
 			});
-			if (this.allowUnknownOptionsFlag) {
-				this.parser.allowUnknownOptions();
+
+			if (ctor.allowUnknownFlags) {
+				this.parser.allowUnknownFlags();
 			}
-			if (this.strictModeFlag) {
+			if (ctor.strictMode) {
 				this.parser.strictMode();
 			}
 
-			handlerOptions = this.parser.init(opts.args);
+			if (ctor.disablePrompting) {
+				this.parser.disablePrompting();
+			}
 
-			for (const option of this.defaultOptions()) {
-				if (handlerOptions.options[option.option] === true) {
-					const code = await option.handler.call(this as Command);
-					if (code && code !== 0) {
-						return code;
+			const parsed = await this.parser.init(runOpts.args);
+
+			for (const flag in parsed.flags) {
+				const value: any = parsed.flags[flag];
+				const definition = ctor.flags[flag] || ctor.baseFlags[flag];
+
+				if (definition && definition.handler) {
+					const flagOpts: FlagOpts = { name: flag, ux: this.ux, ctx: runOpts.ctx, definition, cmd: ctor };
+					const res = definition.handler(value as never, flagOpts);
+					if (res && res.shouldStop) {
+						return 0;
 					}
 				}
 			}
 
-			if (this.disablePromptingFlag) {
-				this.parser.disablePrompting();
-			}
-
 			await this.parser.validate();
+
+			handlerInput = {
+				flags: parsed.flags,
+				args: parsed.args,
+			};
 		} else {
-			handlerOptions = {
-				options: opts.options,
-				arguments: opts.arguments,
+			handlerInput = {
+				flags: runOpts.flags,
+				args: runOpts.args,
 			};
 		}
 
-		if (!this._preHandler && this.preHandle) {
-			this._preHandler = this.preHandle.bind(this);
-		}
-
-		if (this._preHandler) {
-			const preHandlerResult = await this._preHandler(opts.ctx, handlerOptions);
-			if (preHandlerResult && preHandlerResult !== 0) {
-				return preHandlerResult;
+		if (this.preHandle) {
+			const preHandleResult = await this.preHandle();
+			if (preHandleResult && preHandleResult !== 0) {
+				return preHandleResult;
 			}
 		}
 
-		if (!this._handler && this.handle) {
-			this._handler = this.handle.bind(this);
-		} else if (!this._handler) {
-			throw new Error(`No handler defined for command ${this.command || '(unknown)'}`);
-		}
-
-		const res = await this._handler(opts.ctx, handlerOptions);
+		const res = await this.handle(this.ctx, handlerInput);
 		return res ?? 0;
 	}
 }

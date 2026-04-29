@@ -1,19 +1,14 @@
-import { OptionPrimitive } from '@/src/lib/types.js';
+import { Flags } from '@/src/flags/index.js';
+import type { FlagOpts } from '@/src/lib/types.js';
 
-import { CommandOption } from '../../src/index.js';
-import { Command } from '../command.js';
+import { CommandContext } from '../command.js';
 
-export class LoggerVerboseOption implements CommandOption<Command> {
-	type: OptionPrimitive = 'boolean';
-
-	option = 'verbose';
-	alias = ['v'];
-
-	description = 'Enable verbose logging';
-
-	public async handler(this: Command): Promise<void> {
-		this.io.info('Setting logger verbose to true');
-		this.ctx.logger.verbose = true;
-		this.io.info(await this.ctx.bambooClient.getProjects());
-	}
-}
+export const LoggerVerboseFlag = Flags.boolean({
+	alias: ['v'],
+	handler: (value: boolean, opts: FlagOpts) => {
+		if (value) {
+			console.log('Verbose logging enabled');
+			(opts.ctx as CommandContext).logger.verbose = true;
+		}
+	},
+});

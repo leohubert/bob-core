@@ -1,416 +1,241 @@
 # Arguments & Options
 
-Learn how to define, validate, and use command arguments and options in BOB Core.
+BOB Core uses **builder functions** to declare typed flags and positional arguments. `Flags` is the full set; `Args` is the same set minus `boolean` (booleans rarely make sense as positional arguments).
 
-## Supported Types
+> The legacy signature-string syntax (`{arg}`, `{--option}`) lives in [legacy/README.md](./legacy/README.md). New code should use the builders below.
 
-BOB Core supports the following parameter types:
+## Builders
 
-| Type | Description | Example Value |
-|------|-------------|--------------|
-| `'string'` | Text value | `'hello'` |
-| `'number'` | Numeric value | `42` |
-| `'boolean'` | True/false | `true` |
-| `['string']` | Array of strings | `['a', 'b']` |
-| `['number']` | Array of numbers | `[1, 2, 3]` |
+```typescript
+import { Flags, Args } from 'bob-core';
 
-**Note:** For masked/password input, use `{ type: 'string', secret: true }`. The `secret` flag is a property of OptionDefinition, not a type itself.
+Flags.string({ ... })
+Flags.number({ ... })
+Flags.boolean({ ... })
+Flags.option({ options: [...], ... })
+Flags.file({ ... })
+Flags.directory({ ... })
+Flags.url({ ... })
+Flags.custom<T>({ parse: ..., ... })
+```
+
+| Builder | Parsed type | Builder-specific options |
+|---|---|---|
+| `Flags.string()` | `string` | `secret` |
+| `Flags.number()` | `number` | `min`, `max` |
+| `Flags.boolean()` | `boolean` | — |
+| `Flags.option()` | union of `options` | `options: readonly [...]` |
+| `Flags.file()` | `string` | `exists` |
+| `Flags.directory()` | `string` | `exists` |
+| `Flags.url()` | `URL` | — |
+| `Flags.custom<T>()` | `T` | `parse` (required) |
+
+## Common options
+
+Every builder accepts:
+
+| Option | Type | Description |
+|---|---|---|
+| `description` | `string` | Help text |
+| `alias` | `string \| string[]` | Short name(s), e.g. `'v'` for `-v` |
+| `required` | `boolean` | Error if missing (or prompt — see below) |
+| `default` | `T \| (() => Promise<T>)` | Default value or async resolver |
+| `multiple` | `boolean` | Accept multiple values; result becomes an array |
+| `help` | `string` | Long-form help text |
+| `parse` | `(input, opts) => T` | Custom parser |
+| `ask` | `(opts) => Promise<T>` | Custom prompt for missing values |
+| `handler` | `(value, opts) => { shouldStop } \| void` | Run logic when the flag is provided (e.g. `--version`) |
+
+## Type inference
+
+Use `satisfies FlagsSchema` and `Parsed<typeof YourCommand>` to get full inference:
+
+```typescript
+import { Command, Flags, Args, Parsed, FlagsSchema } from 'bob-core';
+
+export default class ProcessCommand extends Command {
+  static command = 'process';
+
+  static args = {
+    input: Args.string({ required: true }),
+    output: Args.string({ default: null }),
+  } satisfies FlagsSchema;
+
+  static flags = {
+    verbose: Flags.boolean({ alias: 'v' }),
+    format: Flags.option({ options: ['json', 'xml', 'csv'] as const, default: 'json' }),
+    tags: Flags.string({ multiple: true }),
+    timeout: Flags.number({ min: 0, default: 30 }),
+  } satisfies FlagsSchema;
+
+  async handle(_ctx, { flags, args }: Parsed<typeof ProcessCommand>) {
+    // args.input: string
+    // args.output: string | null
+    // flags.verbose: boolean
+    // flags.format: 'json' | 'xml' | 'csv'
+    // flags.tags: string[]
+    // flags.timeout: number
+  }
+}
+```
 
 ## Arguments
 
-Arguments are positional parameters passed to commands.
-
-### Modern Schema-Based
+Positional arguments are declared via `static args` using `Args` builders.
 
 ```typescript
-import { Command } from 'bob-core';
-
-export default new Command('copy', {
-  arguments: {
-    source: 'string',              // Required string
-    destination: 'string',         // Required string
-    count: {                       // Optional number with default
-      type: 'number',
-      default: 1,
-      required: false
-    }
-  }
-}).handler((ctx, { arguments: args }) => {
-  console.log(`Copying ${args.source} to ${args.destination}`);
-  console.log(`Count: ${args.count}`);
-});
-```
-
-### Signature-Based
-
-```typescript
-export default class CopyCommand extends CommandWithSignature {
-  signature = 'copy {source} {destination} {count=1}';
-
-  protected async handle() {
-    const source = this.argument<string>('source');
-    const destination = this.argument<string>('destination');
-    const count = this.argument<number>('count');
-  }
-}
-```
-
-### Required vs Optional Arguments
-
-**Modern:**
-```typescript
-arguments: {
-  required: 'string',              // Required
-  optional: {                      // Optional
-    type: 'string',
-    required: false,
-    default: null
-  }
-}
-```
-
-**Signature-Based:**
-```typescript
-signature = 'command {required} {optional?}'
-```
-
-### Variadic Arguments
-
-Variadic arguments accept multiple values as an array.
-
-**Modern:**
-```typescript
-arguments: {
-  files: ['string']  // Array of strings
-}
-
-// Usage: command file1.txt file2.txt file3.txt
-// args.files = ['file1.txt', 'file2.txt', 'file3.txt']
-```
-
-**Signature-Based:**
-```typescript
-signature = 'delete {files*}'
-
-protected async handle() {
-  const files = this.argument<string[]>('files');
-  // files = ['file1.txt', 'file2.txt', ...]
-}
-```
-
-### Default Values
-
-**Modern:**
-```typescript
-arguments: {
-  port: {
-    type: 'number',
-    default: 3000
-  }
-}
-```
-
-**Signature-Based:**
-```typescript
-signature = 'serve {port=3000}'
-```
-
-## Options
-
-Options are named flags prefixed with `--`.
-
-### Boolean Options
-
-**Modern:**
-```typescript
-options: {
-  force: {
-    type: 'boolean',
-    default: false,
-    description: 'Force the operation'
-  }
-}
-
-// Usage: command --force
-```
-
-**Signature-Based:**
-```typescript
-signature = 'command {--force}'
-
-// Usage: command --force
-```
-
-### String Options
-
-**Modern:**
-```typescript
-options: {
-  output: {
-    type: 'string',
-    default: null,
-    description: 'Output file path'
-  }
-}
-
-// Usage: command --output=result.txt
-```
-
-**Signature-Based:**
-```typescript
-signature = 'command {--output=}'
-
-// Usage: command --output=result.txt
-```
-
-### Number Options
-
-**Modern:**
-```typescript
-options: {
-  timeout: {
-    type: 'number',
-    default: 30,
-    description: 'Timeout in seconds'
-  }
-}
-
-// Usage: command --timeout=60
-```
-
-**Signature-Based:**
-```typescript
-// Type conversion happens automatically
-signature = 'command {--timeout=30}'
-const timeout = this.option<number>('timeout');
-```
-
-### Array Options
-
-**Modern:**
-```typescript
-options: {
-  tags: {
-    type: ['string'],
-    default: [],
-    description: 'Tags to apply'
-  }
-}
-
-// Usage: command --tags=tag1 --tags=tag2
-// options.tags = ['tag1', 'tag2']
-```
-
-**Signature-Based:**
-```typescript
-signature = 'command {--tags=*}'
-
-// Usage: command --tags=tag1 --tags=tag2
-const tags = this.option<string[]>('tags');
-```
-
-### Secret/Password Options
-
-For sensitive input that should be masked:
-
-**Modern:**
-```typescript
-options: {
-  password: {
-    type: 'string',
-    secret: true,  // Masks input in interactive prompts
-    required: true,
-    description: 'User password'
-  }
-}
-```
-
-## Aliases
-
-Define shorthand aliases for options.
-
-**Modern:**
-```typescript
-options: {
-  verbose: {
-    type: 'boolean',
-    alias: ['v', 'V'],
-    default: false
-  }
-}
-
-// Usage: command --verbose OR command -v OR command -V
-```
-
-**Signature-Based:**
-```typescript
-signature = 'command {--verbose|v|V}'
-
-// Usage: command --verbose OR command -v OR command -V
-```
-
-## Descriptions
-
-Add descriptions to appear in help text.
-
-**Modern:**
-```typescript
-arguments: {
-  filename: {
-    type: 'string',
-    description: 'The file to process'
-  }
-},
-options: {
-  force: {
-    type: 'boolean',
-    default: false,
-    description: 'Skip confirmation prompts'
-  }
-}
-```
-
-**Signature-Based:**
-```typescript
-helperDefinitions = {
-  filename: 'The file to process',
-  '--force': 'Skip confirmation prompts'
+static args = {
+  source: Args.string({ required: true }),
+  destination: Args.string({ required: true }),
+  count: Args.number({ default: 1 }),
 };
+```
+
+### Variadic arguments
+
+Use `multiple: true` to consume the rest of the positional input as an array.
+
+```typescript
+static args = {
+  files: Args.string({ multiple: true, required: true }),
+};
+
+// Usage: my-cli rm a.txt b.txt c.txt
+// args.files = ['a.txt', 'b.txt', 'c.txt']
+```
+
+## Flags
+
+```typescript
+static flags = {
+  force: Flags.boolean({ alias: 'f', description: 'Skip confirmation' }),
+  output: Flags.string({ description: 'Output file' }),
+  port: Flags.number({ default: 3000, min: 1, max: 65535 }),
+  level: Flags.option({ options: ['debug', 'info', 'warn'] as const, default: 'info' }),
+};
+```
+
+### Multiple values
+
+```typescript
+tags: Flags.string({ multiple: true })
+// my-cli run --tags=urgent --tags=bug
+// flags.tags = ['urgent', 'bug']
+```
+
+### Aliases
+
+```typescript
+verbose: Flags.boolean({ alias: ['v', 'V'] })
+// my-cli run --verbose | -v | -V
+```
+
+### Secret / password input
+
+`secret: true` masks the value in interactive prompts (does not change the parsed type).
+
+```typescript
+password: Flags.string({ secret: true, required: true })
+```
+
+### Enums via `Flags.option`
+
+```typescript
+format: Flags.option({ options: ['json', 'xml', 'csv'] as const, default: 'json' })
+// flags.format is typed as 'json' | 'xml' | 'csv'
+```
+
+### Files & directories
+
+```typescript
+config:  Flags.file({ exists: true, description: 'Path to config file' }),
+outDir:  Flags.directory({ exists: true }),
+```
+
+`exists: true` validates that the path exists at parse time.
+
+### URLs
+
+```typescript
+endpoint: Flags.url({ description: 'API endpoint' })
+// flags.endpoint is a parsed URL instance
+```
+
+### Custom types
+
+`Flags.custom<T>` covers anything not built-in. Provide a `parse` function:
+
+```typescript
+since: Flags.custom<Date>({
+  parse: (input) => new Date(input),
+  description: 'Start date (YYYY-MM-DD)',
+}),
+```
+
+## Required values & prompting
+
+Required values that aren't supplied on the command line will prompt the user (using `this.ux`) unless prompting is disabled. To skip the prompt and fail fast, set `static disablePrompting = true` on the command.
+
+You can also override prompting per-flag with `ask`:
+
+```typescript
+name: Flags.string({
+  required: true,
+  ask: async ({ ux }) => ux.askForInput('Your name?'),
+}),
 ```
 
 ## Validation
 
-### Automatic Validation
+- Type conversion (`'42'` → `42`) is automatic for `number`.
+- `Flags.option` rejects values not in its `options` list.
+- `Flags.file` / `Flags.directory` with `exists: true` validate the filesystem.
+- Custom validation goes in `parse` (throw to reject) or in `preHandle()` for cross-field checks.
 
-BOB Core automatically validates:
-- Required arguments/options are present
-- Type conversion (string to number, etc.)
-- Invalid option names
+## Default values
 
-### Manual Validation
+Defaults can be a literal or an async resolver:
 
-**Modern with Pre-Handler:**
 ```typescript
-export default new Command('upload')
-  .arguments({ file: 'string' })
-  .preHandler((ctx, { arguments: args }) => {
-    if (!args.file.endsWith('.pdf')) {
-      console.error('File must be a PDF');
-      return 1; // Stop execution
-    }
-  })
-  .handler((ctx, { arguments: args }) => {
-    // File is validated
-  });
+config: Flags.string({ default: () => loadDefaultConfigPath() }),
+port:   Flags.number({ default: 3000 }),
 ```
 
-### Interactive Prompts for Missing Required Values
-
-If a required argument is missing, BOB Core can prompt for it:
+## Complete example
 
 ```typescript
-// User runs: command (without arguments)
-// BOB prompts: "name is required: "
-// User enters: "John"
-// Command executes with name = "John"
-```
+import { Command, Flags, Args, Parsed, FlagsSchema } from 'bob-core';
 
-Disable prompting:
+export default class ProcessCommand extends Command {
+  static command = 'process';
+  static description = 'Process files';
 
-```typescript
-const cli = new Cli();
-const command = new Command('test')
-  .disablePrompting();
-```
+  static args = {
+    input: Args.string({ required: true, description: 'Input file path' }),
+    output: Args.string({ description: 'Output file path' }),
+  } satisfies FlagsSchema;
 
-## Type Conversion
+  static flags = {
+    verbose: Flags.boolean({ alias: 'v' }),
+    format: Flags.option({ options: ['json', 'xml'] as const, default: 'json' }),
+    tags: Flags.string({ multiple: true }),
+    timeout: Flags.number({ default: 30 }),
+  } satisfies FlagsSchema;
 
-BOB Core automatically converts values to the correct type:
-
-```typescript
-// String to number
-arguments: { count: 'number' }
-// Input: "42" -> Parsed: 42
-
-// String to boolean
-options: { force: { type: 'boolean' } }
-// Input: "true" -> Parsed: true
-// Input: "false" -> Parsed: false
-
-// Comma-separated to array
-options: { items: ['string'] }
-// Input: "a,b,c" -> Parsed: ['a', 'b', 'c']
-```
-
-## Complete Example
-
-```typescript
-import { Command } from 'bob-core';
-
-export default new Command('process', {
-  description: 'Process files with various options',
-  arguments: {
-    input: {
-      type: 'string',
-      description: 'Input file path'
-    },
-    output: {
-      type: 'string',
-      required: false,
-      default: null,
-      description: 'Output file path (optional)'
-    }
-  },
-  options: {
-    verbose: {
-      type: 'boolean',
-      alias: ['v'],
-      default: false,
-      description: 'Enable verbose logging'
-    },
-    format: {
-      type: 'string',
-      default: 'json',
-      description: 'Output format'
-    },
-    tags: {
-      type: ['string'],
-      default: [],
-      description: 'Tags to apply'
-    },
-    timeout: {
-      type: 'number',
-      default: 30,
-      description: 'Timeout in seconds'
-    }
+  async handle(_ctx, { flags, args }: Parsed<typeof ProcessCommand>) {
+    this.ux.keyValue({
+      input: args.input,
+      output: args.output ?? '(stdout)',
+      format: flags.format,
+      tags: flags.tags.join(', ') || '(none)',
+      timeout: `${flags.timeout}s`,
+    });
   }
-}).handler((ctx, { arguments: args, options }) => {
-  console.log('Input:', args.input);
-  console.log('Output:', args.output || 'stdout');
-  console.log('Format:', options.format);
-  console.log('Verbose:', options.verbose);
-  console.log('Tags:', options.tags);
-  console.log('Timeout:', options.timeout);
-});
+}
 ```
 
-Usage examples:
-```bash
-# Minimal
-node cli.js process input.txt
+## Next steps
 
-# With options
-node cli.js process input.txt output.txt --verbose --format=xml
-
-# With aliases and arrays
-node cli.js process data.csv -v --tags=urgent --tags=priority
-
-# With timeout
-node cli.js process large.dat --timeout=120
-```
-
-## Next Steps
-
-- [Interactive Prompts](./interactive-prompts.md) - Build interactive commands
-- [Help System](./help-system.md) - Customize help output
-- [API Reference](./api-reference.md) - Complete API documentation
+- [Interactive Prompts](./interactive-prompts.md)
+- [Help System](./help-system.md)
+- [API Reference](./api-reference.md)

@@ -1,401 +1,270 @@
 # Interactive Prompts
 
-BOB Core includes built-in support for interactive prompts using the `prompts` library through CommandIO.
+Interactive prompts and display utilities are provided by the `UX` class, exposed inside every command as `this.ux`. Prompts are powered by [`@inquirer/prompts`](https://www.npmjs.com/package/@inquirer/prompts).
 
-## Accessing CommandIO
-
-CommandIO provides interactive prompt utilities and is accessible in different ways depending on your command style.
-
-**In Class-Based Commands (Extends Command):**
 ```typescript
+import { Command, Parsed } from 'bob-core';
+
 export default class SetupCommand extends Command {
-  constructor() {
-    super('setup', {
-      description: 'Interactive setup'
-    });
-  }
+  static command = 'setup';
+  static description = 'Interactive project setup';
 
-  async handle(ctx, opts) {
-    // this.io is available in the handle method
-    const name = await this.io.askForInput('Your name:');
-    this.io.info(`Hello, ${name}!`);
-  }
-}
-```
+  async handle() {
+    const name = await this.ux.askForInput('Project name:');
+    const lang = await this.ux.askForSelect('Language:', ['TypeScript', 'JavaScript']);
+    const ok = await this.ux.askForConfirmation('Continue?');
+    if (!ok) return 1;
 
-**In Signature-Based Commands (Extends CommandWithSignature):**
-```typescript
-export default class SetupCommand extends CommandWithSignature {
-  signature = 'setup';
-  description = 'Interactive setup';
-
-  protected async handle() {
-    // this.io is available
-    const name = await this.io.askForInput('Your name:');
-
-    // Or use helper methods (shortcuts to this.io methods)
-    const confirmed = await this.askForConfirmation('Continue?');
+    using loader = this.ux.newLoader('Creating project...');
+    await createProject({ name, lang });
   }
 }
 ```
 
-**In Functional Handlers (.handler()):**
+> All prompt methods return `Promise<T | null>`. They resolve to `null` when the user cancels (Ctrl+C). Always check.
+
+## Standalone usage
+
+The same functions are exported standalone for use outside of a command class:
+
 ```typescript
-// Option 1: Pass logger through context
-interface AppContext {
-  logger: Logger;
-}
-
-export default new Command<AppContext>('setup')
-  .handler(async (ctx, { options }) => {
-    // Use context logger or console.log
-    ctx.logger.log('Setting up...');
-    // For prompts, use class-based approach instead
-  });
-
-// Option 2: Use class-based Command for interactive features
-// See first example above
+import { askForInput, askForSelect, newLoader } from 'bob-core';
 ```
 
-**Note:** For commands that need interactive prompts (`askForInput`, `askForConfirmation`, etc.), use class-based Command or CommandWithSignature, as functional handlers don't have access to `this.io`.
+## Text input
 
-## Text Input
-
-### askForInput
-
-Prompt for text, password, or numeric input.
+### `askForInput(message, opts?)`
 
 ```typescript
-// Basic text input
-const name = await this.io.askForInput('Enter your name:');
-
-// With default value
-const name = await this.io.askForInput('Enter your name:', 'Anonymous');
-
-// Password (masked)
-const password = await this.io.askForInput('Enter password:', undefined, {
-  type: 'password'
-});
-
-// Number input
-const age = await this.io.askForInput('Enter your age:', undefined, {
-  type: 'number',
-  min: 0,
-  max: 120
-});
-
-// With validation
-const email = await this.io.askForInput('Enter email:', undefined, {
-  validate: (value: string) => {
-    if (!value.includes('@')) {
-      return 'Please enter a valid email';
-    }
-    return true;
-  }
-});
+const name = await this.ux.askForInput('Your name:');
+const name = await this.ux.askForInput('Your name:', { default: 'Anonymous' });
 ```
 
-**Options:**
-- `type`: `'text'` | `'password'` | `'number'`
-- `validate`: Function returning `true` or error message string
-- `min`: Minimum value (for numbers)
-- `max`: Maximum value (for numbers)
+### `askForPassword(message, opts?)`
 
-## Confirmation
-
-### askForConfirmation
-
-Ask yes/no questions.
+Masked input for secrets.
 
 ```typescript
-// Basic confirmation
-const shouldContinue = await this.io.askForConfirmation('Continue?');
+const password = await this.ux.askForPassword('Password:');
+```
 
-// With default value
-const shouldDelete = await this.io.askForConfirmation(
-  'Delete all files?',
-  false  // Default to No
-);
+### `askForNumber(message, opts?)`
 
-if (shouldDelete) {
-  // User confirmed
-}
+```typescript
+const age = await this.ux.askForNumber('Age:', { min: 0, max: 120 });
+```
+
+### `askForEditor(message, opts?)`
+
+Opens `$EDITOR` for multi-line input.
+
+```typescript
+const description = await this.ux.askForEditor('Long description:');
 ```
 
 ## Selection
 
-### askForSelect
+### `askForSelect(message, choices, opts?)`
 
-Let users choose from a list.
+Single choice from a list. Choices can be strings or `{ name, value, description? }` objects.
 
 ```typescript
-// Simple string array
-const env = await this.io.askForSelect(
-  'Select environment:',
-  ['development', 'staging', 'production']
-);
+const env = await this.ux.askForSelect('Environment:', ['dev', 'staging', 'prod']);
 
-// With rich options
-const framework = await this.io.askForSelect(
-  'Choose a framework:',
-  [
-    { title: 'React', value: 'react', description: 'A JavaScript library for UIs' },
-    { title: 'Vue', value: 'vue', description: 'The Progressive Framework' },
-    { title: 'Angular', value: 'angular', description: 'Platform for building apps' }
-  ]
-);
-
-// Multi-select
-const features = await this.io.askForSelect(
-  'Select features:',
-  ['authentication', 'database', 'caching', 'logging'],
-  { type: 'multiselect' }
-);
-
-// With autocomplete
-const country = await this.io.askForSelect(
-  'Choose country:',
-  countries,  // Large array
-  {
-    type: 'autocomplete',
-    suggest: async (input, choices) => {
-      return choices.filter(c =>
-        c.title.toLowerCase().includes(input.toLowerCase())
-      );
-    }
-  }
-);
+const framework = await this.ux.askForSelect('Framework:', [
+  { name: 'React', value: 'react', description: 'A library for UIs' },
+  { name: 'Vue', value: 'vue' },
+]);
 ```
 
-**Types:**
-- `'select'` - Single selection (default)
-- `'multiselect'` - Multiple selections
-- `'autocomplete'` - Searchable single selection
-- `'autocompleteMultiselect'` - Searchable multiple selections
+### `askForCheckbox(message, choices, opts?)`
 
-**Select Options:**
+Multi-select. Returns an array.
+
 ```typescript
-{
-  title: string;           // Display text
-  value?: any;            // Return value (defaults to title)
-  description?: string;   // Optional description
-  disabled?: boolean;     // Disable this option
-  selected?: boolean;     // Pre-selected (for multiselect)
+const features = await this.ux.askForCheckbox('Features:', [
+  'TypeScript', 'ESLint', 'Prettier', 'Vitest',
+]);
+```
+
+### `askForSearch(message, source, opts?)`
+
+Searchable single-select. `source` is an async function returning matches for the current input.
+
+```typescript
+const country = await this.ux.askForSearch('Country:', async (term) => {
+  return countries.filter(c => c.name.toLowerCase().includes(term.toLowerCase()));
+});
+```
+
+### `askForRawList(message, choices, opts?)`
+
+Numbered/keyed list. Each choice has a `key`.
+
+```typescript
+const action = await this.ux.askForRawList('Action:', [
+  { key: 'a', name: 'Add', value: 'add' },
+  { key: 'r', name: 'Remove', value: 'remove' },
+]);
+```
+
+### `askForExpand(message, choices, opts?)`
+
+Single-key expandable prompt (think `git add -p`).
+
+```typescript
+const choice = await this.ux.askForExpand('Apply patch?', [
+  { key: 'y', name: 'Yes', value: 'yes' },
+  { key: 'n', name: 'No', value: 'no' },
+  { key: 's', name: 'Skip', value: 'skip' },
+]);
+```
+
+## Confirmation & toggles
+
+### `askForConfirmation(message?, opts?)`
+
+```typescript
+const ok = await this.ux.askForConfirmation('Continue?');
+const force = await this.ux.askForConfirmation('Overwrite?', { default: false });
+```
+
+### `askForToggle(message, opts?)`
+
+Binary toggle with custom labels.
+
+```typescript
+const dark = await this.ux.askForToggle('Dark mode?', { active: 'Yes', inactive: 'No' });
+```
+
+## Lists
+
+### `askForList(message, opts?)`
+
+Comma-separated input parsed into an array.
+
+```typescript
+const tags = await this.ux.askForList('Tags (comma-separated):');
+// "urgent, bug, frontend" → ['urgent', 'bug', 'frontend']
+```
+
+## Files & directories
+
+```typescript
+const file = await this.ux.askForFile('Config file:');
+const dir  = await this.ux.askForDirectory('Output directory:');
+const path = await this.ux.askForFileSelector('Pick something:'); // either
+```
+
+## Display utilities
+
+### `keyValue(pairs, opts?)`
+
+Aligned key-value listing.
+
+```typescript
+this.ux.keyValue({
+  Name: 'my-project',
+  Version: '1.0.0',
+  Author: 'Leo',
+});
+```
+
+### `table(data, columns?)`
+
+Render an array of objects as a table.
+
+```typescript
+this.ux.table([
+  { id: 1, name: 'Alice', role: 'admin' },
+  { id: 2, name: 'Bob',   role: 'user'  },
+]);
+
+// With explicit columns
+this.ux.table(users, [
+  { key: 'id',   header: 'ID',   align: 'right' },
+  { key: 'name', header: 'Name' },
+]);
+```
+
+### `newProgressBar(total, opts?)`
+
+```typescript
+const bar = this.ux.newProgressBar(100);
+for (let i = 0; i < 100; i++) {
+  await doStep();
+  bar.tick();
+}
+bar.stop();
+```
+
+### `newLoader(text?, chars?, delay?)`
+
+Animated spinner. Use `using` for automatic cleanup on scope exit.
+
+```typescript
+using loader = this.ux.newLoader('Downloading...');
+await download();
+loader.updateText('Extracting...');
+await extract();
+// auto-stops at end of scope
+
+// Or manually:
+const l = this.ux.newLoader('Working');
+await work();
+l.stop();
+```
+
+## Handling cancellation
+
+All `ask*` prompts return `null` when the user cancels (Ctrl+C / Esc). Always handle it:
+
+```typescript
+const name = await this.ux.askForInput('Your name:');
+if (name === null) {
+  this.logger.warn('Cancelled');
+  return 1;
 }
 ```
 
-## List Input
+For lower-level control, the `withCancelHandling` helper is exported for wrapping prompt promises.
 
-### askForList
-
-Prompt for comma-separated values.
+## Complete example
 
 ```typescript
-// Basic list
-const tags = await this.io.askForList('Enter tags (comma-separated):');
-// User enters: "urgent, bug, frontend"
-// Result: ['urgent', 'bug', 'frontend']
+import { Command } from 'bob-core';
 
-// With custom separator
-const items = await this.io.askForList('Enter items:', undefined, {
-  separator: ';'
-});
+export default class InitCommand extends Command {
+  static command = 'init';
+  static description = 'Initialize a new project';
 
-// With validation
-const emails = await this.io.askForList('Enter email addresses:', undefined, {
-  validate: (values: string[]) => {
-    if (values.length === 0) {
-      return 'Please enter at least one email';
-    }
-    return true;
-  }
-});
+  async handle() {
+    const name = await this.ux.askForInput('Project name:');
+    if (!name) return 1;
 
-// With formatting
-const names = await this.io.askForList('Enter names:', undefined, {
-  format: (value: string) => value.trim().toLowerCase()
-});
-```
-
-## Toggle
-
-### askForToggle
-
-Binary choice with custom labels.
-
-```typescript
-const preference = await this.io.askForToggle(
-  'Enable dark mode?',
-  true,  // Default value
-  {
-    active: 'Yes',
-    inactive: 'No'
-  }
-);
-```
-
-## Date Input
-
-### askForDate
-
-Prompt for date selection.
-
-```typescript
-const birthdate = await this.io.askForDate('Enter your birthdate:');
-
-// With default
-const deadline = await this.io.askForDate(
-  'Project deadline:',
-  new Date()  // Default to today
-);
-
-// With validation
-const futureDate = await this.io.askForDate('Select future date:', undefined, {
-  validate: (date: Date) => {
-    if (date < new Date()) {
-      return 'Date must be in the future';
-    }
-    return true;
-  }
-});
-
-// With custom mask
-const scheduledDate = await this.io.askForDate('Schedule for:', undefined, {
-  mask: 'YYYY-MM-DD'
-});
-```
-
-## Loaders/Spinners
-
-### newLoader
-
-Display animated loading indicators.
-
-```typescript
-// Basic loader
-const loader = this.io.newLoader('Processing...');
-// ... do async work
-loader.stop();
-
-// Update text dynamically
-const loader = this.io.newLoader('Starting...');
-await step1();
-loader.updateText('Step 2...');
-await step2();
-loader.updateText('Finalizing...');
-await step3();
-loader.stop();
-
-// Using with disposal (recommended)
-{
-  using loader = this.io.newLoader('Downloading...');
-  await download();
-  // Automatically stopped when scope exits
-}
-
-// Custom spinner
-const loader = this.io.newLoader(
-  'Loading',
-  ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'],  // Spinner chars
-  80  // Delay in ms
-);
-```
-
-## Logging
-
-CommandIO also provides logging methods:
-
-```typescript
-this.io.log('Regular message');
-this.io.info('Info message');
-this.io.warn('Warning message');
-this.io.error('Error message');
-this.io.debug('Debug message');
-```
-
-## Complete Interactive Example
-
-```typescript
-import { Command, CommandHandlerOptions, OptionsSchema } from 'bob-core';
-
-export default class InitCommand extends Command<any, OptionsSchema, OptionsSchema> {
-  constructor() {
-    super('init', {
-      description: 'Initialize a new project'
-    });
-  }
-
-  async handle(ctx: any, opts: CommandHandlerOptions<OptionsSchema, OptionsSchema>) {
-    // Get basic info
-    const name = await this.io.askForInput('Project name:');
-    const description = await this.io.askForInput('Description:', '');
-
-    // Select framework
-    const framework = await this.io.askForSelect('Choose framework:', [
-      { title: 'React', value: 'react' },
-      { title: 'Vue', value: 'vue' },
-      { title: 'Angular', value: 'angular' }
+    const framework = await this.ux.askForSelect('Framework:', [
+      { name: 'React',  value: 'react' },
+      { name: 'Vue',    value: 'vue' },
+      { name: 'Svelte', value: 'svelte' },
     ]);
 
-    // Multi-select features
-    const features = await this.io.askForSelect(
-      'Select features:',
-      ['TypeScript', 'ESLint', 'Prettier', 'Testing', 'CI/CD'],
-      { type: 'multiselect' }
-    );
+    const features = await this.ux.askForCheckbox('Features:',
+      ['TypeScript', 'ESLint', 'Prettier', 'Vitest']);
 
-    // Confirmation
-    const shouldInstall = await this.io.askForConfirmation(
-      'Install dependencies now?',
-      true
-    );
+    this.ux.keyValue({ Name: name, Framework: framework, Features: (features ?? []).join(', ') });
 
-    // Show progress
-    using loader = this.io.newLoader('Creating project...');
+    if (!(await this.ux.askForConfirmation('Create project?'))) return 1;
 
-    // Create project files
-    await createProject({ name, description, framework, features });
+    using loader = this.ux.newLoader('Creating project...');
+    await createProject({ name, framework, features });
 
-    loader.updateText('Installing dependencies...');
-
-    if (shouldInstall) {
-      await installDependencies();
-    }
-
-    loader.stop();
-
-    this.io.info(`✅ Project ${name} created successfully!`);
+    this.logger.info(`✅ ${name} created`);
   }
 }
 ```
 
-## Handling User Cancellation
+## Next steps
 
-When users press Ctrl+C or cancel a prompt, it returns `null`:
-
-```typescript
-const name = await this.io.askForInput('Your name:');
-
-if (!name) {
-  this.io.error('Operation cancelled');
-  return 1; // Exit with error code
-}
-
-// Continue with name
-```
-
-## Best Practices
-
-1. **Provide defaults** for non-critical inputs
-2. **Validate early** to give immediate feedback
-3. **Group related prompts** for better UX
-4. **Show progress** for long operations
-5. **Handle cancellation** gracefully
-6. **Use descriptions** in selects for clarity
-7. **Pre-select sensible options** in multiselect
-
-## Next Steps
-
-- [Advanced Topics](./advanced.md) - Context, error handling, and more
-- [Examples](./examples.md) - Complete working examples
-- [API Reference](./api-reference.md) - Full API documentation
+- [Advanced Topics](./advanced.md)
+- [Examples](./examples.md)
+- [API Reference](./api-reference.md)

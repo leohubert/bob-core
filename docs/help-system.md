@@ -1,37 +1,24 @@
 # Help System
 
-BOB Core automatically generates beautiful help documentation for your CLI and commands.
+BOB Core auto-generates help output from your command metadata. A `help` command is registered automatically; `--help` and `-h` work on every command.
 
-## Built-in Help Command
-
-The `help` command is automatically registered and displays all available commands.
+## Triggering help
 
 ```bash
-# Show all commands
-node cli.js help
-
-# Show help for specific command
-node cli.js help deploy
-
-# Alternative syntax
-node cli.js deploy --help
-node cli.js deploy -h
+my-cli help              # list all commands
+my-cli help deploy       # show help for one command
+my-cli deploy --help     # equivalent
+my-cli deploy -h         # equivalent
 ```
 
-## CLI-Level Help
+## CLI metadata
 
-Configure CLI metadata for the help header:
+`Cli` constructor options surface in the help header:
 
 ```typescript
-import { Cli } from 'bob-core';
-
-const cli = new Cli({
-  name: 'my-app',
-  version: '1.0.0'
-});
+const cli = new Cli({ name: 'my-app', version: '1.0.0' });
 ```
 
-Output:
 ```
 my-app 1.0.0
 
@@ -42,81 +29,43 @@ Available commands:
   ...
 ```
 
-## Command Help
+## Command metadata
 
-### Adding Descriptions
+All help text comes from `static` fields on the command:
 
-**Modern Commands:**
 ```typescript
-export default new Command('deploy', {
-  description: 'Deploy application to production'
-}).handler(() => {
-  // ...
-});
-```
+import { Command, Flags, Args } from 'bob-core';
 
-**Signature-Based Commands:**
-```typescript
-export default class DeployCommand extends CommandWithSignature {
-  signature = 'deploy';
-  description = 'Deploy application to production';
+export default class DeployCommand extends Command {
+  static command = 'deploy';
+  static description = 'Deploy an application';
+  static group = 'Deploy';
+  static aliases = ['ship'];
 
-  protected async handle() {
-    // ...
-  }
-}
-```
-
-### Argument and Option Descriptions
-
-**Modern Commands:**
-```typescript
-export default new Command('deploy', {
-  description: 'Deploy application',
-  arguments: {
-    environment: {
-      type: 'string',
-      description: 'Target environment (dev, staging, prod)'
-    }
-  },
-  options: {
-    force: {
-      type: 'boolean',
-      default: false,
-      description: 'Skip confirmation prompts'
-    },
-    region: {
-      type: 'string',
-      default: 'us-east-1',
-      description: 'AWS region for deployment'
-    }
-  }
-});
-```
-
-**Signature-Based Commands:**
-```typescript
-export default class DeployCommand extends CommandWithSignature {
-  signature = 'deploy {environment} {--force} {--region=us-east-1}';
-  description = 'Deploy application';
-
-  helperDefinitions = {
-    environment: 'Target environment (dev, staging, prod)',
-    '--force': 'Skip confirmation prompts',
-    '--region': 'AWS region for deployment'
+  static args = {
+    environment: Args.string({
+      required: true,
+      description: 'Target environment (dev, staging, prod)',
+    }),
   };
+
+  static flags = {
+    force: Flags.boolean({ alias: 'f', description: 'Skip confirmation' }),
+    region: Flags.string({ default: 'us-east-1', description: 'AWS region' }),
+  };
+
+  static examples = [
+    { description: 'Deploy to production', command: 'my-app deploy prod' },
+    { description: 'Deploy with custom region', command: 'my-app deploy staging --region=eu-west-1' },
+  ];
 }
 ```
 
-## Help Output Format
-
-### Command-Specific Help
-
-When running `node cli.js deploy --help`:
+## Per-command help output
 
 ```
 Description:
-  Deploy application
+  Deploy an application
 
 Usage:
   deploy <environment> [options]
@@ -125,123 +74,27 @@ Arguments:
   environment           Target environment (dev, staging, prod)
 
 Options:
-  --force              Skip confirmation prompts (boolean) [default: false]
-  --region             AWS region for deployment (string) [default: us-east-1]
-  --help, -h           Display help for the given command (boolean)
+  --force, -f           Skip confirmation (boolean) [default: false]
+  --region              AWS region (string) [default: us-east-1]
+  --help, -h            Display help for the given command (boolean)
 
 Examples:
   Deploy to production
+    my-app deploy prod
 
-    node cli.js deploy prod
-
-  Deploy to staging with custom region
-
-    node cli.js deploy staging --region=eu-west-1
+  Deploy with custom region
+    my-app deploy staging --region=eu-west-1
 ```
 
-### List All Commands
+## Grouped commands
 
-When running `node cli.js help`:
-
-```
-my-app 1.0.0
-
-Usage:
-  command [options] [arguments]
-
-Available commands:
-  help              Show help
-  deploy            Deploy application
-
-Database:
-  db:migrate        Run database migrations
-  db:seed           Seed database with test data
-
-Cache:
-  cache:clear       Clear application cache
-```
-
-## Adding Examples
-
-Provide usage examples for your commands.
-
-**Modern Commands:**
-```typescript
-export default new Command('deploy', {
-  description: 'Deploy application',
-  // ... arguments and options
-}).handler(() => {
-  // ...
-});
-
-// Add examples via commandsExamples property
-// Note: This is currently only supported in signature-based commands
-// For modern commands, examples are shown based on usage
-```
-
-**Signature-Based Commands:**
-```typescript
-export default class DeployCommand extends CommandWithSignature {
-  signature = 'deploy {environment} {--region=us-east-1}';
-  description = 'Deploy application';
-
-  commandsExamples = [
-    {
-      command: 'deploy prod',
-      description: 'Deploy to production'
-    },
-    {
-      command: 'deploy staging --region=eu-west-1',
-      description: 'Deploy to staging in EU region'
-    },
-    {
-      command: 'deploy dev --force',
-      description: 'Force deploy to development'
-    }
-  ];
-
-  protected async handle() {
-    // ...
-  }
-}
-```
-
-## Help Option
-
-The `--help` (or `-h`) option is automatically added to all commands.
-
-```bash
-# All these work
-node cli.js deploy --help
-node cli.js deploy -h
-node cli.js help deploy
-```
-
-## Grouped Commands
-
-Commands with `:` in their name are automatically grouped:
+Commands with a shared `static group` are clustered together. Use `:` in `static command` for namespacing — by convention, the part before the colon doubles as the group name in many CLIs, but you can set `static group` explicitly to anything.
 
 ```typescript
-// commands/db/migrate.ts
-export default new Command('db:migrate', {
-  description: 'Run migrations',
-  group: 'Database'
-});
-
-// commands/db/seed.ts
-export default new Command('db:seed', {
-  description: 'Seed database',
-  group: 'Database'
-});
-
-// commands/cache/clear.ts
-export default new Command('cache:clear', {
-  description: 'Clear cache',
-  group: 'Cache'
-});
+static command = 'db:migrate';
+static group = 'Database';
 ```
 
-Help output:
 ```
 Available commands:
 
@@ -253,148 +106,52 @@ Cache:
   cache:clear       Clear cache
 ```
 
-## Customizing Help Display
+## Argument & option display
 
-### Custom Help Command
+| Notation | Meaning |
+|---|---|
+| `<arg>` | Required argument |
+| `[arg]` | Optional argument |
+| `[arg...]` | Variadic argument |
+| `[default: …]` | Default value |
+| `--flag, -f` | Flag with alias |
+| `(boolean)` / `(string)` / etc. | Parsed type |
 
-Extend the built-in HelpCommand:
+## Hiding commands
 
 ```typescript
-import { HelpCommand, HelpCommandOptions } from 'bob-core';
+static hidden = true;
+```
 
-class CustomHelpCommand extends HelpCommand {
-  constructor(opts: HelpCommandOptions) {
-    super(opts);
-  }
+The command still runs; it's just not listed in the index.
 
-  // Override methods to customize display
-  protected async displayAllCommands() {
-    // Custom implementation
-  }
+## Customizing help
 
-  protected async displayCommandHelp(commandName: string) {
-    // Custom implementation
-  }
+Subclass `HelpCommand` and override `Cli.newHelpCommand`:
+
+```typescript
+import { Cli, HelpCommand, type HelpCommandOptions } from 'bob-core';
+
+class CustomHelp extends HelpCommand {
+  // override rendering methods here
 }
 
 class MyCli extends Cli {
   protected newHelpCommand(opts: HelpCommandOptions) {
-    return new CustomHelpCommand(opts);
+    return new CustomHelp(opts);
   }
 }
 ```
 
-### Hiding Commands from Help
+## Best practices
 
-Currently not directly supported, but you can filter in custom help command:
+1. Always set `static description`.
+2. Add `description` to every flag and arg.
+3. Provide `static examples` for non-trivial commands — examples drive adoption.
+4. Document aliases by listing them in the description when ambiguous.
+5. Group related commands with `:` and `static group`.
 
-```typescript
-// Don't include commands starting with underscore
-const visibleCommands = commands.filter(cmd => !cmd.command.startsWith('_'));
-```
+## Next steps
 
-## Argument Display
-
-Arguments are shown with indicators:
-
-- `<required>` - Required argument
-- `[optional]` - Optional argument
-- `[variadic...]` - Variadic argument
-- `[arg=default]` - With default value
-
-## Option Display
-
-Options show:
-- Name and aliases: `--verbose, -v`
-- Type: `(boolean)`, `(string)`, `(number)`, `(array)`
-- Default value: `[default: false]`
-- Description
-
-Example:
-```
-Options:
-  --verbose, -v        Enable verbose logging (boolean) [default: false]
-  --output, -o         Output file path (string) [default: null]
-  --tags               Filter by tags (array) [default: []]
-```
-
-## Best Practices
-
-1. **Always Add Descriptions** - Both command and parameter descriptions
-2. **Use Clear Language** - Describe what the command does, not how it works
-3. **Provide Examples** - Show common use cases
-4. **Group Related Commands** - Use `:` separator for logical organization
-5. **Document Aliases** - Show short flags in descriptions
-6. **Explain Defaults** - Make default behavior clear
-7. **Show Expected Values** - Indicate valid values or formats
-
-## Complete Example
-
-```typescript
-export default class BackupCommand extends CommandWithSignature {
-  signature = 'backup {database} {--compress} {--output=} {--format=sql|json}';
-  description = 'Create a database backup';
-
-  helperDefinitions = {
-    database: 'Database name to backup',
-    '--compress': 'Compress the backup file',
-    '--output': 'Output file path (default: ./backups/)',
-    '--format': 'Backup format: sql or json'
-  };
-
-  commandsExamples = [
-    {
-      command: 'backup mydb',
-      description: 'Simple backup to default location'
-    },
-    {
-      command: 'backup mydb --compress --output=/var/backups/',
-      description: 'Compressed backup to custom location'
-    },
-    {
-      command: 'backup mydb --format=json',
-      description: 'Export as JSON instead of SQL'
-    }
-  ];
-
-  protected async handle() {
-    // Implementation
-  }
-}
-```
-
-Help output:
-```
-Description:
-  Create a database backup
-
-Usage:
-  backup <database> [options]
-
-Arguments:
-  database              Database name to backup
-
-Options:
-  --compress           Compress the backup file (boolean) [default: false]
-  --output             Output file path (default: ./backups/) (string)
-  --format             Backup format: sql or json (string)
-  --help, -h           Display help for the given command (boolean)
-
-Examples:
-  Simple backup to default location
-
-    node cli.js backup mydb
-
-  Compressed backup to custom location
-
-    node cli.js backup mydb --compress --output=/var/backups/
-
-  Export as JSON instead of SQL
-
-    node cli.js backup mydb --format=json
-```
-
-## Next Steps
-
-- [API Reference](./api-reference.md) - Complete API documentation
-- [Examples](./examples.md) - Real-world CLI examples
+- [API Reference](./api-reference.md)
+- [Examples](./examples.md)

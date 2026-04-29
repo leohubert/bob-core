@@ -1,700 +1,356 @@
 # API Reference
 
-Complete API documentation for BOB Core.
+Public surface of `bob-core`. All exports come from the package root.
 
-## Cli Class
+```typescript
+import {
+  Cli, Command, CommandRegistry, CommandParser, ExceptionHandler, Logger,
+  Flags, Args, UX, StringSimilarity,
+  // ...types and errors below
+} from 'bob-core';
+```
 
-Main CLI orchestrator.
+---
+
+## `Cli<C>`
+
+Main CLI orchestrator. Manages command registration, exception handling, and the built-in help command.
 
 ### Constructor
 
 ```typescript
 new Cli<C = any>(options?: CliOptions<C>)
-```
 
-**Options:**
-```typescript
 interface CliOptions<C> {
-  ctx?: C;                    // Context to inject into commands
-  name?: string;              // CLI name for help display
-  version?: string;           // CLI version for help display
-  logger?: Logger;            // Custom logger instance
+  ctx?: C;            // Context injected into every command
+  name?: string;      // CLI name (used in help header)
+  version?: string;   // CLI version (used in help header)
+  logger?: Logger;    // Custom logger
 }
 ```
 
 ### Methods
 
-#### withCommands()
-
-Load commands from various sources.
-
 ```typescript
-async withCommands(
-  ...commands: Array<Command | { new(): Command } | string>
-): Promise<void>
-```
-
-**Examples:**
-```typescript
-// Load from directory
-await cli.withCommands('./commands');
-
-// Register class
-await cli.withCommands(MyCommand);
-
-// Register instance
-await cli.withCommands(new MyCommand());
-
-// Mix and match
-await cli.withCommands('./commands', MyCommand, new OtherCommand());
-```
-
-#### runCommand()
-
-Execute a command.
-
-```typescript
-async runCommand(
-  command: string | Command | undefined,
-  ...args: any[]
-): Promise<number>
-```
-
-**Returns:** Exit code (0 for success, non-zero for errors)
-
-**Examples:**
-```typescript
-// Run by name
-const code = await cli.runCommand('deploy', 'prod', '--force');
-
-// Run command instance
-const code = await cli.runCommand(myCommand, 'arg1');
-
-// Show help if no command
-const code = await cli.runCommand(undefined);
-```
-
-#### runHelpCommand()
-
-Display help.
-
-```typescript
-async runHelpCommand(): Promise<number>
-```
-
-#### withCommandResolver()
-
-Set custom command resolver.
-
-```typescript
-withCommandResolver(resolver: CommandResolver): Cli
-```
-
-#### withFileImporter()
-
-Set custom file importer.
-
-```typescript
-withFileImporter(importer: FileImporter): Cli
+withCommands(...commands: Array<typeof Command<C> | Command<C> | string>): Promise<void>
+withCommandResolver(resolver: CommandResolver): this
+withFileImporter(importer: FileImporter): this
+runCommand(command: string | typeof Command | Command | undefined, ...args: string[]): Promise<number>
+runHelpCommand(): Promise<number>
 ```
 
 ### Properties
 
 ```typescript
-cli.commandRegistry: CommandRegistry  // Access to command registry
+cli.commandRegistry: CommandRegistry
+```
+
+### Protected hooks for subclassing
+
+```typescript
+protected newCommandRegistry(opts): CommandRegistry
+protected newHelpCommand(opts: HelpCommandOptions): HelpCommand
+protected newExceptionHandler(opts: { logger: Logger }): ExceptionHandler
 ```
 
 ---
 
-## Command Class
+## `Command<C>`
 
-Modern schema-based command.
+Abstract base class for commands.
 
-### Constructor
+### Static metadata
 
 ```typescript
-new Command<C, Options, Arguments>(
-  command: string,
-  options?: {
-    description?: string;
-    group?: string;
-    options?: Options;
-    arguments?: Arguments;
-  }
-)
+static command: string                    // command name
+static description: string                // shown in help
+static group?: string                     // group label
+static aliases: string[]                  // alternate names
+static args: ArgsSchema                   // positional arguments schema
+static flags: FlagsSchema                 // named flags schema
+static examples: CommandRunExample[]      // help examples
+static hidden: boolean                    // exclude from help listing
+
+// Configuration
+static disableDefaultOptions: boolean     // skip baseFlags entirely
+static disablePrompting: boolean          // never prompt for missing required values
+static allowUnknownFlags: boolean         // tolerate unknown flags
+static strictMode: boolean                // strict argument handling
+static baseFlags: FlagsSchema             // shared flags (default: { help: HelpCommandFlag })
+```
+
+### Instance properties (available inside `handle`)
+
+```typescript
+protected ctx: C
+protected logger: Logger
+protected ux: UX
+protected parser: CommandParser
 ```
 
 ### Methods
 
-#### handler()
-
-Set the command handler.
-
 ```typescript
-handler(
-  handler: (ctx: C, opts: {
-    options: OptionsObject<Options>,
-    arguments: ArgumentsObject<Arguments>
-  }) => Promise<number | void> | number | void
-): Command
+protected abstract handle(ctx: C, parsed: Parsed<this>): Promise<number | void> | number | void
+protected preHandle?(): Promise<void | number>
+
+async run(opts: CommandRunOption<C>): Promise<number | void>
+
+// Subclassing hooks
+protected newCommandParser(opts): CommandParser
+protected newUX(): UX
 ```
 
-#### preHandler()
-
-Set a pre-handler (runs before main handler).
+### `CommandRunOption<C>`
 
 ```typescript
-preHandler(
-  handler: (ctx: C, opts: {
-    options: OptionsObject<Options>,
-    arguments: ArgumentsObject<Arguments>
-  }) => Promise<number | void> | number | void
-): Command
+type CommandRunOption<C> = { logger: Logger; ctx: C } & (
+  | { args: string[] }                                            // raw, will be parsed
+  | { args: Record<string, any>; flags: Record<string, any> }     // pre-parsed
+);
 ```
 
-#### options()
-
-Add options schema.
+### `CommandRunExample`
 
 ```typescript
-options<Opts>(opts: Opts): Command<C, Options & Opts, Arguments>
-```
-
-#### arguments()
-
-Add arguments schema.
-
-```typescript
-arguments<Args>(args: Args): Command<C, Options, Arguments & Args>
-```
-
-#### disablePrompting()
-
-Disable interactive prompts.
-
-```typescript
-disablePrompting(): Command
-```
-
-#### run()
-
-Execute the command.
-
-```typescript
-async run(opts: {
-  ctx: C;
-  logger: Logger;
-  args: string[];
-} | {
-  ctx: C;
-  logger: Logger;
-  options: OptionsObject<Options>;
-  arguments: ArgumentsObject<Arguments>;
-}): Promise<number | void>
-```
-
-### Properties
-
-```typescript
-command.command: string        // Command name
-command.description: string    // Command description
-command.group?: string        // Command group
+type CommandRunExample = { description: string; command: string };
 ```
 
 ---
 
-## CommandWithSignature Class
+## `CommandWithSignature<C>` (deprecated)
 
-Legacy signature-based command.
-
-### Abstract Properties
-
-```typescript
-abstract signature: string      // Command signature
-abstract description: string    // Command description
-```
-
-### Properties
-
-```typescript
-helperDefinitions: { [key: string]: string }  // Help text
-commandsExamples: CommandExample[]            // Usage examples
-```
-
-### Abstract Methods
-
-```typescript
-protected abstract handle(
-  ctx: C,
-  opts: CommandHandlerOptions<Options, Arguments>
-): Promise<number | void>
-```
-
-### Helper Methods
-
-#### argument()
-
-Get argument value.
-
-```typescript
-protected argument<T = string>(key: string): T | null
-protected argument<T = string>(key: string, defaultValue: T): T
-```
-
-#### option()
-
-Get option value.
-
-```typescript
-protected option<T = string>(key: string): T | null
-protected option<T = string>(key: string, defaultValue: T): T
-```
-
-#### askForConfirmation()
-
-Prompt for confirmation.
-
-```typescript
-protected async askForConfirmation(
-  message?: string,
-  defaultValue?: boolean
-): Promise<boolean>
-```
-
-#### askForInput()
-
-Prompt for input.
-
-```typescript
-protected async askForInput(
-  message: string,
-  defaultValue?: string | number,
-  opts?: {
-    type?: 'text' | 'password' | 'number';
-    validate?: (value: string) => boolean | string;
-    min?: number;
-    max?: number;
-  }
-): Promise<string | null>
-```
-
-#### askForSelect()
-
-Prompt for selection.
-
-```typescript
-protected async askForSelect(
-  message: string,
-  options: Array<string | SelectOption>,
-  opts?: {
-    type?: 'select' | 'multiselect' | 'autocomplete' | 'autocompleteMultiselect';
-    initial?: number;
-    validate?: (value: string) => boolean;
-    suggest?: (input: string, choices: SelectOption[]) => Promise<SelectOption[]>;
-  }
-): Promise<string | null>
-```
-
-#### newLoader()
-
-Create a loader/spinner.
-
-```typescript
-protected newLoader(
-  text?: string,
-  chars?: string[],
-  delay?: number
-): {
-  updateText(text: string): void;
-  stop(): void;
-  [Symbol.dispose](): void;
-}
-```
-
-### Protected Properties
-
-```typescript
-protected ctx: C              // Context
-protected io: CommandIO       // I/O utilities
-protected logger: Logger      // Logger
-protected parser: CommandSignatureParser  // Parser
-```
+Legacy class supporting the signature-string syntax. See [legacy/README.md](./legacy/README.md).
 
 ---
 
-## CommandIO Class
-
-Interactive I/O utilities.
-
-### Methods
-
-#### Logging
+## `Flags` and `Args` builders
 
 ```typescript
-log(...args: any[]): void
-info(...args: any[]): void
-warn(...args: any[]): void
-error(...args: any[]): void
-debug(...args: any[]): void
+import { Flags, Args } from 'bob-core';
 ```
 
-#### askForConfirmation()
+`Flags` exposes: `string`, `number`, `boolean`, `option`, `file`, `directory`, `url`, `custom`.
+`Args` is the same set minus `boolean`.
+
+### Common options (`FlagProps<T>`)
 
 ```typescript
-async askForConfirmation(
-  message?: string,
-  defaultValue?: boolean
-): Promise<boolean>
-```
-
-#### askForInput()
-
-```typescript
-async askForInput(
-  message: string,
-  defaultValue?: string | number,
-  opts?: {
-    type?: 'text' | 'password' | 'number';
-    validate?: (value: string) => boolean | string;
-    min?: number;
-    max?: number;
-  }
-): Promise<string | null>
-```
-
-#### askForSelect()
-
-```typescript
-async askForSelect(
-  message: string,
-  options: Array<string | SelectOption>,
-  opts?: {
-    type?: 'select' | 'multiselect' | 'autocomplete' | 'autocompleteMultiselect';
-    initial?: number;
-    validate?: (value: string) => boolean;
-    suggest?: (input: string, choices: SelectOption[]) => Promise<SelectOption[]>;
-  }
-): Promise<string | null>
-```
-
-#### askForList()
-
-```typescript
-async askForList(
-  message: string,
-  defaultValue?: string | number,
-  opts?: {
-    validate?: (value: string[]) => boolean | string;
-    format?: (value: string) => string;
-    separator?: string;
-  }
-): Promise<string[] | null>
-```
-
-#### askForDate()
-
-```typescript
-async askForDate(
-  message: string,
-  defaultValue?: Date,
-  opts?: {
-    validate?: (value: Date) => boolean | string;
-    mask?: string;
-  }
-): Promise<Date | null>
-```
-
-#### askForToggle()
-
-```typescript
-async askForToggle(
-  message: string,
-  defaultValue?: boolean,
-  opts?: {
-    active?: string;
-    inactive?: string;
-  }
-): Promise<boolean>
-```
-
-#### newLoader()
-
-```typescript
-newLoader(
-  text?: string,
-  chars?: string[],
-  delay?: number
-): {
-  updateText(text: string): void;
-  stop(): void;
-  [Symbol.dispose](): void;
-  [Symbol.asyncDispose](): void;
-}
-```
-
----
-
-## CommandRegistry Class
-
-Manages command registration and discovery.
-
-### Methods
-
-#### registerCommand()
-
-```typescript
-registerCommand(command: Command, force?: boolean): void
-```
-
-#### loadCommandsPath()
-
-```typescript
-async loadCommandsPath(commandsPath: string): Promise<void>
-```
-
-#### runCommand()
-
-```typescript
-async runCommand(
-  ctx: any,
-  command: string | Command,
-  ...args: any[]
-): Promise<number>
-```
-
-#### getAvailableCommands()
-
-```typescript
-getAvailableCommands(): string[]
-```
-
-#### getCommands()
-
-```typescript
-getCommands(): Array<Command>
-```
-
-#### withCommandResolver()
-
-```typescript
-withCommandResolver(resolver: CommandResolver): CommandRegistry
-```
-
-#### withFileImporter()
-
-```typescript
-withFileImporter(importer: FileImporter): CommandRegistry
-```
-
----
-
-## Type Definitions
-
-### OptionPrimitive
-
-```typescript
-type OptionPrimitive =
-  | 'string'
-  | 'number'
-  | 'boolean'
-  | ['string']
-  | ['number']
-```
-
-**Note:** For masked/secret input (like passwords), use `{ type: 'string', secret: true }` in the OptionDefinition.
-
-### OptionDefinition
-
-```typescript
-interface OptionDefinition {
-  type: OptionPrimitive;
+{
   description?: string;
-  alias?: string | string[];
+  alias?: string | readonly string[];
   required?: boolean;
-  secret?: boolean;      // Masks input in interactive prompts (for passwords)
-  default?: any;
-  variadic?: boolean;
+  default?: T | T[] | null | (() => Promise<T | T[] | null>);
+  multiple?: boolean;
+  help?: string;
+  parse?: (input: any, opts: ParameterOpts) => T;
+  ask?: (opts: ParameterOpts) => Promise<any>;
+  handler?: (value: T, opts: ParameterOpts) => { shouldStop: boolean } | void;
 }
 ```
 
-### OptionsSchema
+### Builder-specific options
 
-```typescript
-interface OptionsSchema {
-  [key: string]: OptionPrimitive | OptionDefinition;
-}
-```
-
-### SelectOption
-
-```typescript
-interface SelectOption {
-  title: string;
-  value?: any;
-  disabled?: boolean;
-  selected?: boolean;
-  description?: string;
-}
-```
-
-### CommandExample
-
-```typescript
-interface CommandExample {
-  description: string;
-  command: string;
-}
-```
+| Builder | Extra options |
+|---|---|
+| `Flags.string`     | `secret?: boolean` |
+| `Flags.number`     | `min?: number`, `max?: number` |
+| `Flags.boolean`    | — |
+| `Flags.option`     | `options: readonly T[]` |
+| `Flags.file`       | `exists?: boolean` |
+| `Flags.directory`  | `exists?: boolean` |
+| `Flags.url`        | — |
+| `Flags.custom<T>`  | `parse: (input, opts) => T` (required) |
 
 ---
 
-## Error Classes
+## `UX`
 
-### BobError
+Interactive prompts and display utilities. Available inside commands as `this.ux`.
 
-Base error class.
-
-```typescript
-class BobError extends Error {
-  constructor(message: string)
-}
-```
-
-### CommandNotFoundError
+### Prompts
 
 ```typescript
-class CommandNotFoundError extends BobError {
-  constructor(command: string)
-}
+askForConfirmation(message?: string, opts?: AskForConfirmationOptions): Promise<boolean>
+askForInput(message: string, opts?: AskForInputOptions): Promise<string | null>
+askForPassword(message: string, opts?: AskForPasswordOptions): Promise<string | null>
+askForNumber(message: string, opts?: AskForNumberOptions): Promise<number | null>
+askForSelect<V>(message: string, choices: Array<string | SelectOption<V>>, opts?: AskForSelectOptions<V>): Promise<V | null>
+askForCheckbox<V>(message: string, choices: Array<string | SelectOption<V>>, opts?: AskForCheckboxOptions<V>): Promise<V[] | null>
+askForSearch<V>(message: string, source: SearchSource<V>, opts?: AskForSearchOptions<V>): Promise<V | null>
+askForList(message: string, opts?: AskForListOptions): Promise<string[] | null>
+askForToggle(message: string, opts?: AskForToggleOptions): Promise<boolean>
+askForEditor(message: string, opts?: AskForEditorOptions): Promise<string | null>
+askForRawList<V>(message: string, choices: Array<{ key?: string; name?: string; value: V }>, opts?: AskForRawListOptions): Promise<V | null>
+askForExpand<V>(message: string, choices: Array<{ key: ExpandKey; name: string; value: V }>, opts?: AskForExpandOptions): Promise<V | null>
+askForFile(message: string, opts?: Omit<AskForFileSelectorOptions, 'type'>): Promise<string | null>
+askForDirectory(message: string, opts?: Omit<AskForFileSelectorOptions, 'type'>): Promise<string | null>
+askForFileSelector(message: string, opts?: AskForFileSelectorOptions): Promise<string | null>
 ```
 
-### InvalidOption
+### Display
 
 ```typescript
-class InvalidOption extends BobError {
-  constructor(option: string, availableOptions: OptionsSchema)
-}
+keyValue(pairs: Record<string, unknown> | Array<[string, unknown]>, opts?: KeyValueOptions): void
+table<T>(data: T[], columns?: TableColumn<T>[]): void
+newProgressBar(total: number, opts?: ProgressBarOptions): ProgressBar
+newLoader(text?: string, chars?: string[], delay?: number): Loader
 ```
 
-### MissingRequiredArgumentValue
-
-```typescript
-class MissingRequiredArgumentValue extends BobError {
-  constructor(argument: string)
-}
-```
-
-### MissingRequiredOptionValue
-
-```typescript
-class MissingRequiredOptionValue extends BobError {
-  constructor(option: string)
-}
-```
-
-### BadCommandOption
-
-```typescript
-class BadCommandOption extends BobError {
-  constructor(opts: { option: string; reason: string })
-}
-```
-
-### BadCommandParameter
-
-```typescript
-class BadCommandParameter extends BobError {
-  constructor(opts: { parameter: string; reason: string })
-}
-```
+All `askFor*` methods are also exported as standalone functions.
 
 ---
 
-## Interfaces
+## `Logger`
 
-### LoggerContract
+Level-based logger implementing `LoggerContract`.
+
+```typescript
+class Logger {
+  log(...args: unknown[]): void
+  info(...args: unknown[]): void
+  warn(...args: unknown[]): void
+  error(...args: unknown[]): void
+  debug(...args: unknown[]): void
+}
+```
+
+### `LoggerContract`
 
 ```typescript
 interface LoggerContract {
-  log(...args: any[]): void;
-  info(...args: any[]): void;
-  warn(...args: any[]): void;
-  error(...args: any[]): void;
-  debug(...args: any[]): void;
+  log(...args: unknown[]): void;
+  info(...args: unknown[]): void;
+  warn(...args: unknown[]): void;
+  error(...args: unknown[]): void;
+  debug(...args: unknown[]): void;
 }
-```
-
-### CommandResolver
-
-```typescript
-type CommandResolver = (path: string) => Promise<Command | null>
-```
-
-### FileImporter
-
-```typescript
-type FileImporter = (filePath: string) => Promise<any>
 ```
 
 ---
 
-## StringSimilarity Class
+## `CommandRegistry`
 
-String similarity calculator using Dice's Coefficient algorithm. Used internally for fuzzy command matching.
-
-### Methods
-
-#### calculateSimilarity()
-
-Calculate similarity between two strings (returns 0-1 scale).
+Manages command registration and discovery.
 
 ```typescript
-calculateSimilarity(str1: string, str2: string): number
+registerCommand(command: typeof Command, force?: boolean): void
+loadCommandsPath(commandsPath: string): Promise<void>
+runCommand(ctx: any, command: string | typeof Command | Command, ...args: string[]): Promise<number>
+getAvailableCommands(): string[]
+getCommands(): Array<typeof Command>
+withCommandResolver(resolver: CommandResolver): this
+withFileImporter(importer: FileImporter): this
 ```
 
-**Example:**
-```typescript
-import { StringSimilarity } from 'bob-core';
-
-const similarity = new StringSimilarity();
-const score = similarity.calculateSimilarity('deploy', 'deloy');
-// Returns: ~0.67
-```
-
-#### findBestMatch()
-
-Find best matching string and ratings for all candidates.
+### `CommandResolver` and `FileImporter`
 
 ```typescript
-findBestMatch(target: string, candidates: string[]): BestMatchResult
-```
-
-**Returns:**
-```typescript
-interface BestMatchResult {
-  bestMatch: SimilarityResult;
-  bestMatchIndex: number;
-  ratings: SimilarityResult[];
-}
-
-interface SimilarityResult {
-  rating: number;
-  target: string;
-}
-```
-
-**Example:**
-```typescript
-const similarity = new StringSimilarity();
-const result = similarity.findBestMatch('deloy', ['deploy', 'delete', 'dev']);
-// result.bestMatch.target = 'deploy'
-// result.bestMatch.rating = 0.67
+type CommandResolver = (filePath: string) => Promise<typeof Command | null>
+type FileImporter    = (filePath: string) => Promise<unknown>
 ```
 
 ---
 
-## Next Steps
+## `CommandParser`
 
-- [Getting Started](./getting-started.md) - Start building your CLI
-- [Examples](./examples.md) - See complete examples
-- [Advanced Topics](./advanced.md) - Deep dive into advanced features
+Used internally by `Command#run`. Most users won't construct one directly. Notable methods exposed via `this.parser` inside a command:
+
+```typescript
+allowUnknownFlags(): this
+strictMode(): this
+disablePrompting(): this
+flag<T>(key: string, fallback?: T): T | null
+argument<T>(key: string, fallback?: T): T | null
+init(args: string[]): Promise<{ flags: Record<string, any>; args: Record<string, any> }>
+validate(): Promise<void>
+```
+
+---
+
+## `ExceptionHandler`
+
+Maps thrown errors to exit codes and friendly messages. Subclass and override `Cli.newExceptionHandler` to customize.
+
+```typescript
+class ExceptionHandler {
+  constructor(logger: Logger)
+  handle(error: Error): Promise<number>
+}
+```
+
+---
+
+## Type definitions
+
+```typescript
+// Schemas
+type FlagsSchema  = { [key: string]: FlagDefinition };
+type ArgsSchema   = FlagsSchema;
+
+// Inference helpers
+type Parsed<T>            = { flags: FlagsObject<InferFlags<T>>; args: FlagsObject<InferArgs<T>> };
+type FlagsObject<S>       = { [K in keyof S]: FlagReturnType<S[K]> };
+
+// Flag definition (after passing through a builder)
+type FlagDefinition = FlagProps & { parse(input: any, opts: ParameterOpts): any };
+
+// Built-in flag types
+type FlagType = 'string' | 'number' | 'boolean' | 'option' | 'file' | 'directory' | 'url' | 'custom';
+```
+
+### UX types
+
+```typescript
+type SelectOption<V = string> = { name: string; value: V; description?: string; disabled?: boolean };
+type TableColumn<T>           = { key: keyof T; header?: string; align?: TableColumnAlignment };
+type TableColumnAlignment     = 'left' | 'right' | 'center';
+type KeyValueOptions          = { /* alignment, separator, etc. */ };
+type ProgressBarOptions       = { /* width, format, etc. */ };
+```
+
+---
+
+## Errors
+
+All errors extend `BobError`.
+
+| Class | Thrown when |
+|---|---|
+| `BobError` | Base class |
+| `CommandNotFoundError` | Command name doesn't resolve |
+| `InvalidFlag` | Flag value is invalid |
+| `MissingRequiredFlagValue` | Required flag is missing (and prompting is disabled) |
+| `BadCommandFlag` | Flag fails parser validation |
+| `BadCommandArgument` | Argument fails parser validation |
+| `MissingRequiredArgumentValue` | Required argument missing |
+| `TooManyArguments` | Extra positional arguments in strict mode |
+| `ValidationError` | Generic validation failure |
+
+---
+
+## `StringSimilarity`
+
+Used internally for fuzzy "did you mean?" suggestions, exposed for general use.
+
+```typescript
+class StringSimilarity {
+  calculateSimilarity(a: string, b: string): number
+  findBestMatch(target: string, candidates: string[]): {
+    bestMatch: { rating: number; target: string };
+    bestMatchIndex: number;
+    ratings: Array<{ rating: number; target: string }>;
+  }
+}
+```
+
+---
+
+## See also
+
+- [Getting Started](./getting-started.md)
+- [Creating Commands](./creating-commands.md)
+- [Arguments & Options](./arguments-and-options.md)
+- [Interactive Prompts](./interactive-prompts.md)
+- [Examples](./examples.md)
+- [Legacy: CommandWithSignature](./legacy/README.md)

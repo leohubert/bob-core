@@ -29,18 +29,18 @@ export default defineConfig({
 			entry: resolve(__dirname, 'src/index.ts'),
 			name: 'BobCore',
 		},
-		rollupOptions: {
-			external: ['minimist', 'chalk', 'prompts', 'node:fs', 'node:path'],
+		rolldownOptions: {
+			external: ['minimist', 'chalk', '@inquirer/prompts', 'inquirer-file-selector', 'node:fs', 'node:path', 'node:async_hooks'],
 			output: [
 				{
 					format: 'es',
 					dir: 'dist/esm',
-					entryFileNames: 'src/index.js',
+					entryFileNames: 'index.js',
 				},
 				{
 					format: 'cjs',
 					dir: 'dist/cjs',
-					entryFileNames: 'src/index.js',
+					entryFileNames: 'index.js',
 				},
 			],
 		},
