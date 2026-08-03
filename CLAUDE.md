@@ -44,6 +44,9 @@ Cli.runCommand → CommandRegistry.runCommand → Command.run
 | `src/HelpFlag.ts` | Default `--help` flag definition (in `Command.baseFlags`). |
 | `src/StringSimilarity.ts` | Dice-coefficient fuzzy matcher used for "did you mean?" suggestions. |
 | `src/commands/HelpCommand.ts` | Built-in `help` command, registered automatically. |
+| `src/commands/CompletionCommand.ts` | Built-in `completion <shell>` — prints an installable script. |
+| `src/commands/CompleteCommand.ts` | Built-in hidden `__complete` — resolves candidates on each keypress. |
+| `src/completion/` | Shell completion: `completeArgv`, `commandSpecs`, `resolveCompletion`, fish renderer. See `docs/shell-completion.md`. |
 
 ### Module layout
 
@@ -70,6 +73,7 @@ Builder-specific extras:
 - `Flags.string` → `secret`
 - `Flags.number` → `min`, `max`
 - `Flags.option` → `options: readonly [...]`
+- `Flags.search` → `source: ValueSource<T>` (drives both the prompt and shell completion)
 - `Flags.file` / `Flags.directory` → `exists`
 - `Flags.custom<T>` → `parse` is required
 
@@ -166,6 +170,7 @@ class MyCommand extends Command<MyContext> {
 - `docs/arguments-and-options.md` — `Flags` and `Args` builders in depth
 - `docs/interactive-prompts.md` — `this.ux` reference with examples
 - `docs/help-system.md` — auto-generated help, grouping, customization
+- `docs/shell-completion.md` — `completion`/`__complete`, `Flags.search`, snapshot caching
 - `docs/advanced.md` — context, custom resolvers, error handling, programmatic execution
 - `docs/api-reference.md` — full public surface
 - `docs/examples.md` — end-to-end example CLIs

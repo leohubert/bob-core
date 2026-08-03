@@ -335,4 +335,104 @@ describe('CommandRegistry', () => {
 			);
 		});
 	});
+
+	describe('Instance registration', () => {
+		it('reuses a registered instance instead of constructing the class, so injected collaborators survive', async () => {
+			const handlerFn = vi.fn().mockResolvedValue(0);
+
+			class Injected extends Command {
+				static command = 'injected';
+				constructor(private dependency: string) {
+					super();
+				}
+				async handle() {
+					return handlerFn(this.dependency);
+				}
+			}
+
+			registry.registerCommand(new Injected('wired'));
+			await registry.runCommand({}, 'injected');
+
+			// Constructing the class per run would have thrown or passed `undefined` here.
+			expect(handlerFn).toHaveBeenCalledWith('wired');
+		});
+
+		it('registers aliases declared on an instance-registered command', () => {
+			const Aliased = makeCommand('aliased', undefined, ['al']);
+
+			registry.registerCommand(new (Aliased as any)());
+
+			expect(registry.getAvailableCommands()).toContain('al');
+		});
+
+		it('still reports classes from getCommands, so static metadata stays readable', () => {
+			const Cmd = makeCommand('as-instance');
+
+			registry.registerCommand(new (Cmd as any)());
+
+			expect(registry.getCommands()).toContain(Cmd);
+		});
+	});
+
+	describe('Built-in commands', () => {
+		function builtIn(name: string, handler?: () => any) {
+			return new (class extends Command {
+				static command = name;
+				async handle() {
+					return handler?.() ?? 0;
+				}
+			})();
+		}
+
+		it('resolves a built-in by name', async () => {
+			const handlerFn = vi.fn().mockResolvedValue(0);
+			registry.registerBuiltInCommand(builtIn('help', handlerFn));
+
+			await registry.runCommand({}, 'help');
+
+			expect(handlerFn).toHaveBeenCalled();
+		});
+
+		it('lets a host command of the same name shadow it silently — a CLI may ship its own help', () => {
+			registry.registerBuiltInCommand(builtIn('help'));
+			const HostHelp = makeCommand('help');
+
+			// The point: no duplicate-name error, unlike two host commands sharing a name.
+			expect(() => registry.registerCommand(HostHelp)).not.toThrow();
+			expect(registry.findCommand('help')).toBe(HostHelp);
+		});
+
+		it('reports the shadowed built-in only once, so help does not list it twice', () => {
+			registry.registerBuiltInCommand(builtIn('help'));
+			registry.registerCommand(makeCommand('help'));
+
+			expect(registry.getAvailableCommands().filter(name => name === 'help')).toHaveLength(1);
+			expect(registry.getCommands()).toHaveLength(1);
+		});
+
+		it('includes an unshadowed built-in in the listings', () => {
+			registry.registerBuiltInCommand(builtIn('help'));
+
+			expect(registry.getAvailableCommands()).toContain('help');
+			expect(registry.getCommands().map(Cmd => Cmd.command)).toContain('help');
+		});
+
+		it('refuses a built-in with no name', () => {
+			expect(() => registry.registerBuiltInCommand(builtIn(''))).toThrow('Cannot register a built-in command with no name');
+		});
+	});
+
+	describe('findCommand', () => {
+		it('resolves by canonical name and by alias', () => {
+			const Cmd = makeCommand('download', undefined, ['dl']);
+			registry.registerCommand(Cmd);
+
+			expect(registry.findCommand('download')).toBe(Cmd);
+			expect(registry.findCommand('dl')).toBe(Cmd);
+		});
+
+		it('returns null for an unknown name rather than throwing, so callers can degrade quietly', () => {
+			expect(registry.findCommand('nope')).toBeNull();
+		});
+	});
 });

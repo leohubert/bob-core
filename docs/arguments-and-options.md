@@ -25,6 +25,7 @@ Flags.custom<T>({ parse: ..., ... })
 | `Flags.number()` | `number` | `min`, `max` |
 | `Flags.boolean()` | `boolean` | — |
 | `Flags.option()` | union of `options` | `options: readonly [...]` |
+| `Flags.search()` | `string` | `source: ValueSource<T>` |
 | `Flags.file()` | `string` | `exists` |
 | `Flags.directory()` | `string` | `exists` |
 | `Flags.url()` | `URL` | — |
@@ -137,6 +138,25 @@ verbose: Flags.boolean({ alias: ['v', 'V'] })
 ```typescript
 password: Flags.string({ secret: true, required: true })
 ```
+
+### Live values via `Flags.search`
+
+For a value looked up from a service rather than picked from a fixed list, declare a `source`. The
+one source backs both the interactive prompt and shell completion:
+
+```typescript
+issue: Args.search({
+  required: true,
+  source: async ({ term, ctx, signal }) => {
+    const issues = await ctx.linear.search(term, { signal });
+
+    return issues.map(i => ({ name: `${i.id} — ${i.title}`, value: i.id }));
+  },
+})
+```
+
+See [shell-completion.md](./shell-completion.md) for the constraints that matter (the shell filters
+candidates by the typed token, and resolvers run under a deadline).
 
 ### Enums via `Flags.option`
 

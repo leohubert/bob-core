@@ -203,6 +203,65 @@ describe('Cli', () => {
 		});
 	});
 
+	describe('Built-in completion commands', () => {
+		/** Everything the built-ins print goes through the logger, one call per invocation. */
+		function printed(): string {
+			return logger.log.mock.calls.map(call => call.join(' ')).join('\n');
+		}
+
+		it('resolves `completion <shell>` by name and prints a script for the real binary name', async () => {
+			cli = new Cli({ ...cliOptions, binName: 'mycli' });
+
+			const code = await cli.runCommand('completion', 'fish');
+
+			expect(code).toBe(0);
+			expect(printed()).toContain('complete -c mycli -f');
+		});
+
+		it('reports an unimplemented shell instead of crashing', async () => {
+			const code = await cli.runCommand('completion', 'zsh');
+
+			expect(code).toBe(1);
+			expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('not implemented'));
+		});
+
+		it('answers `__complete` with the registered commands', async () => {
+			await cli.withCommands(makeCommand('deploy'));
+
+			const code = await cli.runCommand('__complete', 'fish', '--current=dep', '--', 'mycli');
+
+			expect(code).toBe(0);
+			expect(printed()).toContain('deploy');
+		});
+
+		it('keeps `__complete` out of the discovery surface', async () => {
+			const complete = cli.commandRegistry.findCommand('__complete');
+
+			expect(complete?.hidden).toBe(true);
+		});
+
+		it('never fails and never speaks when the line is nonsense — it runs on every keypress', async () => {
+			const code = await cli.runCommand('__complete', 'not-a-shell', '--current=x', '--', 'mycli', 'whatever');
+
+			expect(code).toBe(0);
+			expect(logger.log).not.toHaveBeenCalled();
+		});
+
+		it('does not let the inherited --help flag hijack a line being completed', async () => {
+			await cli.withCommands(makeCommand('deploy'));
+
+			// Going through CommandParser would fire HelpCommandFlag and dump help into the
+			// candidate list; `__complete` bypasses the parser precisely to avoid that.
+			const code = await cli.runCommand('__complete', 'fish', '--current=--he', '--', 'mycli', 'deploy');
+
+			expect(code).toBe(0);
+			// One candidate line, not the help screen.
+			expect(printed().split('\n')).toHaveLength(1);
+			expect(printed()).toMatch(/^--help\t/);
+			expect(printed()).not.toContain('Available commands');
+		});
+	});
+
 	describe('Command resolver', () => {
 		it('should pass through to the registry when a custom resolver is registered', () => {
 			const resolver = vi.fn();

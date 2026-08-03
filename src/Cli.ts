@@ -1,15 +1,35 @@
+import path from 'node:path';
+
 import { Command } from '@/src/Command.js';
 import { CommandRegistry, CommandRegistryOptions, CommandResolver, FileImporter } from '@/src/CommandRegistry.js';
 import { ExceptionHandler } from '@/src/ExceptionHandler.js';
 import { Logger } from '@/src/Logger.js';
+import CompleteCommand, { CompleteCommandOptions } from '@/src/commands/CompleteCommand.js';
+import CompletionCommand, { CompletionCommandOptions } from '@/src/commands/CompletionCommand.js';
 import HelpCommand, { HelpCommandOptions } from '@/src/commands/HelpCommand.js';
 import { ContextDefinition } from '@/src/lib/types.js';
+
+/**
+ * Best effort at "what did the user type to get here". Correct for a node script and for a
+ * single-file compiled binary; hosts that rename or wrap their entry point should pass `binName`.
+ */
+function defaultBinName(): string {
+	const entry = process.argv[1] ?? process.argv[0] ?? 'cli';
+
+	return path.basename(entry, path.extname(entry));
+}
 
 export type CliOptions<C extends ContextDefinition = ContextDefinition> = {
 	ctx?: C;
 	name?: string;
 	version?: string;
 	logger?: Logger;
+	/**
+	 * The executable name as users type it, e.g. `bdg`. Distinct from `name`, which is the
+	 * human-facing title shown in help. Used by the generated completion scripts, which must call
+	 * the binary by its real name. Defaults to the basename of the running script.
+	 */
+	binName?: string;
 };
 
 /**
@@ -37,6 +57,14 @@ export class Cli<C extends ContextDefinition = ContextDefinition> {
 		return new HelpCommand(opts);
 	}
 
+	protected newCompletionCommand(opts: CompletionCommandOptions) {
+		return new CompletionCommand(opts);
+	}
+
+	protected newCompleteCommand(opts: CompleteCommandOptions) {
+		return new CompleteCommand(opts);
+	}
+
 	protected newExceptionHandler(opts: { logger: Logger }) {
 		return new ExceptionHandler(opts.logger);
 	}
@@ -55,6 +83,13 @@ export class Cli<C extends ContextDefinition = ContextDefinition> {
 			cliVersion: opts.version,
 			commandRegistry: this.commandRegistry,
 		});
+
+		// Registered so they resolve by name like any other command — `help`, `completion fish`,
+		// and the hidden endpoint the generated completion scripts call.
+		const binName = opts.binName ?? defaultBinName();
+		this.commandRegistry.registerBuiltInCommand(this.helpCommand);
+		this.commandRegistry.registerBuiltInCommand(this.newCompletionCommand({ binName }));
+		this.commandRegistry.registerBuiltInCommand(this.newCompleteCommand({ commandRegistry: this.commandRegistry }));
 	}
 
 	/** Registers a custom resolver used by `loadCommandsPath` to import command modules. */
