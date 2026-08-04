@@ -223,6 +223,7 @@ static examples = [
 - [Interactive Prompts](./docs/interactive-prompts.md) -- Prompts and display utilities
 - [Advanced Topics](./docs/advanced.md) -- Context, resolvers, error handling
 - [Help System](./docs/help-system.md) -- Customizing help output
+- [Shell Completion](./docs/shell-completion.md) -- `completion fish`, dynamic values, fast startup
 - [API Reference](./docs/api-reference.md) -- Complete API documentation
 - [Examples](./docs/examples.md) -- Real-world examples
 

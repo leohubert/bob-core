@@ -163,6 +163,11 @@ await cli.withCommands(new GreetCommand());
 await cli.withCommands('./commands', GreetCommand);
 ```
 
+Classes and instances register immediately. A directory is only *queued* — the walk happens on the
+first `runCommand`, so shell completion can answer a keypress without importing every command
+module. If you reach into `cli.commandRegistry` yourself before dispatching, `await
+cli.commandRegistry.ensureLoaded()` first.
+
 ## Return values
 
 `handle()` may return a number to use as the process exit code. Returning nothing (or `0`) is treated as success.

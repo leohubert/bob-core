@@ -23,9 +23,28 @@ export type CommandRegistryOptions = {
 	stringSimilarity?: StringSimilarity;
 };
 
+function classOf(entry: typeof Command | Command): typeof Command {
+	return isBobCommandClass(entry) ? entry : (entry.constructor as typeof Command);
+}
+
+/**
+ * A registered entry: either the class (constructed per run) or a ready-made instance.
+ *
+ * Instances exist for built-ins whose constructor needs collaborators the registry can't supply —
+ * `help` and `completion` both need the registry itself.
+ */
+export type RegisteredCommand = typeof Command | Command;
+
 export class CommandRegistry {
-	private readonly commands: Record<string, typeof Command> = {};
+	private readonly commands: Record<string, RegisteredCommand> = {};
+	/**
+	 * Framework-supplied commands, kept in a lower-priority layer so a host CLI shipping its own
+	 * `help` or `completion` shadows them silently instead of colliding on startup.
+	 */
+	private readonly builtIns: Record<string, RegisteredCommand> = {};
 	private readonly aliases: Record<string, string> = {};
+	private pendingPaths: string[] = [];
+	private loading: Promise<void> | null = null;
 	protected readonly ux: UX;
 	protected readonly logger: Logger;
 	private readonly stringSimilarity: StringSimilarity;
@@ -37,11 +56,47 @@ export class CommandRegistry {
 	}
 
 	getAvailableCommands(): string[] {
-		return [...Object.keys(this.commands), ...Object.keys(this.aliases)];
+		return [...new Set([...Object.keys(this.commands), ...Object.keys(this.aliases), ...Object.keys(this.builtIns)])];
 	}
 
+	/** Always classes, so callers can read static metadata regardless of how a command was registered. */
 	getCommands(): Array<typeof Command> {
-		return Object.values(this.commands);
+		const shadowed = (name: string) => name in this.commands;
+		const entries = [
+			...Object.values(this.commands),
+			...Object.entries(this.builtIns)
+				.filter(([name]) => !shadowed(name))
+				.map(([, entry]) => entry),
+		];
+
+		return entries.map(entry => classOf(entry));
+	}
+
+	/** Resolves a name or alias to its class, or `null` when nothing matches. */
+	findCommand(name: string): typeof Command | null {
+		const entry = this.resolve(name);
+
+		return entry ? classOf(entry) : null;
+	}
+
+	private resolve(name: string): RegisteredCommand | undefined {
+		return this.commands[name] ?? this.commands[this.aliases[name]] ?? this.builtIns[name];
+	}
+
+	/**
+	 * Registers a framework built-in as a fallback. Takes an instance because these commands need
+	 * collaborators (the registry itself) that `registerCommand` has no way to supply.
+	 *
+	 * Built-in aliases are not supported — no built-in declares any, and keeping them out of the
+	 * alias table is what makes host shadowing unambiguous.
+	 */
+	registerBuiltInCommand(command: Command<any>) {
+		const commandName = (command.constructor as typeof Command).command;
+		if (!commandName) {
+			throw new Error(`Cannot register a built-in command with no name. ${command.constructor.name} `);
+		}
+
+		this.builtIns[commandName] = command;
 	}
 
 	private importFile: FileImporter = async (filePath: string): Promise<unknown> => {
@@ -75,14 +130,16 @@ export class CommandRegistry {
 		return this;
 	}
 
-	registerCommand(command: typeof Command<any>, force: boolean = false) {
-		if (!isBobCommandClass(command)) {
+	registerCommand(command: typeof Command<any> | Command<any>, force: boolean = false) {
+		const CommandClass = isBobCommandClass(command) ? command : (command.constructor as typeof Command);
+
+		if (!isBobCommandClass(CommandClass)) {
 			throw new Error('Invalid command, it must extend the Command class.');
 		}
 
-		const commandName = command.command;
+		const commandName = CommandClass.command;
 		if (!commandName) {
-			throw new Error(`Cannot register a command with no name. ${command.name} `);
+			throw new Error(`Cannot register a command with no name. ${CommandClass.name} `);
 		}
 
 		if (!force && this.commands[commandName]) {
@@ -95,7 +152,7 @@ export class CommandRegistry {
 
 		this.commands[commandName] = command;
 
-		for (const alias of command.aliases) {
+		for (const alias of CommandClass.aliases) {
 			if (!force && this.commands[alias]) {
 				throw new Error(`Alias ${alias} conflicts with an existing command name.`);
 			}
@@ -104,6 +161,40 @@ export class CommandRegistry {
 			}
 			this.aliases[alias] = commandName;
 		}
+	}
+
+	/**
+	 * Queues a directory to be walked by {@link ensureLoaded} instead of importing it now.
+	 *
+	 * Discovering a command means importing its module — a command's name lives in its class, not in
+	 * its filename — so eager registration costs one import per command file before the first
+	 * dispatch. Deferring lets `__complete` answer a keypress from a spec snapshot without paying
+	 * for any of them.
+	 */
+	deferCommandsPath(commandsPath: string) {
+		this.pendingPaths.push(commandsPath);
+		// A source queued after an earlier drain finished still has to be walked.
+		this.loading = null;
+
+		return this;
+	}
+
+	/**
+	 * Walks every queued path source. Memoized, and safe to call from anywhere: a single completion
+	 * can need the registry hydrated from two places at once, and {@link registerCommand} throws on
+	 * a duplicate name.
+	 */
+	async ensureLoaded(): Promise<void> {
+		this.loading ??= (async () => {
+			const paths = this.pendingPaths;
+			this.pendingPaths = [];
+
+			for (const commandsPath of paths) {
+				await this.loadCommandsPath(commandsPath);
+			}
+		})();
+
+		return await this.loading;
 	}
 
 	async loadCommandsPath(commandsPath: string) {
@@ -126,15 +217,16 @@ export class CommandRegistry {
 		let commandInstance: Command;
 
 		if (typeof command === 'string') {
-			const CommandClass = this.commands[command] ?? this.commands[this.aliases[command]];
-			if (!CommandClass) {
+			const entry = this.resolve(command);
+			if (!entry) {
 				const suggestedCommand = await this.suggestCommand(command);
 				if (suggestedCommand) {
 					return await this.runCommand(ctx, suggestedCommand, ...args);
 				}
 				throw new CommandNotFoundError(command);
 			}
-			commandInstance = new (CommandClass as unknown as new () => Command)();
+			// A registered instance is reused as-is; only classes get constructed per run.
+			commandInstance = isBobCommandClass(entry) ? new (entry as unknown as new () => Command)() : entry;
 		} else if (isBobCommandClass(command)) {
 			commandInstance = new (command as unknown as new () => Command)();
 		} else {

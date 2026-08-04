@@ -17,18 +17,26 @@ export abstract class CommandWithSignature<C extends ContextDefinition = Context
 		return this.signature.split(/\s/)[0] || '';
 	}
 
-	async run(runOpts: CommandRunOption<C>): Promise<number | void> {
-		const ctor = this.constructor as typeof CommandWithSignature;
+	/**
+	 * Materializes `flags`/`args` from the signature string, once per subclass.
+	 *
+	 * Called on first run, and by anything that needs to read the schema without running the
+	 * command — shell completion in particular, which would otherwise see an empty schema and
+	 * suggest no flags at all for signature-based commands.
+	 */
+	static ensureSchema(): void {
+		if (!this.signature || Object.prototype.hasOwnProperty.call(this, '_signatureParsed')) return;
 
-		// Lazily parse signature once per subclass
-		if (ctor.signature && !Object.prototype.hasOwnProperty.call(ctor, '_signatureParsed')) {
-			const parsed = CommandSignatureParser.parse(ctor.signature, ctor.helperDefinitions);
-			const ownFlags = Object.prototype.hasOwnProperty.call(ctor, 'flags') ? ctor.flags : {};
-			const ownArgs = Object.prototype.hasOwnProperty.call(ctor, 'args') ? ctor.args : {};
-			ctor.flags = { ...parsed.flags, ...ownFlags };
-			ctor.args = { ...parsed.args, ...ownArgs };
-			Object.defineProperty(ctor, '_signatureParsed', { value: true });
-		}
+		const parsed = CommandSignatureParser.parse(this.signature, this.helperDefinitions);
+		const ownFlags = Object.prototype.hasOwnProperty.call(this, 'flags') ? this.flags : {};
+		const ownArgs = Object.prototype.hasOwnProperty.call(this, 'args') ? this.args : {};
+		this.flags = { ...parsed.flags, ...ownFlags };
+		this.args = { ...parsed.args, ...ownArgs };
+		Object.defineProperty(this, '_signatureParsed', { value: true });
+	}
+
+	async run(runOpts: CommandRunOption<C>): Promise<number | void> {
+		(this.constructor as typeof CommandWithSignature).ensureSchema();
 
 		return super.run(runOpts);
 	}

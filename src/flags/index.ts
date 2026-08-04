@@ -4,6 +4,7 @@ import { directoryFlag } from '@/src/flags/directory.js';
 import { fileFlag } from '@/src/flags/file.js';
 import { numberFlag } from '@/src/flags/number.js';
 import { optionFlag } from '@/src/flags/option.js';
+import { searchFlag } from '@/src/flags/search.js';
 import { stringFlag } from '@/src/flags/string.js';
 import { urlFlag } from '@/src/flags/url.js';
 
@@ -14,6 +15,8 @@ import { urlFlag } from '@/src/flags/url.js';
  *   - `Flags.number({ min?, max? })` — numeric input with range validation.
  *   - `Flags.boolean()` — toggle flag (`--debug` / `--no-debug`).
  *   - `Flags.option({ options: [...] as const })` — fixed enum.
+ *   - `Flags.search({ source })` — values from a live source; one source backs both
+ *     the interactive prompt and shell completion.
  *   - `Flags.file({ exists? })` / `Flags.directory({ exists? })` — filesystem
  *     paths; `exists` validates presence at parse time.
  *   - `Flags.url()` — `URL`-typed input.
@@ -28,6 +31,7 @@ export const Flags = {
 	number: numberFlag,
 	boolean: booleanFlag,
 	option: optionFlag,
+	search: searchFlag,
 	file: fileFlag,
 	directory: directoryFlag,
 	url: urlFlag,
@@ -35,3 +39,4 @@ export const Flags = {
 };
 
 export { Args } from '@/src/args/index.js';
+export type { ValueSource } from '@/src/flags/search.js';

@@ -1,4 +1,5 @@
 import { Command } from '@/src/Command.js';
+import type { CompletionCandidate } from '@/src/completion/types.js';
 import type { UX } from '@/src/ux/index.js';
 
 export type ContextDefinition = any;
@@ -23,12 +24,38 @@ export type FlagOpts<T = any, C extends CustomOptions = CustomOptions> = {
 	cmd: typeof Command;
 };
 
+/**
+ * Options handed to a parameter's `complete` callback.
+ *
+ * Intentionally narrower than {@link FlagOpts}: there is no `ux`, because completion runs while the
+ * user is mid-keystroke and must never prompt, print, or otherwise take over the terminal.
+ */
+export type CompletionOpts<T = any, C extends CustomOptions = CustomOptions> = {
+	/** The partial value typed so far — empty when the cursor sits on fresh whitespace. */
+	term: string;
+	name: string;
+	ctx: ContextDefinition;
+	definition: FlagDefinition<T, C>;
+	cmd: typeof Command;
+	/** Aborted when the completion deadline passes; pass it to any network call. */
+	signal: AbortSignal;
+};
+
 export type FlagDefinition<T = any, C extends CustomOptions = CustomOptions> = {
 	[key in keyof C]: C[keyof C];
 } & {
 	parse: (input: any, opts: FlagOpts<T, C>) => T;
 	type?: FlagKind;
 	ask?: (opts: FlagOpts<T, C>) => Promise<any>;
+	/**
+	 * Resolves candidate values at completion time — for anything whose values are not a fixed list
+	 * (a Linear issue, a kube namespace, a git branch).
+	 *
+	 * Declaring this makes the parameter *dynamic*: hosts that answer completions from a cached
+	 * metadata snapshot will fall back to loading this command for real, so keep it quick and let
+	 * `opts.signal` cancel it.
+	 */
+	complete?: (opts: CompletionOpts<T, C>) => Promise<CompletionCandidate[]> | CompletionCandidate[];
 	description?: string;
 	required?: boolean;
 	default?: T | T[] | null | (() => T | T[] | null) | (() => Promise<T | T[] | null>);

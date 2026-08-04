@@ -26,6 +26,10 @@ interface CliOptions<C> {
   name?: string;      // CLI name (used in help header)
   version?: string;   // CLI version (used in help header)
   logger?: Logger;    // Custom logger
+  binName?: string;   // Executable name as typed (e.g. `bdg`), used by completion scripts.
+                      // Distinct from `name`; defaults to the basename of the running script.
+  disableCompletion?: boolean;              // Skips the `completion` / `__complete` pair
+  completionCache?: CompletionCacheOptions; // Answers completion from a snapshot on disk
 }
 ```
 
@@ -33,6 +37,7 @@ interface CliOptions<C> {
 
 ```typescript
 withCommands(...commands: Array<typeof Command<C> | Command<C> | string>): Promise<void>
+                     // Classes/instances register now; a directory is queued and walked on dispatch
 withCommandResolver(resolver: CommandResolver): this
 withFileImporter(importer: FileImporter): this
 runCommand(command: string | typeof Command | Command | undefined, ...args: string[]): Promise<number>
@@ -130,7 +135,7 @@ Legacy class supporting the signature-string syntax. See [legacy/README.md](./le
 import { Flags, Args } from 'bob-core';
 ```
 
-`Flags` exposes: `string`, `number`, `boolean`, `option`, `file`, `directory`, `url`, `custom`.
+`Flags` exposes: `string`, `number`, `boolean`, `option`, `search`, `file`, `directory`, `url`, `custom`.
 `Args` is the same set minus `boolean`.
 
 ### Common options (`FlagProps<T>`)
@@ -145,6 +150,7 @@ import { Flags, Args } from 'bob-core';
   help?: string;
   parse?: (input: any, opts: ParameterOpts) => T;
   ask?: (opts: ParameterOpts) => Promise<any>;
+  complete?: (opts: CompletionOpts) => Promise<CompletionCandidate[]>;  // shell completion
   handler?: (value: T, opts: ParameterOpts) => { shouldStop: boolean } | void;
 }
 ```
@@ -157,6 +163,7 @@ import { Flags, Args } from 'bob-core';
 | `Flags.number`     | `min?: number`, `max?: number` |
 | `Flags.boolean`    | — |
 | `Flags.option`     | `options: readonly T[]` |
+| `Flags.search`     | `source: ValueSource<T>` (required) |
 | `Flags.file`       | `exists?: boolean` |
 | `Flags.directory`  | `exists?: boolean` |
 | `Flags.url`        | — |
@@ -234,14 +241,25 @@ interface LoggerContract {
 Manages command registration and discovery.
 
 ```typescript
-registerCommand(command: typeof Command, force?: boolean): void
-loadCommandsPath(commandsPath: string): Promise<void>
+registerCommand(command: typeof Command | Command, force?: boolean): void
+registerBuiltInCommand(command: Command): void
+loadCommandsPath(commandsPath: string): Promise<void>   // Walks a directory now
+deferCommandsPath(commandsPath: string): this           // Queues it for ensureLoaded instead
+ensureLoaded(): Promise<void>                           // Walks every queued path; memoized
 runCommand(ctx: any, command: string | typeof Command | Command, ...args: string[]): Promise<number>
 getAvailableCommands(): string[]
 getCommands(): Array<typeof Command>
+findCommand(name: string): typeof Command | null
 withCommandResolver(resolver: CommandResolver): this
 withFileImporter(importer: FileImporter): this
 ```
+
+`registerCommand` accepts a class (constructed per run) or a ready-made instance (reused as-is —
+for commands whose constructor needs collaborators). `getCommands` always returns classes.
+
+`registerBuiltInCommand` registers a framework command in a lower-priority layer: a host command
+of the same name shadows it silently rather than colliding. `Cli` uses it for `help`, `completion`,
+and `__complete`.
 
 ### `CommandResolver` and `FileImporter`
 
@@ -329,6 +347,53 @@ All errors extend `BobError`.
 
 ---
 
+## Shell completion
+
+See [shell-completion.md](shell-completion.md) for the full guide.
+
+```typescript
+// Snapshot the registry into plain, JSON-serializable metadata
+commandSpecs(registry: CommandRegistry): CommandSpec[]
+
+// Static resolution: candidates plus, when the slot has live values, a `dynamic` marker
+completeArgv(specs: CommandSpec[], words: string[]): CompletionPlan
+
+// Static + dynamic. `loadCommand` is only called when a dynamic slot is reached.
+resolveCompletion(opts: {
+  specs: CommandSpec[];
+  words: string[];
+  ctx?: any;
+  loadCommand?: CommandLoader;
+  timeoutMs?: number;      // default 1500
+}): Promise<CompletionCandidate[]>
+
+// Wire protocol used by the generated scripts
+parseCompletionRequest(argv: string[]): { shell: CompletionShell; words: string[] } | null
+
+// Script generation and candidate encoding (fish is the only dialect with a renderer)
+renderFishScript(opts: { binName: string }): string
+encodeFishCandidates(candidates: CompletionCandidate[]): string
+fishCompletionPath(binName: string): string   // ~/.config/fish/completions/<bin>.fish
+
+// True when this invocation's stdout is machine-readable, so a host must stay silent on it
+writesMachineOutput(argv: string[]): boolean
+
+// Metadata snapshot on disk, so a keypress imports no command modules
+readSpecCache(opts: CompletionCacheOptions): CommandSpec[] | null
+writeSpecCache(opts: CompletionCacheOptions, specs: CommandSpec[]): void
+
+interface CompletionCacheOptions {
+  file: string;     // Absolute path — a relative one resolves against the user's cwd
+  version: string;  // Invalidation key; a mismatch discards the snapshot
+}
+
+COMPLETION_SHELLS   // ['fish']
+COMPLETION_COMMAND  // 'completion'
+COMPLETE_COMMAND    // '__complete'
+```
+
+---
+
 ## `StringSimilarity`
 
 Used internally for fuzzy "did you mean?" suggestions, exposed for general use.
@@ -352,5 +417,6 @@ class StringSimilarity {
 - [Creating Commands](./creating-commands.md)
 - [Arguments & Options](./arguments-and-options.md)
 - [Interactive Prompts](./interactive-prompts.md)
+- [Shell Completion](./shell-completion.md)
 - [Examples](./examples.md)
 - [Legacy: CommandWithSignature](./legacy/README.md)

@@ -335,4 +335,158 @@ describe('CommandRegistry', () => {
 			);
 		});
 	});
+
+	describe('Deferred command sources', () => {
+		/**
+		 * Stands in for the directory walk. Counting resolver calls is the point: a command's name
+		 * lives in its class, so "discovering" one means importing its module, and that import cost is
+		 * exactly what deferral exists to avoid.
+		 */
+		function fakeSource(registry: CommandRegistry, name: string) {
+			const resolver = vi.fn().mockResolvedValue(makeCommand(name));
+			registry.withCommandResolver(resolver);
+			(registry as any).listCommandsFiles = async function* () {
+				yield `/fake/${name}.ts`;
+			};
+
+			return resolver;
+		}
+
+		it('imports nothing until the registry is asked for something', async () => {
+			const resolver = fakeSource(registry, 'deferred');
+
+			registry.deferCommandsPath('/anything');
+
+			expect(resolver).not.toHaveBeenCalled();
+			expect(registry.getAvailableCommands()).not.toContain('deferred');
+
+			await registry.ensureLoaded();
+
+			expect(resolver).toHaveBeenCalledOnce();
+			expect(registry.getAvailableCommands()).toContain('deferred');
+		});
+
+		it('walks each queued source exactly once across concurrent and repeated calls', async () => {
+			const resolver = fakeSource(registry, 'once');
+
+			registry.deferCommandsPath('/anything');
+			await Promise.all([registry.ensureLoaded(), registry.ensureLoaded()]);
+			await registry.ensureLoaded();
+
+			// Without the memo the second call re-registers the same name, which throws.
+			expect(resolver).toHaveBeenCalledOnce();
+		});
+
+		it('walks a source queued after an earlier load already finished', async () => {
+			fakeSource(registry, 'first');
+			registry.deferCommandsPath('/first');
+			await registry.ensureLoaded();
+
+			fakeSource(registry, 'second');
+			registry.deferCommandsPath('/second');
+			await registry.ensureLoaded();
+
+			expect(registry.getAvailableCommands()).toEqual(expect.arrayContaining(['first', 'second']));
+		});
+	});
+
+	describe('Instance registration', () => {
+		it('reuses a registered instance instead of constructing the class, so injected collaborators survive', async () => {
+			const handlerFn = vi.fn().mockResolvedValue(0);
+
+			class Injected extends Command {
+				static command = 'injected';
+				constructor(private dependency: string) {
+					super();
+				}
+				async handle() {
+					return handlerFn(this.dependency);
+				}
+			}
+
+			registry.registerCommand(new Injected('wired'));
+			await registry.runCommand({}, 'injected');
+
+			// Constructing the class per run would have thrown or passed `undefined` here.
+			expect(handlerFn).toHaveBeenCalledWith('wired');
+		});
+
+		it('registers aliases declared on an instance-registered command', () => {
+			const Aliased = makeCommand('aliased', undefined, ['al']);
+
+			registry.registerCommand(new (Aliased as any)());
+
+			expect(registry.getAvailableCommands()).toContain('al');
+		});
+
+		it('still reports classes from getCommands, so static metadata stays readable', () => {
+			const Cmd = makeCommand('as-instance');
+
+			registry.registerCommand(new (Cmd as any)());
+
+			expect(registry.getCommands()).toContain(Cmd);
+		});
+	});
+
+	describe('Built-in commands', () => {
+		function builtIn(name: string, handler?: () => any) {
+			return new (class extends Command {
+				static command = name;
+				async handle() {
+					return handler?.() ?? 0;
+				}
+			})();
+		}
+
+		it('resolves a built-in by name', async () => {
+			const handlerFn = vi.fn().mockResolvedValue(0);
+			registry.registerBuiltInCommand(builtIn('help', handlerFn));
+
+			await registry.runCommand({}, 'help');
+
+			expect(handlerFn).toHaveBeenCalled();
+		});
+
+		it('lets a host command of the same name shadow it silently — a CLI may ship its own help', () => {
+			registry.registerBuiltInCommand(builtIn('help'));
+			const HostHelp = makeCommand('help');
+
+			// The point: no duplicate-name error, unlike two host commands sharing a name.
+			expect(() => registry.registerCommand(HostHelp)).not.toThrow();
+			expect(registry.findCommand('help')).toBe(HostHelp);
+		});
+
+		it('reports the shadowed built-in only once, so help does not list it twice', () => {
+			registry.registerBuiltInCommand(builtIn('help'));
+			registry.registerCommand(makeCommand('help'));
+
+			expect(registry.getAvailableCommands().filter(name => name === 'help')).toHaveLength(1);
+			expect(registry.getCommands()).toHaveLength(1);
+		});
+
+		it('includes an unshadowed built-in in the listings', () => {
+			registry.registerBuiltInCommand(builtIn('help'));
+
+			expect(registry.getAvailableCommands()).toContain('help');
+			expect(registry.getCommands().map(Cmd => Cmd.command)).toContain('help');
+		});
+
+		it('refuses a built-in with no name', () => {
+			expect(() => registry.registerBuiltInCommand(builtIn(''))).toThrow('Cannot register a built-in command with no name');
+		});
+	});
+
+	describe('findCommand', () => {
+		it('resolves by canonical name and by alias', () => {
+			const Cmd = makeCommand('download', undefined, ['dl']);
+			registry.registerCommand(Cmd);
+
+			expect(registry.findCommand('download')).toBe(Cmd);
+			expect(registry.findCommand('dl')).toBe(Cmd);
+		});
+
+		it('returns null for an unknown name rather than throwing, so callers can degrade quietly', () => {
+			expect(registry.findCommand('nope')).toBeNull();
+		});
+	});
 });
