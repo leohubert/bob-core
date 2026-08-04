@@ -46,7 +46,7 @@ Cli.runCommand → CommandRegistry.runCommand → Command.run
 | `src/commands/HelpCommand.ts` | Built-in `help` command, registered automatically. |
 | `src/commands/CompletionCommand.ts` | Built-in `completion <shell>` — prints an installable script. |
 | `src/commands/CompleteCommand.ts` | Built-in hidden `__complete` — resolves candidates on each keypress. |
-| `src/completion/` | Shell completion: `completeArgv`, `commandSpecs`, `resolveCompletion`, fish renderer. See `docs/shell-completion.md`. |
+| `src/completion/` | Shell completion: `completeArgv`, `commandSpecs`, `resolveCompletion`, fish renderer, spec cache. See `docs/shell-completion.md`. |
 
 ### Module layout
 

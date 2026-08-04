@@ -43,6 +43,8 @@ export class CommandRegistry {
 	 */
 	private readonly builtIns: Record<string, RegisteredCommand> = {};
 	private readonly aliases: Record<string, string> = {};
+	private pendingPaths: string[] = [];
+	private loading: Promise<void> | null = null;
 	protected readonly ux: UX;
 	protected readonly logger: Logger;
 	private readonly stringSimilarity: StringSimilarity;
@@ -159,6 +161,40 @@ export class CommandRegistry {
 			}
 			this.aliases[alias] = commandName;
 		}
+	}
+
+	/**
+	 * Queues a directory to be walked by {@link ensureLoaded} instead of importing it now.
+	 *
+	 * Discovering a command means importing its module — a command's name lives in its class, not in
+	 * its filename — so eager registration costs one import per command file before the first
+	 * dispatch. Deferring lets `__complete` answer a keypress from a spec snapshot without paying
+	 * for any of them.
+	 */
+	deferCommandsPath(commandsPath: string) {
+		this.pendingPaths.push(commandsPath);
+		// A source queued after an earlier drain finished still has to be walked.
+		this.loading = null;
+
+		return this;
+	}
+
+	/**
+	 * Walks every queued path source. Memoized, and safe to call from anywhere: a single completion
+	 * can need the registry hydrated from two places at once, and {@link registerCommand} throws on
+	 * a duplicate name.
+	 */
+	async ensureLoaded(): Promise<void> {
+		this.loading ??= (async () => {
+			const paths = this.pendingPaths;
+			this.pendingPaths = [];
+
+			for (const commandsPath of paths) {
+				await this.loadCommandsPath(commandsPath);
+			}
+		})();
+
+		return await this.loading;
 	}
 
 	async loadCommandsPath(commandsPath: string) {

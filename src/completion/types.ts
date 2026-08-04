@@ -1,5 +1,9 @@
-/** Shell dialects the completion renderer knows about. Only `fish` is implemented so far. */
-export const COMPLETION_SHELLS = ['fish', 'zsh', 'bash'] as const;
+/**
+ * Shells with a renderer. A dialect joins this list only once it has one — advertising a shell and
+ * then refusing it at runtime is worse than not offering it, and `Args.option` rejects anything not
+ * listed here with the framework's own invalid-value error.
+ */
+export const COMPLETION_SHELLS = ['fish'] as const;
 
 export type CompletionShell = (typeof COMPLETION_SHELLS)[number];
 
@@ -26,3 +30,16 @@ export const COMPLETION_COMMAND = 'completion';
  * (complete command names starting with "k9s").
  */
 export const CURRENT_TOKEN_FLAG = '--current=';
+
+/**
+ * True when this invocation's stdout is consumed by a machine — a candidate list the shell reads
+ * back, or a script the user redirects into a file.
+ *
+ * A host with startup side effects (a banner, an update check, a rebuild) must stay silent on stdout
+ * for these, and should skip the work entirely for `__complete`, which runs on every keypress.
+ */
+export function writesMachineOutput(argv: string[]): boolean {
+	const command = argv.at(0);
+
+	return command === COMPLETE_COMMAND || command === COMPLETION_COMMAND;
+}

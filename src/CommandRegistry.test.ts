@@ -336,6 +336,60 @@ describe('CommandRegistry', () => {
 		});
 	});
 
+	describe('Deferred command sources', () => {
+		/**
+		 * Stands in for the directory walk. Counting resolver calls is the point: a command's name
+		 * lives in its class, so "discovering" one means importing its module, and that import cost is
+		 * exactly what deferral exists to avoid.
+		 */
+		function fakeSource(registry: CommandRegistry, name: string) {
+			const resolver = vi.fn().mockResolvedValue(makeCommand(name));
+			registry.withCommandResolver(resolver);
+			(registry as any).listCommandsFiles = async function* () {
+				yield `/fake/${name}.ts`;
+			};
+
+			return resolver;
+		}
+
+		it('imports nothing until the registry is asked for something', async () => {
+			const resolver = fakeSource(registry, 'deferred');
+
+			registry.deferCommandsPath('/anything');
+
+			expect(resolver).not.toHaveBeenCalled();
+			expect(registry.getAvailableCommands()).not.toContain('deferred');
+
+			await registry.ensureLoaded();
+
+			expect(resolver).toHaveBeenCalledOnce();
+			expect(registry.getAvailableCommands()).toContain('deferred');
+		});
+
+		it('walks each queued source exactly once across concurrent and repeated calls', async () => {
+			const resolver = fakeSource(registry, 'once');
+
+			registry.deferCommandsPath('/anything');
+			await Promise.all([registry.ensureLoaded(), registry.ensureLoaded()]);
+			await registry.ensureLoaded();
+
+			// Without the memo the second call re-registers the same name, which throws.
+			expect(resolver).toHaveBeenCalledOnce();
+		});
+
+		it('walks a source queued after an earlier load already finished', async () => {
+			fakeSource(registry, 'first');
+			registry.deferCommandsPath('/first');
+			await registry.ensureLoaded();
+
+			fakeSource(registry, 'second');
+			registry.deferCommandsPath('/second');
+			await registry.ensureLoaded();
+
+			expect(registry.getAvailableCommands()).toEqual(expect.arrayContaining(['first', 'second']));
+		});
+	});
+
 	describe('Instance registration', () => {
 		it('reuses a registered instance instead of constructing the class, so injected collaborators survive', async () => {
 			const handlerFn = vi.fn().mockResolvedValue(0);

@@ -1,8 +1,13 @@
 import { faker } from '@faker-js/faker';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Cli, CliOptions } from '@/src/Cli.js';
 import { Command } from '@/src/Command.js';
+import { Args } from '@/src/args/index.js';
+import { writesMachineOutput } from '@/src/completion/types.js';
 import { TestLogger, newTestLogger } from '@/src/fixtures.test.js';
 import { Flags } from '@/src/flags/index.js';
 import { ArgsSchema } from '@/src/lib/types.js';
@@ -218,11 +223,43 @@ describe('Cli', () => {
 			expect(printed()).toContain('complete -c mycli -f');
 		});
 
-		it('reports an unimplemented shell instead of crashing', async () => {
+		it('rejects a shell with no renderer as an invalid argument, naming what is on offer', async () => {
+			// Guards against re-listing a shell in COMPLETION_SHELLS before it has a renderer: the
+			// option set is the single source of truth for what we claim to support.
 			const code = await cli.runCommand('completion', 'zsh');
 
-			expect(code).toBe(1);
-			expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('not implemented'));
+			expect(code).toBe(-1);
+			expect(printed()).toContain('must be one of: "fish"');
+		});
+
+		it('infers the shell from $SHELL, so a bare `completion` can be redirected straight into a file', async () => {
+			vi.stubEnv('SHELL', '/opt/homebrew/bin/fish');
+			cli = new Cli({ ...cliOptions, binName: 'mycli' });
+
+			const code = await cli.runCommand('completion');
+
+			expect(code).toBe(0);
+			expect(printed()).toContain('complete -c mycli -f');
+		});
+
+		it('refuses rather than prompting when $SHELL is one we cannot render', async () => {
+			// Prompting here would draw a select into whatever file stdout points at.
+			vi.stubEnv('SHELL', '/bin/zsh');
+			cli = new Cli({ ...cliOptions, binName: 'mycli' });
+
+			const code = await cli.runCommand('completion');
+
+			expect(code).toBe(-1);
+			expect(printed()).not.toContain('complete -c');
+		});
+
+		it('keeps the install hint off stdout, so a redirect captures only the script', async () => {
+			cli = new Cli({ ...cliOptions, binName: 'mycli' });
+
+			await cli.runCommand('completion', 'fish');
+
+			expect(logger.log).toHaveBeenCalledOnce();
+			expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('~/.config/fish/completions/mycli.fish'));
 		});
 
 		it('answers `__complete` with the registered commands', async () => {
@@ -247,6 +284,14 @@ describe('Cli', () => {
 			expect(logger.log).not.toHaveBeenCalled();
 		});
 
+		it('tells a host which invocations write machine-readable stdout', () => {
+			// A host with a banner, an update check or a rebuild has to stay silent for these.
+			expect(writesMachineOutput(['__complete', 'fish'])).toBe(true);
+			expect(writesMachineOutput(['completion', 'fish'])).toBe(true);
+			expect(writesMachineOutput(['deploy'])).toBe(false);
+			expect(writesMachineOutput([])).toBe(false);
+		});
+
 		it('does not let the inherited --help flag hijack a line being completed', async () => {
 			await cli.withCommands(makeCommand('deploy'));
 
@@ -259,6 +304,169 @@ describe('Cli', () => {
 			expect(printed().split('\n')).toHaveLength(1);
 			expect(printed()).toMatch(/^--help\t/);
 			expect(printed()).not.toContain('Available commands');
+		});
+	});
+
+	describe('Deferred command loading', () => {
+		/**
+		 * Queues a path source whose walk yields one synthetic command, and returns the spy standing in
+		 * for the module import. Every assertion below is about whether that spy fires: importing
+		 * command modules is the cost `__complete` exists to avoid, and the only way to observe it.
+		 */
+		async function deferOneCommand(target: Cli, name: string) {
+			const resolver = vi.fn().mockResolvedValue(makeCommand(name));
+			target.withCommandResolver(resolver);
+			(target.commandRegistry as any).listCommandsFiles = async function* () {
+				yield `/fake/${name}.ts`;
+			};
+			await target.withCommands('/fake');
+
+			return resolver;
+		}
+
+		it('defers the walk to the first dispatch instead of doing it in withCommands', async () => {
+			const resolver = await deferOneCommand(cli, 'deploy');
+
+			expect(resolver).not.toHaveBeenCalled();
+
+			await cli.runCommand('deploy');
+
+			expect(resolver).toHaveBeenCalledOnce();
+		});
+
+		it('loads commands for help, which cannot render an index it has not seen', async () => {
+			const resolver = await deferOneCommand(cli, 'deploy');
+
+			await cli.runHelpCommand();
+
+			expect(resolver).toHaveBeenCalledOnce();
+			expect(logger.log.mock.calls.flat().join('\n')).toContain('deploy');
+		});
+
+		it('loads commands for __complete when it has no cache to answer from', async () => {
+			const resolver = await deferOneCommand(cli, 'deploy');
+
+			const code = await cli.runCommand('__complete', 'fish', '--current=dep', '--', 'mycli');
+
+			expect(code).toBe(0);
+			expect(resolver).toHaveBeenCalledOnce();
+			expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('deploy'));
+		});
+	});
+
+	describe('Completion cache', () => {
+		let cacheDir: string;
+		let cacheFile: string;
+
+		beforeEach(() => {
+			cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bob-completion-'));
+			cacheFile = path.join(cacheDir, 'specs.json');
+		});
+
+		afterEach(() => {
+			fs.rmSync(cacheDir, { recursive: true, force: true });
+		});
+
+		/** A CLI whose one command lives behind a deferred source, so imports stay observable. */
+		async function newCachedCli(version: string, name = 'deploy') {
+			const resolver = vi.fn().mockResolvedValue(makeCommand(name));
+			const cached = new Cli({ ...cliOptions, binName: 'mycli', completionCache: { file: cacheFile, version } });
+			cached.withCommandResolver(resolver);
+			(cached.commandRegistry as any).listCommandsFiles = async function* () {
+				yield `/fake/${name}.ts`;
+			};
+			await cached.withCommands('/fake');
+
+			return { cli: cached, resolver };
+		}
+
+		async function complete(target: Cli, current: string) {
+			return await target.runCommand('__complete', 'fish', `--current=${current}`, '--', 'mycli');
+		}
+
+		it('snapshots the specs on a miss and answers the next keypress without importing anything', async () => {
+			const first = await newCachedCli('v1');
+			await complete(first.cli, 'dep');
+
+			expect(first.resolver).toHaveBeenCalledOnce();
+			expect(fs.existsSync(cacheFile)).toBe(true);
+
+			// This is the whole point of Part A: a warm keypress touches no command module at all.
+			const second = await newCachedCli('v1');
+			const code = await complete(second.cli, 'dep');
+
+			expect(code).toBe(0);
+			expect(second.resolver).not.toHaveBeenCalled();
+			expect(logger.log).toHaveBeenLastCalledWith(expect.stringContaining('deploy'));
+		});
+
+		it('discards a snapshot from another build, so a rebuild refreshes completion for free', async () => {
+			await complete((await newCachedCli('v1')).cli, 'dep');
+
+			const rebuilt = await newCachedCli('v2', 'redeploy');
+			await complete(rebuilt.cli, 'red');
+
+			expect(rebuilt.resolver).toHaveBeenCalledOnce();
+			expect(logger.log).toHaveBeenLastCalledWith(expect.stringContaining('redeploy'));
+		});
+
+		it('still resolves a dynamic slot on a cache hit, which needs the real command class', async () => {
+			// The static path is served from disk, so nothing else would ever hydrate the registry —
+			// a wrong laziness call here degrades completion to static-only without failing anything.
+			const source = vi.fn().mockResolvedValue([{ name: 'Alpha', value: 'alpha' }]);
+			const Search = class extends Command {
+				static command = 'ship';
+				static args = { target: Args.search({ source }) } satisfies ArgsSchema;
+				async handle() {
+					return 0;
+				}
+			};
+
+			const build = async () => {
+				const resolver = vi.fn().mockResolvedValue(Search);
+				const target = new Cli({ ...cliOptions, binName: 'mycli', completionCache: { file: cacheFile, version: 'v1' } });
+				target.withCommandResolver(resolver);
+				(target.commandRegistry as any).listCommandsFiles = async function* () {
+					yield '/fake/ship.ts';
+				};
+				await target.withCommands('/fake');
+
+				return { cli: target, resolver };
+			};
+
+			await complete((await build()).cli, 'ship');
+
+			const warm = await build();
+			await warm.cli.runCommand('__complete', 'fish', '--current=', '--', 'mycli', 'ship');
+
+			expect(source).toHaveBeenCalled();
+			expect(warm.resolver).toHaveBeenCalledOnce();
+			expect(logger.log).toHaveBeenLastCalledWith(expect.stringContaining('alpha'));
+		});
+	});
+
+	describe('Disabling completion', () => {
+		beforeEach(() => {
+			cli = new Cli({ ...cliOptions, disableCompletion: true });
+		});
+
+		it('drops both halves of the pair — a script with no __complete behind it is a dead script', () => {
+			expect(cli.commandRegistry.findCommand('completion')).toBeNull();
+			expect(cli.commandRegistry.findCommand('__complete')).toBeNull();
+		});
+
+		it('treats completion as an unknown command', async () => {
+			const code = await cli.runCommand('completion', 'fish');
+
+			expect(code).toBe(-1);
+			expect(logger.log.mock.calls.flat().join('\n')).not.toContain('complete -c');
+		});
+
+		it('still renders help, which measures the widest command name and has none to measure', async () => {
+			const code = await cli.runHelpCommand();
+
+			expect(code).toBe(0);
+			expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Test CLI'));
 		});
 	});
 

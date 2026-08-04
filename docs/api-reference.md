@@ -28,6 +28,8 @@ interface CliOptions<C> {
   logger?: Logger;    // Custom logger
   binName?: string;   // Executable name as typed (e.g. `bdg`), used by completion scripts.
                       // Distinct from `name`; defaults to the basename of the running script.
+  disableCompletion?: boolean;              // Skips the `completion` / `__complete` pair
+  completionCache?: CompletionCacheOptions; // Answers completion from a snapshot on disk
 }
 ```
 
@@ -35,6 +37,7 @@ interface CliOptions<C> {
 
 ```typescript
 withCommands(...commands: Array<typeof Command<C> | Command<C> | string>): Promise<void>
+                     // Classes/instances register now; a directory is queued and walked on dispatch
 withCommandResolver(resolver: CommandResolver): this
 withFileImporter(importer: FileImporter): this
 runCommand(command: string | typeof Command | Command | undefined, ...args: string[]): Promise<number>
@@ -240,7 +243,9 @@ Manages command registration and discovery.
 ```typescript
 registerCommand(command: typeof Command | Command, force?: boolean): void
 registerBuiltInCommand(command: Command): void
-loadCommandsPath(commandsPath: string): Promise<void>
+loadCommandsPath(commandsPath: string): Promise<void>   // Walks a directory now
+deferCommandsPath(commandsPath: string): this           // Queues it for ensureLoaded instead
+ensureLoaded(): Promise<void>                           // Walks every queued path; memoized
 runCommand(ctx: any, command: string | typeof Command | Command, ...args: string[]): Promise<number>
 getAvailableCommands(): string[]
 getCommands(): Array<typeof Command>
@@ -365,12 +370,24 @@ resolveCompletion(opts: {
 // Wire protocol used by the generated scripts
 parseCompletionRequest(argv: string[]): { shell: CompletionShell; words: string[] } | null
 
-// Script generation and candidate encoding
-renderCompletionScript(shell: CompletionShell, opts: { binName: string }): string
-encodeCandidates(shell: CompletionShell, candidates: CompletionCandidate[]): string
-isImplemented(shell: CompletionShell): boolean
+// Script generation and candidate encoding (fish is the only dialect with a renderer)
+renderFishScript(opts: { binName: string }): string
+encodeFishCandidates(candidates: CompletionCandidate[]): string
+fishCompletionPath(binName: string): string   // ~/.config/fish/completions/<bin>.fish
 
-COMPLETION_SHELLS   // ['fish', 'zsh', 'bash'] — only `fish` is implemented
+// True when this invocation's stdout is machine-readable, so a host must stay silent on it
+writesMachineOutput(argv: string[]): boolean
+
+// Metadata snapshot on disk, so a keypress imports no command modules
+readSpecCache(opts: CompletionCacheOptions): CommandSpec[] | null
+writeSpecCache(opts: CompletionCacheOptions, specs: CommandSpec[]): void
+
+interface CompletionCacheOptions {
+  file: string;     // Absolute path — a relative one resolves against the user's cwd
+  version: string;  // Invalidation key; a mismatch discards the snapshot
+}
+
+COMPLETION_SHELLS   // ['fish']
 COMPLETION_COMMAND  // 'completion'
 COMPLETE_COMMAND    // '__complete'
 ```

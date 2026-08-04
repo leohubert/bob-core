@@ -39,3 +39,4 @@ export const Flags = {
 };
 
 export { Args } from '@/src/args/index.js';
+export type { ValueSource } from '@/src/flags/search.js';

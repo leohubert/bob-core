@@ -107,8 +107,6 @@ export function parseCompletionRequest(argv: string[]): { shell: CompletionShell
 }
 
 function filterByPrefix(candidates: CompletionCandidate[], prefix: string): CompletionCandidate[] {
-	if (!prefix) return candidates;
-
 	return candidates.filter(candidate => candidate.value.startsWith(prefix));
 }
 
@@ -181,7 +179,6 @@ function positionalAt(spec: CommandSpec, preceding: string[]): ParameterSpec | n
 
 	for (let i = 0; i < tokens.length; i++) {
 		const token = tokens[i];
-		if (token === '--') continue;
 
 		if (token.startsWith('-')) {
 			const flag = findFlag(spec, token.split('=')[0]);

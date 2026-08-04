@@ -41,8 +41,7 @@ export async function resolveCompletion(opts: ResolveCompletionOptions): Promise
 }
 
 async function resolveDynamic(slot: DynamicSlot, opts: ResolveCompletionOptions): Promise<CompletionCandidate[]> {
-	const controller = new AbortController();
-	const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+	const signal = AbortSignal.timeout(opts.timeoutMs ?? DEFAULT_TIMEOUT_MS);
 
 	try {
 		const Cmd = await opts.loadCommand!(slot.command);
@@ -59,10 +58,10 @@ async function resolveDynamic(slot: DynamicSlot, opts: ResolveCompletionOptions)
 					ctx: opts.ctx,
 					definition,
 					cmd: Cmd,
-					signal: controller.signal,
+					signal,
 				}),
 			),
-			deadline(controller.signal),
+			deadline(signal),
 		]);
 
 		// Values are not prefix-filtered here: a resolver may match on a description or fuzzily, and
@@ -71,8 +70,6 @@ async function resolveDynamic(slot: DynamicSlot, opts: ResolveCompletionOptions)
 		return candidates.map(candidate => ({ ...candidate, value: `${slot.prefix}${candidate.value}` }));
 	} catch {
 		return [];
-	} finally {
-		clearTimeout(timer);
 	}
 }
 

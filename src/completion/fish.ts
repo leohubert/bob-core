@@ -1,9 +1,14 @@
-import { COMPLETE_COMMAND, CompletionCandidate } from '@/src/completion/types.js';
+import { COMPLETE_COMMAND, CURRENT_TOKEN_FLAG, CompletionCandidate } from '@/src/completion/types.js';
 
 export type FishScriptOptions = {
 	/** The executable name as typed, e.g. `bdg` — not the human-facing CLI name. */
 	binName: string;
 };
+
+/** Where fish auto-loads a user's completion script for `binName`. */
+export function fishCompletionPath(binName: string): string {
+	return `~/.config/fish/completions/${binName}.fish`;
+}
 
 /** fish function names allow far less than a binary name does. */
 function functionName(binName: string): string {
@@ -33,7 +38,7 @@ export function renderFishScript(opts: FishScriptOptions): string {
 		'\t# And the quoted expansion keeps an empty token as one argument, which is what distinguishes',
 		'\t# "cmd <TAB>" from "cmd<TAB>" — an unquoted empty substitution contributes zero arguments.',
 		'\tset -l token (commandline -ct)',
-		`\t${binName} ${COMPLETE_COMMAND} fish "--current=$token" -- (commandline -opc) 2>/dev/null`,
+		`\t${binName} ${COMPLETE_COMMAND} fish "${CURRENT_TOKEN_FLAG}$token" -- (commandline -opc) 2>/dev/null`,
 		'end',
 		'',
 		`complete -c ${binName} -f -a "(${fn})"`,

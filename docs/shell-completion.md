@@ -4,14 +4,18 @@ Every CLI built on bob-core gets shell completion for free: `Cli` registers a `c
 that prints an installable script, and a hidden `__complete` command that the shell calls to resolve
 candidates. Nothing to declare — the candidates come from the same static metadata `help` renders.
 
-Only **fish** is implemented today. `CompletionShell` covers `fish | zsh | bash` so the other two are
-a renderer each, and `isImplemented()` reports which are real.
+Only **fish** is implemented. `COMPLETION_SHELLS` lists exactly what has a renderer, so
+`mycli completion zsh` is rejected as an invalid argument value rather than failing later.
 
 ## Enabling it
 
 ```console
 $ mycli completion fish > ~/.config/fish/completions/mycli.fish
 ```
+
+The shell argument defaults to your own `$SHELL`, so a bare `mycli completion` works when you are
+already in a supported shell. The script goes to stdout and an install hint to stderr, which keeps a
+redirect clean.
 
 Pass `binName` when constructing the `Cli` so the generated script calls the right executable — it
 defaults to the basename of the running script, which is wrong for a wrapper or a renamed binary:
@@ -22,6 +26,9 @@ const cli = new Cli({ ctx, name: 'My CLI', version, binName: 'mycli' });
 
 The generated script holds no command names of its own. It asks the binary on every keypress, so it
 never goes stale and only needs regenerating if the file is deleted.
+
+To ship a CLI without either command, pass `disableCompletion: true`. It governs both: the script
+`completion` prints is what calls `__complete`, so half a pair is a dead script.
 
 ## What completes
 
@@ -81,24 +88,33 @@ signal to your network call. Every dynamic failure — no loader, resolver throw
 
 ## Fast startup
 
-`resolveCompletion` takes a plain `CommandSpec[]`, not a live registry, precisely so a host whose
-startup is dominated by importing command modules can snapshot the metadata to disk and answer
-keypresses without loading anything:
+A command's name lives in its class, not its filename, so discovering commands means importing every
+command module. Past a few dozen commands that is too slow to sit behind a TAB press.
+
+Two things handle it, and neither needs code in your entry point.
+
+**Command directories are loaded lazily.** `withCommands('./commands')` only queues the path; the walk
+happens on the first `runCommand`. `__complete` is the one command that skips it.
+
+**Point `completionCache` at a file** and the metadata is snapshotted there, so a keypress imports
+nothing at all:
 
 ```typescript
-const specs = readCache() ?? commandSpecs(await loadEverything());
-
-const candidates = await resolveCompletion({
-  specs,
-  words,
+const cli = new Cli({
   ctx,
-  // Only invoked when the slot under the cursor is dynamic.
-  loadCommand: async name => (await loadEverything()).findCommand(name),
+  binName: 'mycli',
+  completionCache: { file: path.join(rootDir, '.mycli-completion.json'), version: buildHash },
 });
+
+cli.withCommands('./commands');
 ```
 
-`commandSpecs` output is JSON-serializable and round-trips exactly. Key the cache on something that
-changes when the commands do — a build hash works well.
+Use an absolute path — a relative one resolves against whatever directory the user was in when they
+pressed TAB. `version` is the invalidation key: a mismatch discards the snapshot, so a rebuild
+refreshes completion for free. In a dev setup where the key does not change as you edit commands,
+omit the cache instead (`version === 'dev' ? undefined : {...}`) rather than serving a stale one.
+
+A cache miss, and a dynamic slot under the cursor, are the only paths that import anything.
 
 `__complete` must obey two rules, and the built-in command already does:
 
@@ -106,14 +122,22 @@ changes when the commands do — a build hash works well.
    update banner, a spinner, a stray log line.
 2. **Always exit 0.** A completion bug must not paint a stack trace over someone's prompt.
 
-If your entry point prints notices or rebuilds on launch, skip that work for `COMPLETE_COMMAND` and
-`COMPLETION_COMMAND` — the latter's stdout gets redirected into a file.
+Rule 1 extends to whatever your entry point does *before* handing over. If it prints a notice, checks
+for updates or rebuilds on launch, guard that with `writesMachineOutput`:
+
+```typescript
+if (!writesMachineOutput(process.argv.slice(2))) {
+  await announceUpdates();
+}
+```
+
+It covers `completion` too, whose stdout gets redirected into a file.
 
 ## Adding a shell
 
 1. Write `renderXyzScript` and `encodeXyzCandidates` in `src/completion/xyz.ts`.
-2. Add the branches to `renderCompletionScript` / `encodeCandidates` in `src/completion/render.ts`.
-3. Add the shell to `IMPLEMENTED_SHELLS`.
+2. Add `xyz` to `COMPLETION_SHELLS`.
+3. Dispatch on the shell in `CompletionCommand` and `CompleteCommand` — the only two call sites.
 
 The resolution logic in `completeArgv` is dialect-agnostic and already prefix-filters, which fish
 does itself but bash and zsh do not.
